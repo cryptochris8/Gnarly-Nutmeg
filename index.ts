@@ -537,6 +537,75 @@ startServer((world) => {
           game.startPenaltyOnlyMode(); // Use the new dedicated method
         }, 500); // Minimal delay just to ensure AI spawning is complete
       }
+      else if (data.type === "start-penalty-shootout") {
+        // NEW: Handle direct penalty shootout button press (bypasses team selection)
+        console.log(`🥅 PENALTY SHOOTOUT BUTTON PRESSED: Starting penalty-only mode...`);
+        
+        // Check if player is already in a game
+        if (game.getTeamOfPlayer(player.username) !== null) {
+          console.log("Player already on a team, ignoring penalty shootout request");
+          return;
+        }
+
+        // Automatically assign player to red team for penalty shootout
+        const assignedTeam = "red";
+        console.log(`🥅 Auto-assigning player to ${assignedTeam} team for penalty shootout`);
+
+        // Join game and team
+        game.joinGame(player.username, player.username);
+        game.joinTeam(player.username, assignedTeam);
+
+        // Create player entity
+        const humanPlayerRole: SoccerAIRole = 'central-midfielder-1';
+        const playerEntity = new SoccerPlayerEntity(player, assignedTeam, humanPlayerRole);
+        console.log(`🥅 Creating penalty shootout player entity for ${assignedTeam} team`);
+        
+        // Spawn at center field initially
+        const spawnPosition = { x: 0, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z };
+        playerEntity.spawn(world, spawnPosition);
+        playerEntity.freeze();
+        
+        // Switch to gameplay music
+        console.log("🥅 Switching to penalty shootout music");
+        mainMusic.pause();
+        gameplayMusic.play(world);
+
+        // Set penalty-only mode flag IMMEDIATELY
+        console.log("🥅 Setting penalty-only mode flag for button-triggered shootout");
+        game.getState().penaltyOnlyMode = true;
+        game.getState().status = "penalty-shootout";
+
+        // Spawn AI players for both teams
+        console.log("🥅 Spawning AI players for penalty shootout (6v6)...");
+        await spawnAIPlayers(assignedTeam);
+
+        // Send UI updates to all players
+        world.entityManager.getAllPlayerEntities().forEach((playerEntity) => {
+          playerEntity.player.ui.sendData({
+            type: "penalty-only-mode-start",
+            message: "🥅 PENALTY SHOOTOUT MODE! 🥅"
+          });
+          
+          playerEntity.player.ui.sendData({
+            type: "game-state",
+            timeRemaining: 0,
+            score: { red: 0, blue: 0 },
+            status: "penalty-shootout",
+            penaltyOnlyMode: true
+          });
+        });
+
+        // Unfreeze player
+        if (playerEntity && typeof playerEntity.unfreeze === 'function') {
+          playerEntity.unfreeze();
+        }
+
+        // Start penalty-only mode
+        setTimeout(() => {
+          console.log("🥅 Starting penalty-only mode from button press...");
+          game.startPenaltyOnlyMode();
+        }, 500);
+      }
     });
 
     // Attempt to start multiplayer game (logic needs adjustment for 6v6)
