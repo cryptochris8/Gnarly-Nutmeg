@@ -73,10 +73,10 @@ export const ROLE_DEFINITIONS: Record<SoccerAIRole, RoleDefinition> = {
     defensiveContribution: 10,
     offensiveContribution: 1,
     preferredArea: {
-      minX: -8,  // Expanded for better coverage
-      maxX: 8,   // Increased forward reach
-      minZ: -8,  // Expanded side movement
-      maxZ: 8    // Expanded side movement
+      minX: -8,  // Goalkeeper box area - 8 units from goal line
+      maxX: 8,   // Can come out 8 units from goal line
+      minZ: -12, // Goal width coverage (adjusted to field center Z=-3)
+      maxZ: 6    // Goal width coverage (adjusted to field center Z=-3)
     },
     pursuitTendency: 0.4,       // Increased to retrieve balls more often
     positionRecoverySpeed: 0.95, // Keep fast return to position
@@ -94,10 +94,10 @@ export const ROLE_DEFINITIONS: Record<SoccerAIRole, RoleDefinition> = {
     defensiveContribution: 8,
     offensiveContribution: 5,
     preferredArea: {
-      minX: -30, // Deeper defensive position
-      maxX: 30,  // Increased for more attacking support
-      minZ: -33, // Extended to reach corner flag
-      maxZ: 5    // Slightly more central coverage
+      minX: -25, // Stay within defensive third
+      maxX: 30,  // Can support attacks to midfield
+      minZ: -30, // Left side coverage (within field bounds Z: -33 to 26)
+      maxZ: -8   // Stay on left side of field
     },
     pursuitTendency: 0.6,       // Increased for more aggressive ball recovery
     positionRecoverySpeed: 0.7,  // Keep current
@@ -115,10 +115,10 @@ export const ROLE_DEFINITIONS: Record<SoccerAIRole, RoleDefinition> = {
     defensiveContribution: 8,
     offensiveContribution: 5,
     preferredArea: {
-      minX: -30, // Deeper defensive position
-      maxX: 30,  // Increased for more attacking support
-      minZ: -5,  // Slightly more central coverage
-      maxZ: 33   // Extended to reach corner flag
+      minX: -25, // Stay within defensive third
+      maxX: 30,  // Can support attacks to midfield
+      minZ: 2,   // Stay on right side of field
+      maxZ: 23   // Right side coverage (within field bounds Z: -33 to 26)
     },
     pursuitTendency: 0.6,       // Increased for more aggressive ball recovery
     positionRecoverySpeed: 0.7,  // Keep current
@@ -136,10 +136,10 @@ export const ROLE_DEFINITIONS: Record<SoccerAIRole, RoleDefinition> = {
     defensiveContribution: 6,
     offensiveContribution: 7,
     preferredArea: {
-      minX: -25, // More defensive coverage
-      maxX: 35,  // Extended forward for attacking
-      minZ: -30, // Extended to help in wider areas
-      maxZ: 10   // More overlap with right midfielder
+      minX: -20, // Can drop back to help defense
+      maxX: 35,  // Can push forward for attacks
+      minZ: -20, // Left-center coverage
+      maxZ: 5    // Overlap slightly with right midfielder
     },
     pursuitTendency: 0.75,      // Increased to be more active in transitions
     positionRecoverySpeed: 0.6,  // Keep current
@@ -157,10 +157,10 @@ export const ROLE_DEFINITIONS: Record<SoccerAIRole, RoleDefinition> = {
     defensiveContribution: 6,
     offensiveContribution: 7,
     preferredArea: {
-      minX: -25, // More defensive coverage
-      maxX: 35,  // Extended forward for attacking 
-      minZ: -10, // More overlap with left midfielder
-      maxZ: 30   // Extended to help in wider areas
+      minX: -20, // Can drop back to help defense
+      maxX: 35,  // Can push forward for attacks
+      minZ: -11, // Overlap slightly with left midfielder
+      maxZ: 20   // Right-center coverage
     },
     pursuitTendency: 0.75,      // Increased to be more active in transitions
     positionRecoverySpeed: 0.6,  // Keep current
@@ -179,10 +179,10 @@ export const ROLE_DEFINITIONS: Record<SoccerAIRole, RoleDefinition> = {
     defensiveContribution: 3,
     offensiveContribution: 10,
     preferredArea: {
-      minX: -15, // Can drop deeper to receive the ball
-      maxX: 45,  // Forward position
-      minZ: -25, // Extended wider attacking coverage
-      maxZ: 25   // Extended wider attacking coverage
+      minX: -10, // Can drop back to midfield
+      maxX: 45,  // Can push to attacking third
+      minZ: -18, // Wide attacking coverage
+      maxZ: 12   // Wide attacking coverage
     },
     pursuitTendency: 0.85,      // Very aggressive pursuit for pressing
     positionRecoverySpeed: 0.5,  // Keep current

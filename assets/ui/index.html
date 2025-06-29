@@ -1052,7 +1052,7 @@
 </style>
 
 <!-- SIMPLE BULLETPROOF SCOREBOARD -->
-<div style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 99999; background: black; padding: 20px; border: 3px solid white; font-family: Arial; font-size: 24px; color: white; text-align: center; min-width: 300px;">
+<div id="simple-scoreboard" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 99999; background: black; padding: 20px; border: 3px solid white; font-family: Arial; font-size: 24px; color: white; text-align: center; min-width: 300px; display: none;">
   <div style="margin-bottom: 10px; font-size: 18px; color: yellow;">LIVE SCORE</div>
   <div style="display: flex; justify-content: space-between; align-items: center;">
     <div style="color: #ff4444; font-weight: bold;">RED: <span id="simple-red-score" style="font-size: 32px; color: white;">0</span></div>
@@ -1676,6 +1676,16 @@
     
     if (data.type === "game-state") {
       console.log("Processing game-state data:", data);
+      
+      // Show scoreboard when game starts (starting, playing, or overtime states)
+      const simpleScoreboard = document.getElementById("simple-scoreboard");
+      if (simpleScoreboard && data.status && (data.status === "starting" || data.status === "playing" || data.status === "overtime")) {
+        simpleScoreboard.style.display = "block";
+        console.log("Scoreboard shown - game status:", data.status);
+      } else if (simpleScoreboard && data.status === "waiting") {
+        simpleScoreboard.style.display = "none";
+        console.log("Scoreboard hidden - game status:", data.status);
+      }
       
       // Update SIMPLE scoreboard (bulletproof approach)
       const newRedScore = data.score ? data.score.red : 0;

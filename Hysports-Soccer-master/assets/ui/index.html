@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HySports Soccer - Phase 1 Enhanced</title>
+</head>
+<body>
+
+<style>
+  @import url('{{CDN_ASSETS_URL}}/ui/fonts/trebuchet-ms.css');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: "Trebuchet MS", "Arial", sans-serif;
+    background: transparent;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ===== PHASE 1: ENHANCED SCORE DISPLAY ===== */
+  .score-time-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 15px;
+    padding: 15px 25px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+  }
+
+  .team-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 10px;
+    min-width: 80px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .team-banner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .team-banner.red {
+    background: linear-gradient(135deg, #ff4444, #cc3333);
+    border: 2px solid #ff6666;
+  }
+
+  .team-banner.blue {
+    background: linear-gradient(135deg, #4444ff, #3333cc);
+    border: 2px solid #6666ff;
+  }
+
+  .team-banner:hover::before {
+    left: 100%;
+  }
+
+  .team-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+  }
+
+  .team-score {
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffffff !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 255, 255, 0.5);
+    transition: all 0.3s ease;
+    min-height: 35px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 10;
+  }
+
+  /* ===== ENHANCED TIMER DISPLAY ===== */
+  .time-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 20px;
+  }
+
+  .phase-indicator {
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+  }
+
+  .phase-indicator.waiting {
+    background: #666666;
+    color: #ffffff;
+  }
+
+  .phase-indicator.starting {
+    background: #FFA500;
+    color: #ffffff;
+    animation: pulse 1s infinite;
+  }
+
+  .phase-indicator.playing {
+    background: #00AA00;
+    color: #ffffff;
+  }
+
+  .phase-indicator.overtime {
+    background: #FF6600;
+    color: #ffffff;
+    animation: pulse 0.5s infinite;
+  }
+
+  .phase-indicator.goal {
+    background: #FFD700;
+    color: #000000;
+    animation: celebration 0.5s infinite;
+  }
+
+  .phase-indicator.finished {
+    background: #AA0000;
+    color: #ffffff;
+  }
+
+  .time-label {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  /* ===== STATISTICS PANEL ===== */
+  .stats-panel {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    min-width: 250px;
+    transition: all 0.3s ease;
+    z-index: 999;
+  }
+
+  .stats-panel.hidden {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  .stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .stats-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 8px 0;
+  }
+
+  .stat-label {
+    font-size: 14px;
+    color: #cccccc;
+    font-weight: 500;
+  }
+
+  .stat-values {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+
+  .stat-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffffff;
+    min-width: 30px;
+    text-align: center;
+  }
+
+  .stat-value.red {
+    color: #ff6666;
+  }
+
+  .stat-value.blue {
+    color: #6666ff;
+  }
+
+  .possession-container {
+    margin: 15px 0;
+  }
+
+  .possession-bar {
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(to right, #ff4444, #4444ff);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .possession-bar-fill {
+    height: 100%;
+    background: #ff4444;
+    transition: width 0.5s ease;
+    border-radius: 4px;
+  }
+
+  .possession-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #cccccc;
+  }
+
+  /* ===== CONTROL BUTTONS ===== */
+  .control-buttons {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 1001;
+  }
+
+  .control-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    color: #ffffff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .control-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: scale(1.1);
+  }
+
+  .instructions-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.95), rgba(40, 40, 40, 0.95));
+    border: 3px solid #ffffff;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    color: #ffffff;
+    font-family: "Trebuchet MS", "Arial", sans-serif;
+    z-index: 1000;
+    min-width: 840px;
+    max-width: 1040px;
+    transition: all 0.3s ease-in-out;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .instructions-panel.hidden {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+    pointer-events: none;
+    display: none;
+  }
+
+  .title-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 30px;
+    gap: 12px;
+  }
+
+  .title-logo {
+    width: 350px;
+    height: 350px;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
+  }
+
+  .how-to-play-container {
+    position: relative;
+    margin-bottom: 30px;
+  }
+
+  .how-to-play-btn {
+    background: linear-gradient(135deg, rgba(60, 60, 60, 0.8), rgba(80, 80, 80, 0.8));
+    border: 2px solid #666;
+    border-radius: 12px;
+    color: white;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    backdrop-filter: blur(10px);
+  }
+
+  .how-to-play-btn:hover {
+    border-color: #fff;
+    background: linear-gradient(135deg, rgba(80, 80, 80, 0.9), rgba(100, 100, 100, 0.9));
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+
+  .how-to-play-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 20, 20, 0.95);
+    border: 2px solid #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    min-width: 400px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1001;
+  }
+
+  .how-to-play-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 10px solid transparent;
+    border-top-color: #ffffff;
+  }
+
+  .how-to-play-tooltip::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-top-color: rgba(20, 20, 20, 0.95);
+    z-index: 1;
+  }
+
+  .how-to-play-btn:hover .how-to-play-tooltip {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .how-to-play-tooltip p {
+    margin: 6px 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #ffffff;
+    text-align: left;
+  }
+
+  .team-selection {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-bottom: 24px;
+    margin-top: 15px;
+  }
+
+  .team-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .team-btn {
+    padding: 16px 32px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 140px;
+  }
+
+  .team-btn.red {
+    background: linear-gradient(135deg, #ff4444, #cc3333);
+    color: #ffffff;
+    border-color: #ff6666;
+  }
+
+  .team-btn.red:hover {
+    background: linear-gradient(135deg, #ff6666, #ff4444);
+    border-color: #ffffff;
+    box-shadow: 0 0 12px rgba(255, 68, 68, 0.6);
+    transform: translateY(-1px);
+  }
+
+  .team-btn.red.selected {
+    border-color: #ffffff;
+    box-shadow: 0 0 16px rgba(255, 68, 68, 0.8);
+    transform: translateY(-1px);
+  }
+
+  .team-btn.blue {
+    background: linear-gradient(135deg, #4444ff, #3333cc);
+    color: #ffffff;
+    border-color: #6666ff;
+  }
+
+  .team-btn.blue:hover {
+    background: linear-gradient(135deg, #6666ff, #4444ff);
+    border-color: #ffffff;
+    box-shadow: 0 0 12px rgba(68, 68, 255, 0.6);
+    transform: translateY(-1px);
+  }
+
+  .team-btn.blue.selected {
+    border-color: #ffffff;
+    box-shadow: 0 0 16px rgba(68, 68, 255, 0.8);
+    transform: translateY(-1px);
+  }
+
+  .player-count {
+    font-size: 13px;
+    color: #cccccc;
+    font-weight: bold;
+    opacity: 0.8;
+  }
+
+  /* Penalty Shootout Button */
+  .penalty-shootout-btn {
+    background: linear-gradient(135deg, #ff6600, #ff4400);
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 102, 0, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 280px;
+  }
+
+  .penalty-shootout-btn:hover {
+    background: linear-gradient(135deg, #ff7711, #ff5500);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(255, 102, 0, 0.5);
+  }
+
+  .penalty-shootout-btn:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 10px rgba(255, 102, 0, 0.4);
+  }
+
+  .score-time-container {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: stretch;
+    height: 48px;
+    border-radius: 12px;
+    z-index: 100;
+  }
+
+  .team-banner {
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 18px;
+    min-width: 120px;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .team-banner.red {
+    background: linear-gradient(135deg, #ff4444, #cc3333);
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+
+  .team-banner.blue {
+    background: linear-gradient(135deg, #4444ff, #3333cc);
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
+  .team-name {
+    font-size: 16px;
+  }
+
+  .team-score {
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .time-display {
+    background: rgba(40, 40, 40, 0.92);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px;
+    font-size: 16px;
+    font-weight: bold;
+    min-width: 140px;
+  }
+
+  .goals-display {
+    position: fixed;
+    top: 10px;
+    right: 20px;
+    background: rgba(40, 40, 40, 0.92);
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: #ffffff;
+    font-family: "Trebuchet MS", "Arial", sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 100;
+  }
+
+  .game-text {
+    position: fixed;
+    display: none;
+    font-weight: bolder;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    font-size: 8rem;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    animation: 
+      bounce 0.5s ease-in-out infinite alternate,
+      scale 0.5s ease-in-out;
+    z-index: 1000;
+    text-align: center;
+    width: 100%;
+  }
+
+  .game-text.red {
+    color: #ff4444;
+  }
+
+  .game-text.blue {
+    color: #4444ff;
+  }
+
+  @keyframes bounce {
+    from { transform: translate(-50%, -60%); }
+    to { transform: translate(-50%, -40%); }
+  }
+
+  @keyframes scale {
+    0% { transform: translate(-50%, -50%) scale(0); }
+    50% { transform: translate(-50%, -50%) scale(1.2); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
+
+  .countdown-text {
+    position: fixed;
+    display: none;
+    font-weight: bolder;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 6rem;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: #ffffff;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    z-index: 1000;
+    text-align: center;
+    width: 100%;
+    animation: scale-in 0.5s ease-out;
+  }
+
+  .cooldown-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(40, 40, 40, 0.92);
+    color: #ffffff;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-family: "Trebuchet MS", "Arial", sans-serif;
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 1000;
+  }
+
+  .cooldown-message.visible {
+    opacity: 1;
+  }
+
+  .ability-holder {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 64px;
+    height: 64px;
+    background: rgba(40, 40, 40, 0.92);
+    border: 3px solid #ffffff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .ability-holder img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+
+  .ability-holder img.visible {
+    opacity: 1;
+  }
+
+  .ability-key {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    background: #ffffff;
+    color: #000000;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    font-family: "Trebuchet MS", "Arial", sans-serif;
+  }
+
+  /* ===== ENHANCED GOAL CELEBRATION ===== */
+  .game-text {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 72px;
+    font-weight: bold;
+    color: #FFD700;
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    z-index: 2000;
+    display: none;
+    animation: goalCelebration 3s ease-in-out;
+  }
+
+  .game-text.enhanced {
+    animation: enhancedGoalCelebration 3s ease-in-out;
+  }
+
+  .goal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1999;
+    display: none;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .goal-overlay.red {
+    background: radial-gradient(circle, rgba(255, 68, 68, 0.3) 0%, transparent 70%);
+    animation: goalOverlayPulse 2s ease-in-out;
+  }
+
+  .goal-overlay.blue {
+    background: radial-gradient(circle, rgba(68, 68, 255, 0.3) 0%, transparent 70%);
+    animation: goalOverlayPulse 2s ease-in-out;
+  }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.05); }
+  }
+
+  @keyframes celebration {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+
+  @keyframes goalCelebration {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+  }
+
+  @keyframes enhancedGoalCelebration {
+    0% { transform: translate(-50%, -50%) scale(0.3) rotate(-10deg); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.3) rotate(5deg); opacity: 1; }
+    40% { transform: translate(-50%, -50%) scale(0.9) rotate(-2deg); opacity: 1; }
+    60% { transform: translate(-50%, -50%) scale(1.1) rotate(1deg); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.7) rotate(0deg); opacity: 0; }
+  }
+
+  @keyframes goalOverlayPulse {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes countdownPulse {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  @keyframes scale-in {
+    0% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  /* ===== ENHANCED EXISTING ELEMENTS ===== */
+  .countdown-text {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 120px;
+    font-weight: bold;
+    color: #FFD700;
+    text-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+    z-index: 1500;
+    display: none;
+    animation: countdownPulse 1s ease-in-out;
+  }
+
+  .cooldown-message {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 165, 0, 0.9);
+    color: #ffffff;
+    padding: 15px 25px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1200;
+    backdrop-filter: blur(10px);
+  }
+
+  .cooldown-message.visible {
+    opacity: 1;
+  }
+
+  .ability-holder {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 15px;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+  }
+
+  .ability-key {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  #ability-icon {
+    width: 40px;
+    height: 40px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  #ability-icon.visible {
+    opacity: 1;
+  }
+
+  .goals-display {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    max-width: 200px;
+    width: auto;
+    height: auto;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    .score-time-container {
+      padding: 10px 15px;
+      gap: 15px;
+    }
+    
+    .team-score {
+      font-size: 24px;
+    }
+    
+    .stats-panel {
+      right: 10px;
+      min-width: 200px;
+      padding: 15px;
+    }
+    
+    .instructions-panel {
+      min-width: 90%;
+      max-width: 95%;
+      padding: 30px 20px;
+    }
+    
+    .title-logo {
+      width: 250px;
+      height: 250px;
+    }
+  }
+
+  /* Enhanced Game Over Styles */
+  .game-over-header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .game-over-message {
+    font-size: 32px;
+    font-weight: bold;
+    color: #FFD700;
+    text-align: center;
+    margin-bottom: 16px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .team-stats-container {
+    margin-bottom: 30px;
+  }
+
+  .team-stats-header {
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFD700;
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .team-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .team-stat-column {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid;
+  }
+
+  .team-stat-column.red-team {
+    border-color: #ff4444;
+  }
+
+  .team-stat-column.blue-team {
+    border-color: #4444ff;
+  }
+
+  .team-stat-column .team-name {
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 15px;
+    color: white;
+  }
+
+  .team-stat-column .stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: white;
+  }
+
+  .team-stat-column .stat-label {
+    font-weight: bold;
+  }
+
+  .team-stat-column .stat-value {
+    color: #FFD700;
+    font-weight: bold;
+  }
+
+  .player-stats-container {
+    margin-bottom: 20px;
+  }
+
+  .player-stats-header {
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFD700;
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .player-stats-tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+  }
+
+  .tab-button {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: 2px solid #666;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+  }
+
+  .tab-button.active {
+    background: #FFD700;
+    color: black;
+    border-color: #FFD700;
+  }
+
+  .tab-button:hover {
+    background: rgba(255, 215, 0, 0.2);
+  }
+
+  .player-stats-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .player-stat-card {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-left: 4px solid;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 15px;
+    align-items: center;
+  }
+
+  .player-stat-card.red-player {
+    border-left-color: #ff4444;
+  }
+
+  .player-stat-card.blue-player {
+    border-left-color: #4444ff;
+  }
+
+  .player-name {
+    font-weight: bold;
+    color: white;
+    font-size: 16px;
+  }
+
+  .player-role {
+    color: #ccc;
+    font-size: 12px;
+    text-transform: capitalize;
+  }
+
+  .player-stat-group {
+    text-align: center;
+  }
+
+  .player-stat-group .stat-number {
+    font-size: 18px;
+    font-weight: bold;
+    color: #FFD700;
+    display: block;
+  }
+
+  .player-stat-group .stat-name {
+    font-size: 11px;
+    color: #ccc;
+    text-transform: uppercase;
+  }
+</style>
+
+<!-- SIMPLE BULLETPROOF SCOREBOARD -->
+<div style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 99999; background: black; padding: 20px; border: 3px solid white; font-family: Arial; font-size: 24px; color: white; text-align: center; min-width: 300px;">
+  <div style="margin-bottom: 10px; font-size: 18px; color: yellow;">LIVE SCORE</div>
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="color: #ff4444; font-weight: bold;">RED: <span id="simple-red-score" style="font-size: 32px; color: white;">0</span></div>
+    <div style="color: white; margin: 0 20px;">-</div>
+    <div style="color: #4444ff; font-weight: bold;">BLUE: <span id="simple-blue-score" style="font-size: 32px; color: white;">0</span></div>
+  </div>
+  <div style="margin-top: 10px; font-size: 14px; color: #cccccc;" id="simple-timer">Waiting for game...</div>
+</div>
+
+<!-- Enhanced Main UI Structure (Hidden for now) -->
+<div class="score-time-container" style="display: none;">
+  <div class="team-banner red" id="red-banner">
+    <div class="team-name">Red</div>
+    <div class="team-score" id="red-score">0</div>
+  </div>
+  <div class="time-display">
+    <div class="phase-indicator" id="phase-indicator">LOBBY</div>
+    <span class="time-label" id="time-left">Waiting...</span>
+  </div>
+  <div class="team-banner blue" id="blue-banner">
+    <div class="team-name">Blue</div>
+    <div class="team-score" id="blue-score">0</div>
+  </div>
+</div>
+
+<!-- Control Buttons -->
+<div class="control-buttons">
+  <button class="control-btn" id="audio-toggle" onclick="toggleAudio()" title="Toggle Audio">🔊</button>
+  <button class="control-btn" id="stats-toggle" onclick="toggleStatsPanel()" title="Toggle Statistics">📊</button>
+</div>
+
+<!-- Statistics Panel -->
+<div class="stats-panel hidden" id="stats-panel">
+  <div class="stats-header">
+    <div class="stats-title">Match Statistics</div>
+  </div>
+  
+  <div class="stat-row">
+    <div class="stat-label">Shots</div>
+    <div class="stat-values">
+      <div class="stat-value red" id="red-shots">0</div>
+      <div class="stat-value blue" id="blue-shots">0</div>
+    </div>
+  </div>
+  
+  <div class="stat-row">
+    <div class="stat-label">Passes</div>
+    <div class="stat-values">
+      <div class="stat-value red" id="red-passes">0</div>
+      <div class="stat-value blue" id="blue-passes">0</div>
+    </div>
+  </div>
+  
+  <div class="possession-container">
+    <div class="stat-label" style="margin-bottom: 8px;">Possession</div>
+    <div class="possession-bar">
+      <div class="possession-bar-fill" id="possession-bar-fill"></div>
+    </div>
+    <div class="possession-labels">
+      <span id="red-possession">50%</span>
+      <span id="blue-possession">50%</span>
+    </div>
+  </div>
+</div>
+
+<div class="goals-display" id="goals-display" style="display: none;">Goals: 0</div>
+
+<div class="game-text">GOAL!!!</div>
+<div class="goal-overlay" id="goal-overlay"></div>
+<div class="countdown-text" id="countdown-display"></div>
+<div class="cooldown-message" id="cooldown-message"></div>
+
+<div class="ability-holder">
+  <div class="ability-key">1</div>
+  <img id="ability-icon" src="" alt="Ability">
+</div>
+
+<div class="instructions-panel" id="instructionsPanel">
+  <div class="title-container">
+    <img src="{{CDN_ASSETS_URL}}/ui/logos/hysports-soccer-logo.png" alt="HySports Soccer Logo" class="title-logo">
+  </div>
+  
+  <div class="how-to-play-container">
+    <button class="how-to-play-btn">
+      How to Play
+      <div class="how-to-play-tooltip">
+        <p>⚽ Use WASD or Arrow keys to move</p>
+        <p>⚽ Left Click to pass</p>
+        <p>⚽ Hold Right Mouse Button to charge a shot / Release to shoot</p>
+        <p>⚽ Space bar to tackle or dodge</p>
+        <p>⚽ Highest score when time expires wins!</p>
+        <p>⚽ Select your team to get started!</p>
+      </div>
+    </button>
+  </div>
+  
+  <div id="game-over-content" style="display: none;">
+    <div class="game-over-header">
+      <div class="game-over-message" id="game-over-title">Match Complete</div>
+      <div class="final-score">
+        <span class="red-score" id="final-red-score">0</span>
+        -
+        <span class="blue-score" id="final-blue-score">0</span>
+      </div>
+      <div id="winner-announcement" style="color: #FFD700; text-align: center; margin: 10px 0; font-size: 18px; font-weight: bold;"></div>
+      <div id="match-info" style="color: #ccc; text-align: center; margin-bottom: 20px; font-size: 14px;"></div>
+    </div>
+
+    <!-- Team Statistics -->
+    <div class="team-stats-container">
+      <div class="team-stats-header">Team Statistics</div>
+      <div class="team-stats-grid">
+        <div class="team-stat-column red-team">
+          <div class="team-name">Red Team</div>
+          <div class="stat-row">
+            <span class="stat-label">Goals:</span>
+            <span class="stat-value" id="red-team-goals">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Shots:</span>
+            <span class="stat-value" id="red-team-shots">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Passes:</span>
+            <span class="stat-value" id="red-team-passes">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Tackles:</span>
+            <span class="stat-value" id="red-team-tackles">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Saves:</span>
+            <span class="stat-value" id="red-team-saves">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Distance:</span>
+            <span class="stat-value" id="red-team-distance">0m</span>
+          </div>
+        </div>
+        
+        <div class="team-stat-column blue-team">
+          <div class="team-name">Blue Team</div>
+          <div class="stat-row">
+            <span class="stat-label">Goals:</span>
+            <span class="stat-value" id="blue-team-goals">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Shots:</span>
+            <span class="stat-value" id="blue-team-shots">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Passes:</span>
+            <span class="stat-value" id="blue-team-passes">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Tackles:</span>
+            <span class="stat-value" id="blue-team-tackles">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Saves:</span>
+            <span class="stat-value" id="blue-team-saves">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Distance:</span>
+            <span class="stat-value" id="blue-team-distance">0m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player Statistics -->
+    <div class="player-stats-container">
+      <div class="player-stats-header">Player Statistics</div>
+      <div class="player-stats-tabs">
+        <button class="tab-button active" onclick="showPlayerTab('red')">Red Team</button>
+        <button class="tab-button" onclick="showPlayerTab('blue')">Blue Team</button>
+      </div>
+      <div id="red-players-stats" class="player-stats-content">
+        <!-- Red team player stats will be populated here -->
+      </div>
+      <div id="blue-players-stats" class="player-stats-content" style="display: none;">
+        <!-- Blue team player stats will be populated here -->
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <button onclick="closeGameOverScreen()" style="
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: bold;
+      ">Return to Lobby</button>
+    </div>
+  </div>
+
+  <div class="team-selection">
+    <div class="team-column">
+      <button id="redTeamBtn" class="team-btn red">
+        Join Red
+      </button>
+      <div class="player-count" id="red-team-count">Players: 0/6</div>
+    </div>
+    <div class="team-column">
+      <button id="blueTeamBtn" class="team-btn blue">
+        Join Blue
+      </button>
+      <div class="player-count" id="blue-team-count">Players: 0/6</div>
+    </div>
+  </div>
+  
+  <!-- Penalty Shootout Button -->
+  <div style="margin-top: 20px; text-align: center;">
+    <button id="penaltyShootoutBtn" class="penalty-shootout-btn">
+      🥅 PENALTY SHOOTOUT 🥅
+    </button>
+    <div style="color: rgba(255, 255, 255, 0.7); font-size: 12px; margin-top: 8px;">
+      Skip to penalty shootout without playing a full match
+    </div>
+  </div>
+  
+  <div style="margin-top: 20px; text-align: center;">
+    <label style="color: white; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; font-size: 13px; opacity: 0.9;">
+      <input type="checkbox" id="singlePlayerToggle" checked style="transform: scale(1.0); margin-right: 8px;">
+      <span>Play with AI teammates & opponents</span>
+    </label>
+  </div>
+</div>
+
+<!-- Power Bar Template -->
+<template id="power-bar-template">
+  <div style="
+    width: 92px;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+  ">
+    <div style="
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, 
+        #27ae60 0%, 
+        #27ae60 85%, 
+        #f39c12 92%,
+        #e74c3c 96%
+      );
+      background-size: 400% 100%;
+      background-position: left;
+      transition: width 0.05s linear;
+    "></div>
+  </div>
+</template>
+
+<!-- Phase 1: Enhanced Scripts with Modern Features -->
+<script>
+  // ===== PHASE 1: MODERN HUD VARIABLES =====
+  let powerBarInterval = null;
+  let powerBarPercentage = 0;
+  let timeUntilStart = 0;
+  let timeUntilStartInterval = null;
+  let selectedGameMode = "large-stadium";
+  
+  // New Phase 1 variables
+  let currentGameStats = {
+    red: { goals: 0, shots: 0, passes: 0, possession: 50 },
+    blue: { goals: 0, shots: 0, passes: 0, possession: 50 }
+  };
+  let playerStats = {};
+  let matchPhase = "waiting";
+  let audioEnabled = true;
+
+  // ===== AUDIO SYSTEM =====
+  function playUISound(soundType) {
+    if (!audioEnabled) return;
+    
+    hytopia.sendData({
+      type: "play-ui-sound",
+      sound: soundType
+    });
+  }
+
+  function playGoalCelebration(team) {
+    if (!audioEnabled) return;
+    
+    hytopia.sendData({
+      type: "play-goal-celebration",
+      team: team
+    });
+  }
+
+  // ===== ENHANCED SCORE ANIMATIONS =====
+  function animateScoreChange(team, newScore) {
+    const scoreElement = document.getElementById(`${team}-score`);
+    const banner = document.getElementById(`${team}-banner`);
+    
+    playUISound("score-change");
+    
+    // Ensure score is visible first
+    scoreElement.textContent = newScore;
+    
+    // Then animate
+    scoreElement.style.transform = "scale(1.5)";
+    scoreElement.style.color = "#FFD700";
+    banner.style.boxShadow = `0 0 20px ${team === 'red' ? '#ff4444' : '#4444ff'}`;
+    
+    setTimeout(() => {
+      scoreElement.style.transform = "scale(1)";
+      scoreElement.style.color = "#ffffff";
+      banner.style.boxShadow = "none";
+    }, 300);
+  }
+
+  // ===== STATISTICS PANEL =====
+  function updateStatisticsPanel() {
+    const statsPanel = document.getElementById("stats-panel");
+    if (!statsPanel) return;
+
+    const redStats = currentGameStats.red;
+    const blueStats = currentGameStats.blue;
+
+    document.getElementById("red-shots").textContent = redStats.shots;
+    document.getElementById("blue-shots").textContent = blueStats.shots;
+    document.getElementById("red-passes").textContent = redStats.passes;
+    document.getElementById("blue-passes").textContent = blueStats.passes;
+    
+    const possessionBar = document.getElementById("possession-bar-fill");
+    possessionBar.style.width = `${redStats.possession}%`;
+    
+    document.getElementById("red-possession").textContent = `${redStats.possession}%`;
+    document.getElementById("blue-possession").textContent = `${blueStats.possession}%`;
+  }
+
+  function toggleStatsPanel() {
+    const statsPanel = document.getElementById("stats-panel");
+    const toggleBtn = document.getElementById("stats-toggle");
+    
+    playUISound("button-click");
+    
+    if (statsPanel.classList.contains("hidden")) {
+      statsPanel.classList.remove("hidden");
+      toggleBtn.textContent = "📊";
+    } else {
+      statsPanel.classList.add("hidden");
+      toggleBtn.textContent = "📊";
+    }
+  }
+
+  // ===== ENHANCED TIMER SYSTEM =====
+  function updateMatchTimer(data) {
+    const timeLeft = document.getElementById("time-left");
+    const phaseIndicator = document.getElementById("phase-indicator");
+    
+    matchPhase = data.status;
+    
+    switch(data.status) {
+      case "waiting":
+        timeLeft.textContent = "Waiting for players...";
+        phaseIndicator.textContent = "LOBBY";
+        phaseIndicator.className = "phase-indicator waiting";
+        break;
+      case "starting":
+        timeLeft.textContent = "Starting...";
+        phaseIndicator.textContent = "STARTING";
+        phaseIndicator.className = "phase-indicator starting";
+        break;
+      case "playing":
+        const minutes = Math.floor(data.timeRemaining / 60);
+        const seconds = data.timeRemaining % 60;
+        timeLeft.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        phaseIndicator.textContent = "MATCH";
+        phaseIndicator.className = "phase-indicator playing";
+        break;
+      case "overtime":
+        const otMinutes = Math.floor(data.timeRemaining / 60);
+        const otSeconds = data.timeRemaining % 60;
+        timeLeft.textContent = `${otMinutes}:${otSeconds.toString().padStart(2, '0')}`;
+        phaseIndicator.textContent = "OVERTIME";
+        phaseIndicator.className = "phase-indicator overtime";
+        break;
+      case "goal-scored":
+        timeLeft.textContent = "GOAL!";
+        phaseIndicator.textContent = "GOAL!";
+        phaseIndicator.className = "phase-indicator goal";
+        break;
+      case "finished":
+        timeLeft.textContent = "Game Over";
+        phaseIndicator.textContent = "FINISHED";
+        phaseIndicator.className = "phase-indicator finished";
+        break;
+    }
+  }
+
+  function toggleAudio() {
+    audioEnabled = !audioEnabled;
+    const audioBtn = document.getElementById("audio-toggle");
+    audioBtn.textContent = audioEnabled ? "🔊" : "🔇";
+    audioBtn.title = audioEnabled ? "Mute Audio" : "Enable Audio";
+    
+    playUISound("button-click");
+  }
+
+  // ===== DEBUG FUNCTIONS =====
+  function testScoreDisplay() {
+    console.log("Testing score display...");
+    const redScore = document.getElementById("red-score");
+    const blueScore = document.getElementById("blue-score");
+    
+    if (redScore && blueScore) {
+      redScore.textContent = "5";
+      blueScore.textContent = "3";
+      console.log("Test scores set: Red 5, Blue 3");
+      console.log("Red score element:", redScore);
+      console.log("Blue score element:", blueScore);
+      console.log("Red score styles:", window.getComputedStyle(redScore));
+      console.log("Blue score styles:", window.getComputedStyle(blueScore));
+    } else {
+      console.error("Score elements not found!");
+    }
+  }
+
+  // Add debug function to global scope for testing
+  window.testScoreDisplay = testScoreDisplay;
+
+  // ===== TEAM SELECTION =====
+  function selectTeam(team) {
+    console.log(`Team selected: ${team}`);
+    
+    playUISound("team-select");
+    
+    const buttons = document.querySelectorAll(".team-btn");
+    buttons.forEach((btn) => btn.classList.remove("selected"));
+
+    const selectedBtn = team === "red" ? document.getElementById("redTeamBtn") : document.getElementById("blueTeamBtn");
+    selectedBtn.classList.add("selected");
+
+    const singlePlayerMode = document.getElementById("singlePlayerToggle").checked;
+
+    document.getElementById("instructionsPanel").classList.add("hidden");
+    
+    hytopia.sendData({
+      type: "team-selected",
+      team: team,
+      singlePlayerMode: singlePlayerMode,
+      gameMode: selectedGameMode
+    });
+  }
+
+  // ===== PENALTY SHOOTOUT MODE =====
+  function startPenaltyShootout() {
+    console.log("🥅 Starting penalty shootout mode...");
+    
+    playUISound("button-click");
+    
+    // Disable the button to prevent multiple clicks
+    const penaltyBtn = document.getElementById("penaltyShootoutBtn");
+    if (penaltyBtn) {
+      penaltyBtn.disabled = true;
+      penaltyBtn.textContent = "🥅 STARTING PENALTY SHOOTOUT... 🥅";  
+      penaltyBtn.style.opacity = "0.7";
+    }
+    
+    // Hide team selection UI and instructions
+    const teamSelection = document.querySelector(".team-selection");
+    if (teamSelection) {
+      teamSelection.style.display = "none";
+    }
+    
+    const instructionsPanel = document.getElementById("instructionsPanel");
+    if (instructionsPanel) {
+      instructionsPanel.classList.add("hidden");
+    }
+    
+    // Send penalty shootout request to server
+    hytopia.sendData({
+      type: "start-penalty-shootout"
+    });
+    
+    console.log("🥅 Penalty shootout request sent to server");
+  }
+
+  // ===== INITIALIZATION =====
+  // Initialize score display
+  function initializeScoreDisplay() {
+    // Initialize SIMPLE scoreboard (bulletproof)
+    const simpleRedScore = document.getElementById("simple-red-score");
+    const simpleBlueScore = document.getElementById("simple-blue-score");
+    const simpleTimer = document.getElementById("simple-timer");
+    
+    if (simpleRedScore && simpleBlueScore) {
+      simpleRedScore.textContent = "0";
+      simpleBlueScore.textContent = "0";
+      simpleTimer.textContent = "Waiting for game...";
+      console.log("SIMPLE SCOREBOARD initialized with values:", simpleRedScore.textContent, simpleBlueScore.textContent);
+    } else {
+      console.error("Could not find SIMPLE score elements!"); 
+    }
+    
+    // Also initialize original scoreboard (backup)
+    const redScore = document.getElementById("red-score");
+    const blueScore = document.getElementById("blue-score");
+    
+    if (redScore && blueScore) {
+      redScore.textContent = "0";
+      blueScore.textContent = "0";
+      redScore.style.display = "block";
+      blueScore.style.display = "block";
+      console.log("Original score display initialized with values:", redScore.textContent, blueScore.textContent);
+    }
+    
+    // Also initialize other UI elements
+    const phaseIndicator = document.getElementById("phase-indicator");
+    const timeLeft = document.getElementById("time-left");
+    
+    if (phaseIndicator) {
+      phaseIndicator.textContent = "LOBBY";
+      phaseIndicator.className = "phase-indicator waiting";
+    }
+    
+    if (timeLeft) {
+      timeLeft.textContent = "Waiting for players...";
+    }
+    
+    console.log("UI initialization complete");
+  }
+
+  // Add click event listeners immediately (DOM is already loaded since script is at bottom)
+  const redTeamBtn = document.getElementById("redTeamBtn");
+  const blueTeamBtn = document.getElementById("blueTeamBtn");
+  const penaltyShootoutBtn = document.getElementById("penaltyShootoutBtn");
+  
+  console.log("Red button:", redTeamBtn); // Debug log
+  console.log("Blue button:", blueTeamBtn); // Debug log
+  console.log("Penalty shootout button:", penaltyShootoutBtn); // Debug log
+  
+  if (redTeamBtn && blueTeamBtn) {
+    redTeamBtn.addEventListener("click", () => selectTeam("red"));
+    blueTeamBtn.addEventListener("click", () => selectTeam("blue"));
+    console.log("Event listeners added successfully"); // Debug log
+  } else {
+    console.error("Could not find team buttons!"); // Debug log
+  }
+
+  // Add penalty shootout button listener
+  if (penaltyShootoutBtn) {
+    penaltyShootoutBtn.addEventListener("click", () => startPenaltyShootout());
+    console.log("Penalty shootout button listener added"); // Debug log
+  } else {
+    console.error("Could not find penalty shootout button!"); // Debug log
+  }
+
+  // Initialize the UI
+  initializeScoreDisplay();
+  
+  // Add debugging function to test score visibility
+  function testScoreDisplay() {
+    const redScore = document.getElementById("red-score");
+    const blueScore = document.getElementById("blue-score");
+    
+    console.log("=== SCORE ELEMENT DEBUG ===");
+    console.log("Red score element:", redScore);
+    console.log("Blue score element:", blueScore);
+    
+    if (redScore) {
+      console.log("Red score computed style:", window.getComputedStyle(redScore));
+      console.log("Red score display:", window.getComputedStyle(redScore).display);
+      console.log("Red score visibility:", window.getComputedStyle(redScore).visibility);
+      console.log("Red score opacity:", window.getComputedStyle(redScore).opacity);
+      console.log("Red score color:", window.getComputedStyle(redScore).color);
+      console.log("Red score text content:", redScore.textContent);
+      console.log("Red score innerHTML:", redScore.innerHTML);
+      
+      // Force visibility
+      redScore.style.display = "flex !important";
+      redScore.style.visibility = "visible !important";
+      redScore.style.opacity = "1 !important";
+      redScore.style.color = "#ffffff !important";
+      redScore.style.fontSize = "28px !important";
+      redScore.style.fontWeight = "bold !important";
+      redScore.style.zIndex = "9999 !important";
+      redScore.style.background = "rgba(255, 0, 0, 0.5) !important"; // Temporary red background for debugging
+    }
+    
+    if (blueScore) {
+      console.log("Blue score computed style:", window.getComputedStyle(blueScore));
+      console.log("Blue score display:", window.getComputedStyle(blueScore).display);
+      console.log("Blue score visibility:", window.getComputedStyle(blueScore).visibility);
+      console.log("Blue score opacity:", window.getComputedStyle(blueScore).opacity);
+      console.log("Blue score color:", window.getComputedStyle(blueScore).color);
+      console.log("Blue score text content:", blueScore.textContent);
+      console.log("Blue score innerHTML:", blueScore.innerHTML);
+      
+      // Force visibility
+      blueScore.style.display = "flex !important";
+      blueScore.style.visibility = "visible !important";
+      blueScore.style.opacity = "1 !important";
+      blueScore.style.color = "#ffffff !important";
+      blueScore.style.fontSize = "28px !important";
+      blueScore.style.fontWeight = "bold !important";
+      blueScore.style.zIndex = "9999 !important";
+      blueScore.style.background = "rgba(0, 0, 255, 0.5) !important"; // Temporary blue background for debugging
+    }
+    
+    console.log("=== END DEBUG ===");
+  }
+  
+  // Test score display after a short delay
+  setTimeout(() => {
+    testScoreDisplay();
+  }, 2000);
+  
+  // Add global test function for manual testing
+  window.forceUpdateScores = function(red = 1, blue = 1) {
+    console.log(`Forcing score update: Red ${red}, Blue ${blue}`);
+    
+    // Update SIMPLE scoreboard
+    const simpleRedScore = document.getElementById("simple-red-score");
+    const simpleBlueScore = document.getElementById("simple-blue-score");
+    
+    if (simpleRedScore && simpleBlueScore) {
+      simpleRedScore.textContent = red;
+      simpleBlueScore.textContent = blue;
+      simpleRedScore.style.color = "#ffff00"; // Make it yellow for visibility
+      simpleBlueScore.style.color = "#ffff00"; // Make it yellow for visibility
+      console.log("SIMPLE SCOREBOARD forcefully updated!");
+    }
+    
+    // Also update original scoreboard
+    const redScore = document.getElementById("red-score");
+    const blueScore = document.getElementById("blue-score");
+    
+    if (redScore && blueScore) {
+      redScore.textContent = red;
+      blueScore.textContent = blue;
+      redScore.style.background = "rgba(255, 0, 0, 0.8)";
+      blueScore.style.background = "rgba(0, 0, 255, 0.8)";
+      redScore.style.color = "#ffffff";
+      blueScore.style.color = "#ffffff";
+      redScore.style.fontSize = "32px";
+      blueScore.style.fontSize = "32px";
+      redScore.style.fontWeight = "bold";
+      blueScore.style.fontWeight = "bold";
+      redScore.style.display = "flex";
+      blueScore.style.display = "flex";
+      redScore.style.alignItems = "center";
+      blueScore.style.alignItems = "center";
+      redScore.style.justifyContent = "center";
+      blueScore.style.justifyContent = "center";
+      console.log("Original scores forcefully updated!");
+    } else {
+      console.error("Could not find original score elements!");
+    }
+  };
+  
+  // Request initial game state from server
+  setTimeout(() => {
+    console.log("Requesting initial game state...");
+    hytopia.sendData({
+      type: "request-game-state"
+    });
+  }, 1000);
+
+  // ===== DATA HANDLER =====
+  hytopia.onData((data) => {
+    console.log("Received data:", data.type, data);
+    
+    // Debug score data specifically
+    if (data.type === "game-state" && data.score) {
+      console.log("Score data received:", data.score);
+    }
+    
+    if (data.type === "game-state") {
+      console.log("Processing game-state data:", data);
+      
+      // Update SIMPLE scoreboard (bulletproof approach)
+      const newRedScore = data.score ? data.score.red : 0;
+      const newBlueScore = data.score ? data.score.blue : 0;
+      
+      // Update simple scoreboard
+      const simpleRedScore = document.getElementById("simple-red-score");
+      const simpleBlueScore = document.getElementById("simple-blue-score");
+      const simpleTimer = document.getElementById("simple-timer");
+      
+      if (simpleRedScore && simpleBlueScore) {
+        simpleRedScore.textContent = newRedScore;
+        simpleBlueScore.textContent = newBlueScore;
+        console.log("SIMPLE SCOREBOARD UPDATED:", newRedScore, newBlueScore);
+      }
+      
+      // Update timer
+      if (simpleTimer && data.timeRemaining) {
+        const minutes = Math.floor(data.timeRemaining / 60);
+        const seconds = data.timeRemaining % 60;
+        simpleTimer.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')} | Status: ${data.status || 'playing'}`;
+      }
+      
+      // Also update original scoreboard (for backup)
+      const originalRedScore = document.getElementById("red-score");
+      const originalBlueScore = document.getElementById("blue-score");
+      if (originalRedScore && originalBlueScore) {
+        originalRedScore.textContent = newRedScore;
+        originalBlueScore.textContent = newBlueScore;
+      }
+      
+      console.log("Updated scores:", newRedScore, newBlueScore);
+      
+      // Update timer with enhanced display
+      updateMatchTimer(data);
+      
+      // Update statistics if provided
+      if (data.stats) {
+        currentGameStats = data.stats;
+        updateStatisticsPanel();
+      }
+    }
+
+    if (data.type === "team-counts") {
+      console.log("Processing team-counts data:", data);
+      // Update team counts (sent separately from game-state)
+      document.getElementById("red-team-count").textContent = `Players: ${data.red}/${data.maxPlayers}`;
+      document.getElementById("blue-team-count").textContent = `Players: ${data.blue}/${data.maxPlayers}`;
+    }
+
+    if (data.type === "goal" || data.type === "goal-scored") {
+      showEnhancedGoal(data.team);
+      playGoalCelebration(data.team);
+      
+      if (data.score) {
+        animateScoreChange("red", data.score.red);
+        animateScoreChange("blue", data.score.blue);
+      }
+    }
+
+    if (data.type === "countdown") {
+      showCountdown(data.count);
+    }
+
+    if (data.type === "power-bar") {
+      updatePowerBar(data.percentage);
+    }
+
+    if (data.type === "goals-scored") {
+      // Goals display is now hidden - score is shown in main scoreboard
+      // document.getElementById("goals-display").textContent = `Goals: ${data.goals}`;
+    }
+
+    if (data.type === "cooldown") {
+      showCooldownMessage(data.message, data.duration);
+    }
+
+    if (data.type === "ability") {
+      showAbility(data.iconUrl);
+    }
+
+    // New Phase 1 data handlers
+    if (data.type === "player-stats") {
+      playerStats = data.stats;
+      updatePlayerStatsDisplay();
+    }
+
+    if (data.type === "match-stats") {
+      currentGameStats = data.stats;
+      updateStatisticsPanel();
+    }
+
+    if (data.type === "game-over") {
+      showEnhancedGameOver(data);
+    }
+
+    if (data.type === "regulation-time-stats") {
+      showRegulationTimeStats(data);
+    }
+  });
+
+  // ===== ENHANCED GOAL CELEBRATION =====
+  function showEnhancedGoal(team) {
+    const goalText = document.querySelector(".game-text");
+    const goalOverlay = document.getElementById("goal-overlay");
+    
+    goalText.className = `game-text ${team} enhanced`;
+    goalText.style.display = "block";
+    
+    if (goalOverlay) {
+      goalOverlay.className = `goal-overlay ${team}`;
+      goalOverlay.style.display = "block";
+      
+      setTimeout(() => {
+        goalOverlay.style.display = "none";
+      }, 2000);
+    }
+    
+    setTimeout(() => {
+      goalText.style.display = "none";
+    }, 3000);
+  }
+
+  // ===== UTILITY FUNCTIONS =====
+  function showCountdown(count) {
+    const countdownText = document.getElementById("countdown-display");
+    countdownText.textContent = count;
+    countdownText.style.display = "block";
+    
+    playUISound("countdown");
+    
+    setTimeout(() => {
+      countdownText.style.display = "none";
+    }, 1000);
+  }
+
+
+
+  function updatePlayerStatsDisplay() {
+    // Update individual player stats if panel is visible
+    const playerStatsPanel = document.getElementById("player-stats-panel");
+    if (playerStatsPanel && !playerStatsPanel.classList.contains("hidden")) {
+      // Implementation for detailed player stats
+    }
+  }
+
+  function updatePowerBar(percentage) {
+    powerBarPercentage = percentage;
+    
+    // Find all power bars and update them
+    const powerBars = document.querySelectorAll('[data-power-bar]');
+    powerBars.forEach(bar => {
+      const fillElement = bar.querySelector('div > div');
+      if (fillElement) {
+        fillElement.style.width = `${percentage}%`;
+      }
+    });
+  }
+
+  function showCooldownMessage(message, duration) {
+    const cooldownMsg = document.getElementById("cooldown-message");
+    cooldownMsg.textContent = message;
+    cooldownMsg.classList.add("visible");
+    
+    setTimeout(() => {
+      cooldownMsg.classList.remove("visible");
+    }, duration);
+  }
+
+  function showAbility(iconUrl) {
+    const abilityIcon = document.getElementById("ability-icon");
+    abilityIcon.src = iconUrl;
+    abilityIcon.classList.add("visible");
+    
+    setTimeout(() => {
+      abilityIcon.classList.remove("visible");
+    }, 3000);
+  }
+
+  // ===== ENHANCED GAME OVER FUNCTIONS =====
+  function showEnhancedGameOver(data) {
+    // First check if regulation stats overlay is still showing and remove it
+    const existingRegStatsOverlay = document.getElementById('regulation-stats-overlay');
+    if (existingRegStatsOverlay) {
+      console.log("Removing regulation stats overlay to show game over screen");
+      document.body.removeChild(existingRegStatsOverlay);
+    }
+    
+    const panel = document.getElementById("instructionsPanel");
+    const gameOverContent = document.getElementById("game-over-content");
+    const howToPlayContainer = document.querySelector(".how-to-play-container");
+    const teamSelection = document.querySelector(".team-selection");
+    
+    playUISound("game-over");
+    
+    // Hide other content
+    if (howToPlayContainer) howToPlayContainer.style.display = "none";
+    if (teamSelection) teamSelection.style.display = "none";
+    gameOverContent.style.display = "block";
+    
+    // Update header information
+    document.getElementById("final-red-score").textContent = data.redScore;
+    document.getElementById("final-blue-score").textContent = data.blueScore;
+    
+    // Update winner announcement
+    const winnerAnnouncement = document.getElementById("winner-announcement");
+    if (data.winner === 'tie') {
+      winnerAnnouncement.textContent = "Match Tied!";
+      winnerAnnouncement.style.color = "#FFD700";
+    } else if (data.winner === 'red') {
+      winnerAnnouncement.textContent = "Red Team Wins!";
+      winnerAnnouncement.style.color = "#ff4444";
+    } else if (data.winner === 'blue') {
+      winnerAnnouncement.textContent = "Blue Team Wins!";
+      winnerAnnouncement.style.color = "#4444ff";
+    }
+    
+    // Update match info
+    const matchInfo = document.getElementById("match-info");
+    const duration = Math.floor(data.matchDuration / 60);
+    const seconds = data.matchDuration % 60;
+    const overtimeText = data.wasOvertime ? " (Including Overtime)" : "";
+    matchInfo.textContent = `Match Duration: ${duration}:${seconds.toString().padStart(2, '0')}${overtimeText}`;
+    
+    // Update team statistics
+    updateTeamStats(data.teamStats);
+    
+    // Update player statistics
+    updatePlayerStats(data.playerStats);
+    
+    panel.classList.remove("hidden");
+  }
+
+  function showRegulationTimeStats(data) {
+    // Ensure any existing reg stats overlay is removed first
+    const existingOverlay = document.getElementById('regulation-stats-overlay');
+    if (existingOverlay) {
+      document.body.removeChild(existingOverlay);
+    }
+    
+    // Show a temporary overlay with regulation time stats
+    const overlay = document.createElement('div');
+    overlay.id = 'regulation-stats-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-family: "Trebuchet MS", Arial, sans-serif;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    `;
+    
+    overlay.innerHTML = `
+      <div style="text-align: center; background: rgba(20, 20, 20, 0.95); padding: 40px; border-radius: 20px; border: 3px solid #FFD700; transform: scale(1); transition: transform 0.3s ease;">
+        <h2 style="color: #FFD700; margin-bottom: 20px; font-size: 32px;">${data.message}</h2>
+        <div style="font-size: 24px; margin-bottom: 20px;">
+          Red ${data.redScore} - ${data.blueScore} Blue
+        </div>
+        <div style="color: #ccc; margin-bottom: 30px;">
+          ${data.redScore === data.blueScore ? 'Proceeding to Overtime...' : 'Match Complete!'}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; max-width: 600px;">
+          ${data.playerStats.slice(0, 6).map(player => `
+            <div style="background: rgba(0, 0, 0, 0.7); padding: 15px; border-radius: 8px; border-left: 4px solid ${player.team === 'red' ? '#ff4444' : '#4444ff'};">
+              <div style="font-weight: bold; margin-bottom: 5px;">${player.name}</div>
+              <div style="font-size: 12px; color: #ccc; margin-bottom: 10px;">${player.role}</div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Goals:</span>
+                <span style="color: #FFD700; font-weight: bold;">${player.goals}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Tackles:</span>
+                <span style="color: #FFD700; font-weight: bold;">${player.tackles}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Fade out after 2.5 seconds, remove after 3 seconds to ensure clean transition
+    setTimeout(() => {
+      overlay.style.opacity = '0';
+      const innerDiv = overlay.querySelector('div');
+      if (innerDiv) {
+        innerDiv.style.transform = 'scale(0.95)';
+      }
+    }, 2500);
+    
+    setTimeout(() => {
+      if (document.body.contains(overlay)) {
+        document.body.removeChild(overlay);
+      }
+    }, 3000);
+  }
+
+  function updateTeamStats(teamStats) {
+    // Update red team stats
+    document.getElementById("red-team-goals").textContent = teamStats.red.goals;
+    document.getElementById("red-team-shots").textContent = teamStats.red.shots;
+    document.getElementById("red-team-passes").textContent = teamStats.red.passes;
+    document.getElementById("red-team-tackles").textContent = teamStats.red.tackles;
+    document.getElementById("red-team-saves").textContent = teamStats.red.saves;
+    document.getElementById("red-team-distance").textContent = Math.round(teamStats.red.distanceTraveled) + "m";
+    
+    // Update blue team stats
+    document.getElementById("blue-team-goals").textContent = teamStats.blue.goals;
+    document.getElementById("blue-team-shots").textContent = teamStats.blue.shots;
+    document.getElementById("blue-team-passes").textContent = teamStats.blue.passes;
+    document.getElementById("blue-team-tackles").textContent = teamStats.blue.tackles;
+    document.getElementById("blue-team-saves").textContent = teamStats.blue.saves;
+    document.getElementById("blue-team-distance").textContent = Math.round(teamStats.blue.distanceTraveled) + "m";
+  }
+
+  function updatePlayerStats(playerStats) {
+    const redPlayers = playerStats.filter(p => p.team === 'red');
+    const bluePlayers = playerStats.filter(p => p.team === 'blue');
+    
+    // Update red team players
+    const redContainer = document.getElementById("red-players-stats");
+    redContainer.innerHTML = redPlayers.map(player => `
+      <div class="player-stat-card red-player">
+        <div>
+          <div class="player-name">${player.name}</div>
+          <div class="player-role">${player.role.replace(/-/g, ' ')}</div>
+        </div>
+        <div class="player-stat-group">
+          <span class="stat-number">${player.goals}</span>
+          <span class="stat-name">Goals</span>
+        </div>
+        <div class="player-stat-group">
+          <span class="stat-number">${player.tackles}</span>
+          <span class="stat-name">Tackles</span>
+        </div>
+        <div class="player-stat-group">
+          <span class="stat-number">${player.distanceTraveled}m</span>
+          <span class="stat-name">Distance</span>
+        </div>
+      </div>
+    `).join('');
+    
+    // Update blue team players
+    const blueContainer = document.getElementById("blue-players-stats");
+    blueContainer.innerHTML = bluePlayers.map(player => `
+      <div class="player-stat-card blue-player">
+        <div>
+          <div class="player-name">${player.name}</div>
+          <div class="player-role">${player.role.replace(/-/g, ' ')}</div>
+        </div>
+        <div class="player-stat-group">
+          <span class="stat-number">${player.goals}</span>
+          <span class="stat-name">Goals</span>
+        </div>
+        <div class="player-stat-group">
+          <span class="stat-number">${player.tackles}</span>
+          <span class="stat-name">Tackles</span>
+        </div>
+        <div class="player-stat-group">
+          <span class="stat-number">${player.distanceTraveled}m</span>
+          <span class="stat-name">Distance</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function showPlayerTab(team) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Show/hide player stats content
+    document.getElementById('red-players-stats').style.display = team === 'red' ? 'block' : 'none';
+    document.getElementById('blue-players-stats').style.display = team === 'blue' ? 'block' : 'none';
+  }
+
+  function closeGameOverScreen() {
+    const panel = document.getElementById("instructionsPanel");
+    const gameOverContent = document.getElementById("game-over-content");
+    const howToPlayContainer = document.querySelector(".how-to-play-container");
+    const teamSelection = document.querySelector(".team-selection");
+    
+    // Hide game over content and show normal lobby
+    gameOverContent.style.display = "none";
+    if (howToPlayContainer) howToPlayContainer.style.display = "block";
+    if (teamSelection) teamSelection.style.display = "block";
+    
+    playUISound("button-click");
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,100 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+Rule Name: 02-soccer-game-context
+Description: Soccer Game Project Context and Architecture
+
+When using this rule, start response with: ⚽ Following Soccer Game Context Rules ⚽
+
+# **Soccer Game Project Overview**
+
+This is a sophisticated 6v6 multiplayer soccer game built with the Hytopia SDK, featuring advanced AI systems, physics-based gameplay, and professional-level architecture.
+
+## **Project Statistics**
+- **Total Codebase**: 10,000+ lines across key files
+- **Main Server**: index.ts (939 lines)
+- **Dependencies**: Hytopia SDK v0.6.6, TypeScript, Bun runtime
+- **Architecture**: Modular design with clear separation of concerns
+
+## **Core Game Features**
+- **Stadium**: Large field with precise boundaries (X: -37 to 52, Z: -33 to 26, Y: 0 to 15)
+- **Teams**: Red vs Blue (6 players max per team)
+- **AI Players**: Automatically fill empty slots with sophisticated behavior
+- **Game Rules**: Complete soccer implementation (throw-ins, corner kicks, goal kicks)
+- **Abilities**: Speed boost and item throwing mechanics
+- **UI**: Mobile-responsive with touch controls (707 lines)
+
+## **Key Architecture Files**
+
+### **Core Game Logic**
+- `state/gameState.ts` (1,236 lines) - Main game state management, match flow, team management
+- `state/gameConfig.ts` - Stadium setup, AI positioning, ball physics configuration
+- `state/map.ts` - Goal detection, boundary checking, spawn positions
+
+### **Entity System**
+- `entities/SoccerPlayerEntity.ts` - Custom player with team assignment, abilities
+- `entities/AIPlayerEntity.ts` (3,451 lines) - Sophisticated AI with behavior trees
+- `entities/BehaviorTree.ts` (676 lines) - AI decision-making logic
+
+### **Controllers**
+- `controllers/SoccerPlayerController.ts` (1,241 lines) - Player movement, ball interaction, tackling
+- `controllers/AIController.ts` - AI movement coordination
+
+### **Utilities**
+- `utils/ball.ts` - Physics-based soccer ball with collision detection
+- `utils/observer.ts` - Spectator camera system
+- `utils/direction.ts` - Movement and rotation calculations
+
+### **UI System**
+- `assets/ui/index.html` (707 lines) - Complete game interface with team selection, HUD, mobile controls
+
+## **Advanced AI System**
+- **Behavior Trees**: Complex decision-making with role-specific logic
+- **Pathfinding**: Dynamic movement coordination
+- **Role-Based Positioning**: Goalkeeper, defenders, midfielders, strikers
+- **Situational Awareness**: Responds to ball position, team state, game phase
+
+## **Physics & Game Mechanics**
+- **Realistic Ball Physics**: Damping, collision detection, force-based interactions
+- **Player Mechanics**: Tackling, stunning, dodging, movement abilities
+- **Boundary System**: Detailed out-of-bounds detection with restart logic
+- **Goal Detection**: Precise scoring with team assignment
+
+## **Game States & Flow**
+- **Match States**: waiting → starting → playing → overtime → finished
+- **Team Management**: Dynamic player assignment, AI filling
+- **Timer Systems**: Match countdown, ability cooldowns, respawn timers
+- **Event Handling**: Goal scoring, out-of-bounds, player actions
+
+## **Technical Implementation**
+- **TypeScript Server**: Event-driven architecture with proper typing
+- **Real-time Multiplayer**: Player management and state synchronization
+- **Mobile Support**: Touch controls and responsive design
+- **Asset Management**: Proper CDN paths and resource loading
+
+## **Development Patterns Used**
+- **Modular Architecture**: Clear separation of concerns
+- **Event-Driven Design**: Proper game state management
+- **Component System**: Entity-based architecture
+- **Behavior Trees**: AI decision-making patterns
+- **Physics Integration**: Realistic game mechanics
+
+## **Common Tasks & Areas**
+When working on this project, common areas include:
+- **AI Behavior**: Modifying behavior trees and positioning logic
+- **Game Rules**: Adjusting soccer mechanics and restart conditions
+- **UI Updates**: Enhancing the web-based interface
+- **Physics Tuning**: Ball mechanics and player interactions
+- **Performance**: Optimizing AI calculations and game loops
+
+## **Important Notes**
+- This is a production-quality game with professional-level code organization
+- AI system is particularly sophisticated with 3,451 lines of behavior logic
+- Complete soccer rule implementation with proper boundary handling
+- Mobile-first UI design with touch control support
+- Extensive use of Hytopia SDK features and best practices
+
+
+
