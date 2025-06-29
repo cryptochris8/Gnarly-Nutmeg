@@ -7,6 +7,7 @@ import {
   ColliderShape,
   BlockType,
   RigidBodyType,
+  PlayerCameraMode,
 } from "hytopia";
 import type { Vector3Like } from "hytopia";
 import { 
@@ -72,7 +73,8 @@ export interface GameState {
     | "playing"
     | "overtime"
     | "finished"
-    | "goal-scored";
+    | "goal-scored"
+    | "penalty-shootout";
   players: Map<string, Player>;
   score: {
     red: number;
@@ -82,6 +84,20 @@ export interface GameState {
   maxPlayersPerTeam: number;
   minPlayersPerTeam: number;
   kickoffTeam: "red" | "blue" | null; // Team that gets to kick off
+  penaltyOnlyMode: boolean; // Flag to indicate penalty shootout only mode
+}
+
+// Penalty shootout interface
+interface PenaltyShootoutState {
+  currentShooter: "red" | "blue";
+  penaltyCount: { red: number; blue: number };
+  penaltyGoals: { red: number; blue: number };
+  round: number;
+  shooterIndex: { red: number; blue: number };
+  isActive: boolean;
+  currentPhase: "setup" | "aiming" | "shooting" | "result";
+  shooterEntity: SoccerPlayerEntity | null;
+  goalkeeperEntity: SoccerPlayerEntity | null;
 }
 
 export class SoccerGame {
@@ -92,6 +108,17 @@ export class SoccerGame {
   private gameLoopInterval: Timer | null = null;
   // private abilityPickups: AbilityConsumable[] = [];
   private aiPlayersList: AIPlayerEntity[] = [];
+  private penaltyShootout: PenaltyShootoutState = {
+    currentShooter: "red",
+    penaltyCount: { red: 0, blue: 0 },
+    penaltyGoals: { red: 0, blue: 0 },
+    round: 1,
+    shooterIndex: { red: 0, blue: 0 },
+    isActive: false,
+    currentPhase: "setup",
+    shooterEntity: null,
+    goalkeeperEntity: null
+  };
 
   constructor(world: World, entity: Entity, aiPlayers: AIPlayerEntity[]) {
     this.state = {
@@ -104,7 +131,8 @@ export class SoccerGame {
       timeRemaining: MATCH_DURATION,
       maxPlayersPerTeam: 6,
       minPlayersPerTeam: 1,
-      kickoffTeam: null
+      kickoffTeam: null,
+      penaltyOnlyMode: false
     };
     this.world = world;
     this.soccerBall = entity;
@@ -164,7 +192,8 @@ export class SoccerGame {
     return (
       this.state.status === "playing" ||
       this.state.status === "overtime" ||
-      this.state.status === "goal-scored"
+      this.state.status === "goal-scored" ||
+      this.state.status === "penalty-shootout"
     );
   }
 
@@ -190,10 +219,11 @@ export class SoccerGame {
     player.team = team;
 
     this.sendTeamCounts();
-    // Try to start game if we have enough players
+    // Try to start game if we have enough players (but not in penalty-only mode)
     const state = this.getState();
     if (
       state.status === "waiting" &&
+      !state.penaltyOnlyMode && // Don't auto-start if penalty-only mode is set
       Array.from(state.players.values()).filter((p) => p.team !== null)
         .length >=
         state.minPlayersPerTeam * 2
@@ -221,6 +251,12 @@ export class SoccerGame {
 
   public startGame(): boolean {
     console.log("Attempting to start game");
+    
+    // Don't start regular game if penalty-only mode is active
+    if (this.state.penaltyOnlyMode) {
+      console.log("🥅 Blocking regular game start - penalty-only mode is active");
+      return false;
+    }
     
     const redTeamCount = Array.from(this.state.players.values()).filter(
       (p) => p.team === "red"
@@ -372,14 +408,21 @@ export class SoccerGame {
       }
     });
     
-    // Set the game status to playing and start the game loop
-    this.state.status = "playing";
-    this.state.timeRemaining = MATCH_DURATION;
-    
-    // Start the game loop for time tracking
-    this.gameLoopInterval = setInterval(() => {
-      this.gameLoop();
-    }, 1000); // Update every second
+    // Set the game status to playing and start the game loop (unless in penalty-only mode)
+    if (!this.state.penaltyOnlyMode) {
+      this.state.status = "playing";
+      sharedState.setGameStatus("playing"); // Update shared state
+      this.state.timeRemaining = MATCH_DURATION;
+      
+      // Start the game loop for time tracking
+      this.gameLoopInterval = setInterval(() => {
+        this.gameLoop();
+      }, 1000); // Update every second
+    } else {
+      console.log("🥅 Penalty-only mode detected - skipping normal game loop");
+      // Keep penalty-shootout status and don't start timer
+      sharedState.setGameStatus("penalty-shootout");
+    }
   }
 
   private gameLoop() {
@@ -473,15 +516,15 @@ export class SoccerGame {
           }, 2000);
         }, 4000); // 4 second delay to ensure regulation stats display completes
       } else {
-        // Overtime ended and still tied, show brief message then end game
+        // Overtime ended and still tied, start penalty shootout
         this.world.chatManager.sendBroadcastMessage(
-          "Overtime ended! Match ends in a tie!"
+          "Overtime ended! Going to penalty shootout!"
         );
         
-        // Brief delay before showing final game over screen to avoid conflicts
+        // Brief delay before starting penalty shootout
         setTimeout(() => {
-          this.endGame();
-        }, 1000);
+          this.startPenaltyShootout();
+        }, 2000);
       }
     } else {
       // Game has a winner - show brief delay to ensure any ongoing UI animations complete
@@ -516,6 +559,12 @@ export class SoccerGame {
   }
 
   private handleGoalScored(team: "red" | "blue") {
+    // Skip normal goal handling if in penalty-only mode
+    if (this.state.penaltyOnlyMode && this.state.status === "penalty-shootout") {
+      console.log("🥅 Goal detected in penalty-only mode - handled by penalty shootout system");
+      return;
+    }
+    
     if (this.state.status !== "playing" && this.state.status !== "overtime") {
       return;
     }
@@ -702,6 +751,9 @@ export class SoccerGame {
       this.gameLoopInterval = null;
     }
 
+    // Reset game status in shared state
+    sharedState.setGameStatus("waiting");
+
     // Deactivate all AI players first to clear their intervals
     this.aiPlayersList.forEach(ai => {
       if (ai.isSpawned) {
@@ -736,7 +788,8 @@ export class SoccerGame {
       timeRemaining: MATCH_DURATION,
       maxPlayersPerTeam: 6,
       minPlayersPerTeam: 1,
-      kickoffTeam: null
+      kickoffTeam: null,
+      penaltyOnlyMode: false
     };
 
     // Reset the ball position and ensure no attachments with proper physics reset
@@ -1229,7 +1282,7 @@ export class SoccerGame {
     const ownGoalLineX = isRed ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
     const forwardXMultiplier = isRed ? -1 : 1;
     
-    // Simplified role positioning (based on original getStartPosition logic)
+    // Simplified role positioning for large stadium field
     let x = 0, z = AI_FIELD_CENTER_Z;
     
     switch (role) {
@@ -1338,5 +1391,753 @@ export class SoccerGame {
       });
       console.log(`Players unfrozen, kickoff can begin`);
     }, 2000); // 2 second delay
+  }
+
+  // ===== PENALTY SHOOTOUT SYSTEM =====
+
+  public startPenaltyShootout(): void {
+    console.log("🥅 Starting penalty shootout");
+    
+    this.state.status = "penalty-shootout";
+    sharedState.setGameStatus("penalty-shootout"); // Update shared state
+    this.penaltyShootout.isActive = true;
+    this.penaltyShootout.currentShooter = "red"; // Red team starts
+    this.penaltyShootout.round = 1;
+    
+    // Send penalty shootout start notification to all players
+    this.sendDataToAllPlayers({
+      type: "penalty-shootout-start",
+      currentShooter: this.penaltyShootout.currentShooter,
+      round: this.penaltyShootout.round,
+      penaltyGoals: this.penaltyShootout.penaltyGoals,
+      penaltyCount: this.penaltyShootout.penaltyCount
+    });
+    
+    // Start the first penalty
+    setTimeout(() => {
+      this.setupNextPenalty();
+    }, 3000);
+  }
+
+  // New method for starting penalty-only mode (bypasses all regular game delays)
+  public startPenaltyOnlyMode(): void {
+    console.log("🥅 Starting PENALTY-ONLY mode (bypassing all regular game startup)");
+    
+    // Set up penalty-only state immediately
+    this.state.status = "penalty-shootout";
+    this.state.penaltyOnlyMode = true;
+    this.state.timeRemaining = 0;
+    
+    // Clear regular game score to avoid confusion
+    this.state.score = { red: 0, blue: 0 };
+    console.log("🥅 Regular game score cleared for penalty-only mode");
+    
+    sharedState.setGameStatus("penalty-shootout");
+    
+    // Initialize penalty shootout state
+    this.penaltyShootout.isActive = true;
+    this.penaltyShootout.currentShooter = "red"; // Red team starts
+    this.penaltyShootout.round = 1;
+    this.penaltyShootout.penaltyCount = { red: 0, blue: 0 };
+    this.penaltyShootout.penaltyGoals = { red: 0, blue: 0 };
+    this.penaltyShootout.shooterIndex = { red: 0, blue: 0 };
+    this.penaltyShootout.currentPhase = "setup";
+    
+    console.log("🥅 Penalty-only mode initialized, starting first penalty immediately");
+    
+    // Send penalty shootout start notification to all players
+    this.sendDataToAllPlayers({
+      type: "penalty-shootout-start",
+      currentShooter: this.penaltyShootout.currentShooter,
+      round: this.penaltyShootout.round,
+      penaltyGoals: this.penaltyShootout.penaltyGoals,
+      penaltyCount: this.penaltyShootout.penaltyCount,
+      penaltyOnlyMode: true
+    });
+    
+    // Start first penalty immediately (no delays for penalty-only mode)
+    setTimeout(() => {
+      this.setupNextPenalty();
+    }, 1000); // Minimal delay just to ensure players are positioned
+  }
+
+  private setupNextPenalty(): void {
+    if (!this.penaltyShootout.isActive) return;
+    
+    const shootingTeam = this.penaltyShootout.currentShooter;
+    const defendingTeam = shootingTeam === "red" ? "blue" : "red";
+    
+    console.log(`🥅 Setting up penalty ${this.penaltyShootout.round} - ${shootingTeam} shooting`);
+    
+    // Get available players for shooting and goalkeeping
+    const shooters = this.getTeamPlayers(shootingTeam);
+    const goalkeepers = this.getTeamPlayers(defendingTeam);
+    
+    if (shooters.length === 0 || goalkeepers.length === 0) {
+      console.log("Not enough players for penalty shootout");
+      this.endGame();
+      return;
+    }
+    
+    // Select shooter and goalkeeper
+    const shooterIndex = this.penaltyShootout.shooterIndex[shootingTeam] % shooters.length;
+    const goalkeeperIndex = this.penaltyShootout.shooterIndex[defendingTeam] % goalkeepers.length;
+    
+    this.penaltyShootout.shooterEntity = shooters[shooterIndex];
+    this.penaltyShootout.goalkeeperEntity = goalkeepers[goalkeeperIndex];
+    
+    // Position players for penalty
+    this.positionPlayersForPenalty(this.penaltyShootout.shooterEntity, this.penaltyShootout.goalkeeperEntity, shootingTeam);
+    
+    // Set up penalty camera and UI
+    this.setupPenaltyCameraAndUI();
+    
+    // Start penalty sequence after positioning
+    setTimeout(() => {
+      this.startPenaltySequence();
+    }, 2000);
+  }
+
+  private positionPlayersForPenalty(shooter: SoccerPlayerEntity, goalkeeper: SoccerPlayerEntity, shootingTeam: "red" | "blue"): void {
+    // Freeze all players first
+    this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+      if (entity instanceof SoccerPlayerEntity) {
+        entity.freeze();
+      }
+    });
+    
+    // Determine penalty positions based on shooting team
+    const isShootingLeft = shootingTeam === "blue"; // Blue shoots towards red goal (left side)
+    
+    // Penalty spot position
+    const penaltySpotX = isShootingLeft ? AI_GOAL_LINE_X_RED + 11 : AI_GOAL_LINE_X_BLUE - 11;
+    const penaltySpotZ = AI_FIELD_CENTER_Z;
+    
+    // Goal line position
+    const goalLineX = isShootingLeft ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+    
+    // Position shooter at penalty spot
+    shooter.setPosition({
+      x: penaltySpotX,
+      y: SAFE_SPAWN_Y,
+      z: penaltySpotZ
+    });
+    
+    // Set shooter rotation to face the goal they should shoot towards
+    // IMPORTANT: Field orientation - Red goal at X=-37, Blue goal at X=52
+    // Each team shoots towards the OPPONENT's goal
+    if (shootingTeam === "blue") {
+      // Blue team shooting towards red goal (X=-37, negative X direction)
+      shooter.setRotation({ x: 0, y: 1, z: 0, w: 0 }); // Face negative X (towards red goal)
+    } else {
+      // Red team shooting towards blue goal (X=52, positive X direction)  
+      shooter.setRotation({ x: 0, y: 0, z: 0, w: 1 }); // Face positive X (towards blue goal)
+    }
+    
+    console.log(`🥅 Shooter ${shooter.player.username} (${shootingTeam} team) positioned and rotated to face ${shootingTeam === 'blue' ? 'red' : 'blue'} goal`);
+    
+    // Position goalkeeper on goal line
+    goalkeeper.setPosition({
+      x: goalLineX,
+      y: SAFE_SPAWN_Y,
+      z: penaltySpotZ
+    });
+    
+    // Set goalkeeper rotation to face the penalty shooter (opposite direction from shooter)
+    if (shootingTeam === "blue") {
+      // Blue shooting towards red goal, so red goalkeeper faces blue shooter (positive X direction)
+      goalkeeper.setRotation({ x: 0, y: 0, z: 0, w: 1 }); // Face positive X (towards shooter)
+    } else {
+      // Red shooting towards blue goal, so blue goalkeeper faces red shooter (negative X direction)
+      goalkeeper.setRotation({ x: 0, y: 1, z: 0, w: 0 }); // Face negative X (towards shooter)
+    }
+    
+    // Position ball at penalty spot and attach to shooter
+    if (this.soccerBall.isSpawned) {
+      this.soccerBall.despawn();
+    }
+    this.soccerBall.spawn(this.world, {
+      x: penaltySpotX,
+      y: SAFE_SPAWN_Y + 0.5,
+      z: penaltySpotZ
+    });
+    this.soccerBall.setLinearVelocity({ x: 0, y: 0, z: 0 });
+    this.soccerBall.setAngularVelocity({ x: 0, y: 0, z: 0 });
+    
+    // Attach ball to the penalty shooter immediately
+    sharedState.setAttachedPlayer(shooter);
+    console.log(`🥅 Ball attached to penalty shooter ${shooter.player.username}`);
+    
+    // Move other players to sidelines
+    this.movePlayersToSidelines(shooter, goalkeeper);
+    this.freezeNonPenaltyPlayers(shooter, goalkeeper);
+    
+    console.log(`🥅 Positioned ${shooter.player.username} (shooter) and ${goalkeeper.player.username} (goalkeeper)`);
+  }
+
+  private movePlayersToSidelines(shooter: SoccerPlayerEntity, goalkeeper: SoccerPlayerEntity): void {
+    const sidelineZ = AI_FIELD_CENTER_Z + 25; // Move to sideline
+    let positionIndex = 0;
+    
+    this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+      if (entity instanceof SoccerPlayerEntity && entity !== shooter && entity !== goalkeeper) {
+        entity.setPosition({
+          x: AI_FIELD_CENTER_X + (positionIndex * 3),
+          y: SAFE_SPAWN_Y,
+          z: sidelineZ
+        });
+        positionIndex++;
+      }
+    });
+  }
+
+  private freezeNonPenaltyPlayers(shooter: SoccerPlayerEntity, goalkeeper: SoccerPlayerEntity): void {
+    // Freeze all players except the penalty shooter and goalkeeper
+    this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+      if (entity instanceof SoccerPlayerEntity && entity !== shooter && entity !== goalkeeper) {
+        entity.freeze();
+        console.log(`🥅 Frozen non-penalty player ${entity.player.username} for penalty sequence`);
+      }
+    });
+  }
+
+  private unfreezeAllPlayers(): void {
+    // Unfreeze all players after penalty sequence and unlock penalty rotations
+    this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+      if (entity instanceof SoccerPlayerEntity) {
+        entity.unfreeze();
+        console.log(`🥅 Unfrozen player ${entity.player.username} after penalty sequence`);
+        
+        // Unlock penalty rotation for AI players
+        if (entity instanceof AIPlayerEntity) {
+          entity.unlockPenaltyRotation();
+        }
+      }
+    });
+  }
+
+  private setupPenaltyCameraAndUI(): void {
+    // Send penalty setup data to UI
+    this.sendDataToAllPlayers({
+      type: "penalty-setup",
+      shooter: this.penaltyShootout.shooterEntity?.player.username,
+      goalkeeper: this.penaltyShootout.goalkeeperEntity?.player.username,
+      shootingTeam: this.penaltyShootout.currentShooter,
+      round: this.penaltyShootout.round,
+      penaltyGoals: this.penaltyShootout.penaltyGoals,
+      penaltyCount: this.penaltyShootout.penaltyCount
+    });
+    
+    // Set up cinematic penalty camera for all players
+    if (this.penaltyShootout.shooterEntity) {
+      this.setupPenaltyCameraView();
+    }
+  }
+
+  private setupPenaltyCameraView(): void {
+    if (!this.penaltyShootout.shooterEntity) return;
+
+    const shooter = this.penaltyShootout.shooterEntity;
+    const shootingTeam = this.penaltyShootout.currentShooter;
+    
+    console.log(`🎥 Setting up penalty camera behind shooter ${shooter.player.username} (${shootingTeam} team)`);
+    
+    // Determine shooting direction and camera position
+    const isShootingLeft = shootingTeam === "blue"; // Blue shoots towards red goal
+    const shooterPosition = shooter.position;
+    
+    // Calculate camera position behind the shooter
+    // Camera should be behind the shooter, elevated slightly, looking towards the goal
+    const cameraDistance = 8; // Distance behind the shooter
+    const cameraHeight = 3; // Height above ground level
+    const cameraOffsetSide = 0; // No side offset - directly behind
+    
+    let cameraX, cameraZ;
+    
+    if (isShootingLeft) {
+      // Blue shooting towards red goal (negative X direction)
+      // Camera should be positioned at positive X relative to shooter (behind them)
+      cameraX = shooterPosition.x + cameraDistance;
+      cameraZ = shooterPosition.z + cameraOffsetSide;
+    } else {
+      // Red shooting towards blue goal (positive X direction) 
+      // Camera should be positioned at negative X relative to shooter (behind them)
+      cameraX = shooterPosition.x - cameraDistance;
+      cameraZ = shooterPosition.z + cameraOffsetSide;
+    }
+    
+    const cameraPosition = {
+      x: cameraX,
+      y: shooterPosition.y + cameraHeight,
+      z: cameraZ
+    };
+    
+    console.log(`🎥 Penalty camera position: X=${cameraPosition.x.toFixed(1)}, Y=${cameraPosition.y.toFixed(1)}, Z=${cameraPosition.z.toFixed(1)}`);
+    
+    // Apply penalty camera to all players in the world
+    this.world.entityManager.getAllPlayerEntities().forEach((playerEntity) => {
+      if (playerEntity instanceof SoccerPlayerEntity) {
+        const player = playerEntity.player;
+        
+        try {
+          // Set third-person mode for cinematic view
+          player.camera.setMode(PlayerCameraMode.THIRD_PERSON);
+          
+          // Position camera behind the shooter
+          player.camera.setAttachedToPosition(cameraPosition);
+          
+          // Make camera track the goal area (slightly above goal center for better view)
+          const goalLineX = isShootingLeft ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+          const goalTrackPosition = {
+            x: goalLineX,
+            y: 2, // Height above ground level for better goal view
+            z: AI_FIELD_CENTER_Z // Center of goal horizontally
+          };
+          
+          player.camera.setTrackedPosition(goalTrackPosition);
+          
+          // Adjust camera settings for penalty view
+          player.camera.setZoom(1.8); // Good zoom level for penalty shots
+          player.camera.setFov(75); // Standard FOV
+          
+          // Send special penalty camera UI notification
+          player.ui.sendData({
+            type: "penalty-camera-setup",
+            phase: "cinematic",
+            shooter: shooter.player.username,
+            cameraInfo: "Behind-the-shooter view"
+          });
+          
+          console.log(`🎥 Penalty camera applied to player ${player.username}`);
+          
+        } catch (error) {
+          console.error(`🎥 Failed to set penalty camera for player ${player.username}:`, error);
+        }
+      }
+    });
+  }
+
+  private restoreRegularCameras(): void {
+    console.log(`🎥 Restoring regular camera views after penalty`);
+    
+    // Restore normal camera for all players
+    this.world.entityManager.getAllPlayerEntities().forEach((playerEntity) => {
+      if (playerEntity instanceof SoccerPlayerEntity) {
+        const player = playerEntity.player;
+        
+        try {
+          // Restore camera to attached to their own entity
+          player.camera.setMode(PlayerCameraMode.THIRD_PERSON);
+          player.camera.setAttachedToEntity(playerEntity);
+          
+          // Reset camera settings to normal gameplay values
+          player.camera.setZoom(2); // Normal zoom
+          player.camera.setFov(75); // Standard FOV
+          
+          // Clear any tracking
+          player.camera.setTrackedEntity(undefined);
+          player.camera.setTrackedPosition(undefined);
+          
+          // Reset offset to default
+          player.camera.setOffset({ x: 0, y: 0, z: 0 });
+          
+          // Send camera restore notification
+          player.ui.sendData({
+            type: "penalty-camera-restore",
+            message: "Regular camera restored"
+          });
+          
+          console.log(`🎥 Regular camera restored for player ${player.username}`);
+          
+        } catch (error) {
+          console.error(`🎥 Failed to restore camera for player ${player.username}:`, error);
+        }
+      }
+    });
+  }
+
+  private startPenaltySequence(): void {
+    this.penaltyShootout.currentPhase = "aiming";
+    
+    // Unfreeze only the shooter and goalkeeper, but set penalty positioning constraints
+    if (this.penaltyShootout.shooterEntity) {
+      this.penaltyShootout.shooterEntity.unfreeze();
+      // Set penalty shooter constraints
+      this.setPenaltyShooterConstraints(this.penaltyShootout.shooterEntity);
+    }
+    if (this.penaltyShootout.goalkeeperEntity) {
+      this.penaltyShootout.goalkeeperEntity.unfreeze();
+      // Set penalty goalkeeper constraints
+      this.setPenaltyGoalkeeperConstraints(this.penaltyShootout.goalkeeperEntity);
+    }
+    
+    // Send penalty start signal
+    this.sendDataToAllPlayers({
+      type: "penalty-start",
+      shooter: this.penaltyShootout.shooterEntity?.player.username,
+      timeLimit: 10 // 10 seconds to take the penalty
+    });
+    
+    // Handle AI penalty shooting logic
+    if (this.penaltyShootout.shooterEntity && this.penaltyShootout.shooterEntity instanceof AIPlayerEntity) {
+      console.log(`🥅 AI shooter ${this.penaltyShootout.shooterEntity.player.username} will attempt penalty shot`);
+      
+      // Give AI a few seconds to "aim" then automatically shoot
+      setTimeout(() => {
+        if (this.penaltyShootout.currentPhase === "aiming" && this.penaltyShootout.shooterEntity) {
+          this.executeAIPenaltyShot();
+        }
+      }, 3000 + Math.random() * 2000); // Shoot between 3-5 seconds for realism
+    }
+    
+    // Handle AI goalkeeper behavior
+    if (this.penaltyShootout.goalkeeperEntity && this.penaltyShootout.goalkeeperEntity instanceof AIPlayerEntity) {
+      console.log(`🥅 AI goalkeeper ${this.penaltyShootout.goalkeeperEntity.player.username} preparing for penalty save`);
+      
+      // Give goalkeeper some anticipatory movement after a delay
+      setTimeout(() => {
+        if (this.penaltyShootout.currentPhase === "aiming" && this.penaltyShootout.goalkeeperEntity) {
+          this.setupAIGoalkeeperForPenalty();
+        }
+      }, 4000); // Start preparing slightly after shooter aims
+    }
+    
+    // Start penalty position enforcement
+    this.startPenaltyPositionEnforcement();
+    
+    // Set up penalty timeout (still needed for human players or if AI shot fails)
+    setTimeout(() => {
+      if (this.penaltyShootout.currentPhase === "aiming") {
+        this.handlePenaltyTimeout();
+      }
+    }, 10000); // 10 second timeout
+  }
+
+  private setupAIGoalkeeperForPenalty(): void {
+    if (!this.penaltyShootout.goalkeeperEntity || !(this.penaltyShootout.goalkeeperEntity instanceof AIPlayerEntity)) {
+      return;
+    }
+
+    const aiGoalkeeper = this.penaltyShootout.goalkeeperEntity;
+    console.log(`🥅 AI goalkeeper ${aiGoalkeeper.player.username} is ready to defend penalty`);
+    
+    // The goalkeeper will rely on its natural AI behavior to try to intercept
+    // We could add specific penalty save logic here if needed, but for now
+    // let the existing AI defensive behavior handle it
+  }
+
+  private executeAIPenaltyShot(): void {
+    if (!this.penaltyShootout.shooterEntity || !(this.penaltyShootout.shooterEntity instanceof AIPlayerEntity)) {
+      return;
+    }
+
+    const aiShooter = this.penaltyShootout.shooterEntity;
+    const shootingTeam = this.penaltyShootout.currentShooter;
+    
+    console.log(`🥅 AI ${aiShooter.player.username} executing penalty shot for team ${shootingTeam}`);
+    
+    // Determine goal direction and position
+    const isShootingLeft = shootingTeam === "blue"; // Blue shoots towards red goal
+    const goalLineX = isShootingLeft ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+    
+    // Add some randomness to shot placement (within goal bounds)
+    const goalCenterZ = AI_FIELD_CENTER_Z;
+    const shotVariation = (Math.random() - 0.5) * 15; // ±7.5 units variation
+    const targetZ = goalCenterZ + shotVariation;
+    
+    // Random height target (ground to mid-height)
+    const targetY = 0.5 + Math.random() * 2; // Between 0.5 and 2.5 units high
+    
+    // Create target position with some goalkeeper psychology
+    // 70% chance to aim for corners, 30% chance for center
+    let finalTargetZ = targetZ;
+    if (Math.random() < 0.7) {
+      // Aim for corners
+      const aimLeft = Math.random() < 0.5;
+      finalTargetZ = goalCenterZ + (aimLeft ? -8 : 8); // Closer to corner
+    }
+    
+    const penaltyTarget = {
+      x: goalLineX,
+      y: targetY,
+      z: finalTargetZ
+    };
+    
+    console.log(`🥅 AI penalty target: X=${penaltyTarget.x}, Y=${penaltyTarget.y.toFixed(1)}, Z=${penaltyTarget.z.toFixed(1)}`);
+    
+    // Ensure AI has the ball by attaching it
+    sharedState.setAttachedPlayer(aiShooter);
+    
+    // Execute the shot with appropriate power
+    const shotPower = 0.8 + Math.random() * 0.4; // Power between 0.8-1.2
+    const shotSuccess = aiShooter.shootBall(penaltyTarget, shotPower);
+    
+    if (shotSuccess) {
+      console.log(`🥅 AI penalty shot executed successfully by ${aiShooter.player.username}`);
+      this.handlePenaltyShot(); // This will trigger the result checking
+    } else {
+      console.log(`🥅 AI penalty shot failed for ${aiShooter.player.username}, will timeout`);
+    }
+  }
+
+  private handlePenaltyTimeout(): void {
+    console.log("🥅 Penalty timeout - automatic miss");
+    this.processPenaltyResult(false, "timeout");
+  }
+
+  private setPenaltyShooterConstraints(shooter: SoccerPlayerEntity): void {
+    if (!(shooter instanceof AIPlayerEntity)) return; // Only apply to AI players
+    
+    const shootingTeam = this.penaltyShootout.currentShooter;
+    const isShootingLeft = shootingTeam === "blue";
+    
+    // Calculate penalty spot area - shooter should stay near penalty spot
+    const penaltySpotX = isShootingLeft ? AI_GOAL_LINE_X_RED + 11 : AI_GOAL_LINE_X_BLUE - 11;
+    const penaltySpotZ = AI_FIELD_CENTER_Z;
+    
+    // Set AI target position to penalty spot area with small movement allowance
+    const constrainedPosition = {
+      x: penaltySpotX,
+      y: SAFE_SPAWN_Y,
+      z: penaltySpotZ
+    };
+    
+    // Override AI's target position to keep them near penalty spot
+    (shooter as AIPlayerEntity).targetPosition = constrainedPosition;
+    
+    // Lock rotation to prevent movement-based rotation updates
+    (shooter as AIPlayerEntity).lockPenaltyRotation();
+    
+    // Set correct rotation to face the goal
+    const correctRotation = isShootingLeft 
+      ? { x: 0, y: 1, z: 0, w: 0 } // Blue faces negative X (towards Red's goal)
+      : { x: 0, y: 0, z: 0, w: 1 }; // Red faces positive X (towards Blue's goal)
+    
+    shooter.setRotation(correctRotation);
+    
+    console.log(`🥅 Penalty shooter ${shooter.player.username} constrained to penalty spot area and facing goal (rotation locked)`);
+  }
+
+  private setPenaltyGoalkeeperConstraints(goalkeeper: SoccerPlayerEntity): void {
+    if (!(goalkeeper instanceof AIPlayerEntity)) return; // Only apply to AI players
+    
+    const shootingTeam = this.penaltyShootout.currentShooter;
+    const isShootingLeft = shootingTeam === "blue";
+    
+    // Calculate goal line position - goalkeeper should stay on goal line
+    const goalLineX = isShootingLeft ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+    
+    // Allow goalkeeper some side-to-side movement for anticipation, but keep them on goal line
+    const currentPos = goalkeeper.position;
+    const maxSideMovement = 5; // Units of side-to-side movement allowed
+    
+    // Constrain Z position to stay within goal area
+    let constrainedZ = currentPos.z;
+    const goalCenterZ = AI_FIELD_CENTER_Z;
+    if (Math.abs(constrainedZ - goalCenterZ) > maxSideMovement) {
+      constrainedZ = goalCenterZ + (constrainedZ > goalCenterZ ? maxSideMovement : -maxSideMovement);
+    }
+    
+    const constrainedPosition = {
+      x: goalLineX, // Always keep on goal line
+      y: SAFE_SPAWN_Y,
+      z: constrainedZ // Allow limited side movement
+    };
+    
+    // Override AI's target position to keep them on goal line
+    (goalkeeper as AIPlayerEntity).targetPosition = constrainedPosition;
+    
+    // Lock rotation to prevent movement-based rotation updates
+    (goalkeeper as AIPlayerEntity).lockPenaltyRotation();
+    
+    // Set correct rotation to face the shooter (opposite direction from shooter's facing)
+    const correctRotation = isShootingLeft 
+      ? { x: 0, y: 0, z: 0, w: 1 } // Red goalkeeper faces positive X (towards shooter)
+      : { x: 0, y: 1, z: 0, w: 0 }; // Blue goalkeeper faces negative X (towards shooter)
+    
+    goalkeeper.setRotation(correctRotation);
+    
+    console.log(`🥅 Penalty goalkeeper ${goalkeeper.player.username} constrained to goal line and facing shooter (rotation locked)`);
+  }
+
+  private startPenaltyPositionEnforcement(): void {
+    // Continuously enforce penalty positioning every 500ms during penalty phase
+    const enforcementInterval = setInterval(() => {
+      if (this.penaltyShootout.currentPhase !== "aiming" || !this.penaltyShootout.isActive) {
+        clearInterval(enforcementInterval);
+        return;
+      }
+      
+      // Re-apply constraints to keep players in position
+      if (this.penaltyShootout.shooterEntity) {
+        this.setPenaltyShooterConstraints(this.penaltyShootout.shooterEntity);
+      }
+      if (this.penaltyShootout.goalkeeperEntity) {
+        this.setPenaltyGoalkeeperConstraints(this.penaltyShootout.goalkeeperEntity);
+      }
+    }, 500); // Check every 500ms
+    
+    console.log(`🥅 Penalty position enforcement started`);
+  }
+
+  public handlePenaltyShot(): void {
+    if (!this.penaltyShootout.isActive || this.penaltyShootout.currentPhase !== "aiming") {
+      return;
+    }
+    
+    this.penaltyShootout.currentPhase = "shooting";
+    
+    // Monitor ball for goal or miss
+    setTimeout(() => {
+      this.checkPenaltyResult();
+    }, 3000); // Check result after 3 seconds
+  }
+
+  private checkPenaltyResult(): void {
+    // Check if ball crossed goal line
+    const ballPosition = this.soccerBall.position;
+    const shootingTeam = this.penaltyShootout.currentShooter;
+    const isShootingLeft = shootingTeam === "blue";
+    const goalLineX = isShootingLeft ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+    
+    let isGoal = false;
+    
+    if (isShootingLeft) {
+      // Shooting towards red goal (negative X direction)
+      isGoal = ballPosition.x <= goalLineX && 
+               ballPosition.z >= AI_FIELD_CENTER_Z - 10 && 
+               ballPosition.z <= AI_FIELD_CENTER_Z + 10 &&
+               ballPosition.y >= 0 && ballPosition.y <= 6;
+    } else {
+      // Shooting towards blue goal (positive X direction)
+      isGoal = ballPosition.x >= goalLineX && 
+               ballPosition.z >= AI_FIELD_CENTER_Z - 10 && 
+               ballPosition.z <= AI_FIELD_CENTER_Z + 10 &&
+               ballPosition.y >= 0 && ballPosition.y <= 6;
+    }
+    
+    this.processPenaltyResult(isGoal, isGoal ? "goal" : "miss");
+  }
+
+  private processPenaltyResult(isGoal: boolean, resultType: "goal" | "miss" | "save" | "timeout"): void {
+    const shootingTeam = this.penaltyShootout.currentShooter;
+    
+    // Update penalty statistics
+    this.penaltyShootout.penaltyCount[shootingTeam]++;
+    if (isGoal) {
+      this.penaltyShootout.penaltyGoals[shootingTeam]++;
+    }
+    
+    // Update shooter index for next round
+    this.penaltyShootout.shooterIndex[shootingTeam]++;
+    
+    console.log(`🥅 Penalty result: ${resultType} for ${shootingTeam} team`);
+    
+    // Send result to all players
+    this.sendDataToAllPlayers({
+      type: "penalty-result",
+      result: resultType,
+      isGoal,
+      shootingTeam,
+      shooter: this.penaltyShootout.shooterEntity?.player.username,
+      penaltyGoals: this.penaltyShootout.penaltyGoals,
+      penaltyCount: this.penaltyShootout.penaltyCount
+    });
+    
+    // Restore regular cameras after penalty result
+    setTimeout(() => {
+      this.restoreRegularCameras();
+      this.unfreezeAllPlayers(); // Unfreeze all players after penalty sequence
+    }, 2000); // Wait 2 seconds to show result, then restore cameras
+    
+    // Check if shootout is complete
+    setTimeout(() => {
+      if (this.isPenaltyShootoutComplete()) {
+        this.endPenaltyShootout();
+      } else {
+        this.setupNextPenaltyTurn();
+      }
+    }, 5000); // Increased delay to allow camera restoration
+  }
+
+  private isPenaltyShootoutComplete(): boolean {
+    const redGoals = this.penaltyShootout.penaltyGoals.red;
+    const blueGoals = this.penaltyShootout.penaltyGoals.blue;
+    const redCount = this.penaltyShootout.penaltyCount.red;
+    const blueCount = this.penaltyShootout.penaltyCount.blue;
+    
+    // Standard 5 penalties each, then sudden death
+    if (redCount >= 5 && blueCount >= 5) {
+      // After 5 penalties each
+      if (redGoals !== blueGoals) {
+        return true; // Winner determined
+      }
+      // Sudden death - continue until someone wins
+      if (redCount === blueCount && redGoals !== blueGoals) {
+        return true;
+      }
+    } else if (redCount < 5 || blueCount < 5) {
+      // During first 5 penalties - check if mathematically impossible to tie
+      const remainingRed = 5 - redCount;
+      const remainingBlue = 5 - blueCount;
+      
+      if (redGoals > blueGoals + remainingBlue || blueGoals > redGoals + remainingRed) {
+        return true; // Winner already determined
+      }
+    }
+    
+    return false;
+  }
+
+  private setupNextPenaltyTurn(): void {
+    // Switch teams
+    this.penaltyShootout.currentShooter = this.penaltyShootout.currentShooter === "red" ? "blue" : "red";
+    
+    // If both teams completed a round, increment round number
+    if (this.penaltyShootout.penaltyCount.red === this.penaltyShootout.penaltyCount.blue) {
+      this.penaltyShootout.round++;
+    }
+    
+    // Set up next penalty
+    setTimeout(() => {
+      this.setupNextPenalty();
+    }, 2000);
+  }
+
+  private endPenaltyShootout(): void {
+    this.penaltyShootout.isActive = false;
+    
+    const redGoals = this.penaltyShootout.penaltyGoals.red;
+    const blueGoals = this.penaltyShootout.penaltyGoals.blue;
+    
+    // Update main game score with penalty results
+    this.state.score.red += redGoals > blueGoals ? 1 : 0;
+    this.state.score.blue += blueGoals > redGoals ? 1 : 0;
+    
+    // Send penalty shootout end notification
+    this.sendDataToAllPlayers({
+      type: "penalty-shootout-end",
+      winner: redGoals > blueGoals ? "red" : "blue",
+      finalPenaltyScore: {
+        red: redGoals,
+        blue: blueGoals
+      },
+      penaltyCount: this.penaltyShootout.penaltyCount
+    });
+    
+    console.log(`🥅 Penalty shootout complete: Red ${redGoals}-${blueGoals} Blue`);
+    
+    // End the game
+    setTimeout(() => {
+      this.endGame();
+    }, 5000);
+  }
+
+  private getTeamPlayers(team: "red" | "blue"): SoccerPlayerEntity[] {
+    return this.world.entityManager
+      .getAllPlayerEntities()
+      .filter((entity): entity is SoccerPlayerEntity => 
+        entity instanceof SoccerPlayerEntity && entity.team === team
+      );
   }
 }

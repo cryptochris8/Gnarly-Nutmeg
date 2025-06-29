@@ -809,8 +809,9 @@ export class SoccerAgent {
       default: // Striker
         // Even strikers defend, but maintain higher position for counter-attacks
         if (opponentHasBall && attachedPlayer) {
-          // If opponent has possession, striker drops deeper but not too deep
-          const strikerDefensiveX = ownGoalLineX + (35 * direction * defensiveLineDepthFactor);
+          // If opponent has possession, striker drops deeper but not too deep (proportional to field size)
+          const fieldLength = Math.abs(AI_GOAL_LINE_X_BLUE - AI_GOAL_LINE_X_RED);
+          const strikerDefensiveX = ownGoalLineX + (fieldLength * 0.4 * direction * defensiveLineDepthFactor);
           
           // Position to cut passing lanes rather than direct marking
           targetPos = {
@@ -819,8 +820,9 @@ export class SoccerAgent {
             z: ballPos.z + (Math.random() * 6 - 3) // Slight randomization for unpredictability
           };
         } else {
-          // Without clear opponent possession, maintain higher position for counters
-          const counterAttackX = ownGoalLineX + (40 * direction * defensiveLineDepthFactor);
+          // Without clear opponent possession, maintain higher position for counters (proportional to field size)
+          const fieldLength = Math.abs(AI_GOAL_LINE_X_BLUE - AI_GOAL_LINE_X_RED);
+          const counterAttackX = ownGoalLineX + (fieldLength * 0.45 * direction * defensiveLineDepthFactor);
           
           targetPos = {
             x: counterAttackX,

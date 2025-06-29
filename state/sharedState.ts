@@ -13,6 +13,7 @@ class SharedState {
     private blueAITeam: AIPlayerEntity[] = [];
     private ballHasMovedFromSpawn: boolean = false;
     private _aiSystem: AISystem = 'agent'; // Default to agent
+    private currentGameStatus: string = "waiting"; // Track current game status
 
     private constructor() {}
 
@@ -122,6 +123,16 @@ class SharedState {
         return this._aiSystem;
     }
     // --- End AI System Management ---
+
+    // --- Game Status Tracking ---
+    public setGameStatus(status: string) {
+        this.currentGameStatus = status;
+    }
+
+    public getGameStatus(): string {
+        return this.currentGameStatus;
+    }
+    // --- End Game Status Tracking ---
 }
 
 export default SharedState.getInstance(); 

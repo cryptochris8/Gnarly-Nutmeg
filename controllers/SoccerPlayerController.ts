@@ -667,7 +667,7 @@ export default class PlayerEntityController extends BaseEntityController {
           cooldownMap.delete(entity.player.username);
         }
 
-        // Original tackle logic when doesn't have ball
+        // Tackle logic when player doesn't have ball
         cooldownMap.set(entity.player.username, Date.now() + 2000);
         const direction = getDirectionFromRotation(entity.rotation);
 
@@ -898,7 +898,7 @@ export default class PlayerEntityController extends BaseEntityController {
         PlayerEntityController._ballStuckCheckInterval = setInterval(() => {
             // This function will be called by the interval, 
             // but the main logic is outside. This interval setup is likely flawed for a static method.
-            // The original call to checkForStuckBall should be driven by a game loop or tick.
+            // The checkForStuckBall should be driven by a game loop or tick.
             // For now, the check below `currentTime - PlayerEntityController._lastBallCheckTime` manages frequency.
         }, BALL_STUCK_CHECK_INTERVAL);
       }
@@ -915,8 +915,9 @@ export default class PlayerEntityController extends BaseEntityController {
         PlayerEntityController._ballStuckStartTime = 0;
         return;
       }
-      // This threshold should be validated against actual goal trigger zone X boundaries.
-      const isInGoalArea = Math.abs(currentPosition.x) > 35; 
+      // Check if ball is actually in or near goal areas using correct field dimensions
+      const isInGoalArea = currentPosition.x < (AI_GOAL_LINE_X_RED + 3) || 
+                           currentPosition.x > (AI_GOAL_LINE_X_BLUE - 3);
       const isAboveGoalHeight = currentPosition.y > 3; 
 
       const isEffectivelyStationary =
@@ -991,8 +992,9 @@ export default class PlayerEntityController extends BaseEntityController {
       
       const distanceToTeammate = Math.sqrt(toTeammate.x * toTeammate.x + toTeammate.z * toTeammate.z);
       
-      // Skip teammates that are too far away
-      if (distanceToTeammate > 35 || distanceToTeammate < 2) continue;
+      // Skip teammates that are too far away (adjusted for large stadium field)
+      const maxPassDistance = Math.max(FIELD_MAX_X - FIELD_MIN_X, FIELD_MAX_Z - FIELD_MIN_Z) * 0.4; // 40% of field dimension
+      if (distanceToTeammate > maxPassDistance || distanceToTeammate < 2) continue;
       
       // Normalize direction to teammate
       const normalizedToTeammate = {

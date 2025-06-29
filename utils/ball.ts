@@ -91,6 +91,13 @@ export default function createSoccerBall(world: World) {
       const distanceMoved = Math.sqrt(dx*dx + dy*dy + dz*dz);
       if (distanceMoved > 0.1) {
         sharedState.setBallHasMoved();
+        
+        // Check if this is a penalty shootout and trigger penalty shot
+        const gameStatus = sharedState.getGameStatus();
+        if (gameStatus === "penalty-shootout") {
+          console.log("🥅 Ball moved during penalty shootout - triggering penalty shot");
+          world.emit("penalty-shot-taken" as any, {} as any);
+        }
       }
     }
 

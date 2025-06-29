@@ -4,7 +4,7 @@ import sharedState from "../state/sharedState";
 import { getDirectionFromRotation } from "../utils/direction";
 import PlayerEntityController from "../controllers/SoccerPlayerController";
 import SoccerAgent from './SoccerAgent';
-// Import the new constants reflecting swapped X/Z
+// Import field constants for large stadium configuration
 import {
   AI_FIELD_CENTER_X, // Added new Field Center X
   AI_FIELD_CENTER_Z, // Center is now Z
@@ -271,6 +271,8 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   public _agentSetRotationThisTick: boolean = false; 
   // Last rotation update time
   private _lastRotationUpdateTime: number | null = null;
+  // Flag to lock rotation during penalty mode
+  private _penaltyModeRotationLocked: boolean = false;
   // Track ball possession time for all players
   private ballPossessionStartTime: number | null = null;
   private readonly GOALKEEPER_MAX_POSSESSION_TIME = 3000; // 3 seconds in milliseconds
@@ -441,6 +443,16 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     }
     if (!ball) {
       // console.log(`AI ${this.player.username} (${this.aiRole}) decision skipped: ball not found.`);
+      return;
+    }
+    
+    // PENALTY MODE CHECK: Disable normal AI behavior during penalty shootouts
+    // AI players should only move when specifically commanded during penalties
+    const gameStatus = sharedState.getGameStatus();
+    if (gameStatus === "penalty-shootout") {
+      // During penalty mode, AI should not make normal decisions
+      // They should only respond to specific penalty commands (shooting, goalkeeping)
+      // console.log(`AI ${this.player.username} (${this.aiRole}) decision skipped: penalty mode active`);
       return;
     }
     
@@ -643,9 +655,9 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   private goalkeeperDecision(ballPosition: Vector3Like, myPosition: Vector3Like, hasBall: boolean, goalLineX: number) {
     const roleDefinition = ROLE_DEFINITIONS['goalkeeper'];
     
-    // Define goal width and penalty area radius
+    // Define goal width and penalty area radius (scaled for large stadium)
     const goalWidth = 10;
-    const penaltyAreaRadius = 15;
+    const penaltyAreaRadius = 18; // Increased for large stadium proportions
 
     // Get distance from goal line to ball
     const distanceFromGoalToBall = Math.abs(ballPosition.x - goalLineX);
@@ -2813,6 +2825,36 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
    * @param currentPosition The current position of the entity
    */
   private updatePhysicsMovement(currentPosition: Vector3Like): void {
+    // PENALTY MODE CHECK: During penalty shootouts, use penalty constraint positioning only
+    // This prevents normal AI movement and keeps them in their designated penalty positions
+    const gameStatus = sharedState.getGameStatus();
+    if (gameStatus === "penalty-shootout") {
+      // During penalties, allow very limited movement to maintain penalty positions
+      // But use much more restrictive movement parameters
+      const controller = this.controller as PlayerEntityController; 
+      const maxSpeed = 1.0; // Very slow movement during penalties
+      const mass = this._mass > 0 ? this._mass : 1.0;
+      
+      const direction = { 
+          x: this.targetPosition.x - currentPosition.x, 
+          z: this.targetPosition.z - currentPosition.z 
+      };
+      const distanceToTarget = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+
+      // Only move if distance is very small (fine positioning)
+      if (distanceToTarget > 0.5) { 
+          const normalizedDirectionX = direction.x / distanceToTarget;
+          const normalizedDirectionZ = direction.z / distanceToTarget;
+          const adaptiveSpeed = Math.min(maxSpeed, distanceToTarget * 0.5); // Very slow approach
+
+          const desiredVelocityX = normalizedDirectionX * adaptiveSpeed;
+          const desiredVelocityZ = normalizedDirectionZ * adaptiveSpeed;
+
+          this.applyMovementImpulse(desiredVelocityX, desiredVelocityZ, maxSpeed, mass);
+      }
+      return; // Skip normal movement logic during penalties
+    }
+    
     // Validate controller and mass exist
     if (!this.controller) {
       console.warn(`AI ${this.player.username} (${this.aiRole}): No controller in updatePhysicsMovement`);
@@ -2861,6 +2903,13 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
    * @param normalizedDirectionZ Normalized Z direction component
    */
   private updateRotationToMovement(normalizedDirectionX: number, normalizedDirectionZ: number): void {
+    // PENALTY MODE CHECK: Don't update rotation during penalty shootouts
+    // Penalty-specific rotations should be preserved
+    const gameStatus = sharedState.getGameStatus();
+    if (gameStatus === "penalty-shootout" || this._penaltyModeRotationLocked) {
+      return; // Skip rotation updates during penalties
+    }
+    
     // Check if this AI has the ball - if so, use more stable rotation logic
     const hasBall = sharedState.getAttachedPlayer() === this;
     
@@ -3423,6 +3472,22 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   public setRestartBehavior(behavior: 'pass-to-teammates' | 'normal' | null) {
     this.restartBehavior = behavior;
     console.log(`AI ${this.player.username} (${this.aiRole}) restart behavior set to: ${behavior || 'default'}`);
+  }
+
+  /**
+   * Lock rotation updates during penalty mode to preserve penalty-specific rotations
+   */
+  public lockPenaltyRotation(): void {
+    this._penaltyModeRotationLocked = true;
+    console.log(`🥅 Penalty rotation locked for AI ${this.player.username} (${this.aiRole})`);
+  }
+
+  /**
+   * Unlock rotation updates after penalty mode ends
+   */
+  public unlockPenaltyRotation(): void {
+    this._penaltyModeRotationLocked = false;
+    console.log(`🥅 Penalty rotation unlocked for AI ${this.player.username} (${this.aiRole})`);
   }
 
   /**
