@@ -553,11 +553,18 @@ export class SoccerGame {
       kickoffTeam: this.state.kickoffTeam, // Also send kickoff team to UI
     });
     
-    // Play a single whistle for goal celebration
+    // Play goal celebration sounds
     new Audio({
       uri: "audio/sfx/soccer/whistle.mp3",
       loop: false,
       volume: 0.3,
+    }).play(this.world);
+
+    // Play goal commentator sound
+    new Audio({
+      uri: "audio/sfx/soccer/soccer-goal-commentator.wav",
+      loop: false,
+      volume: 0.8,
     }).play(this.world);
 
     // Reset the ball movement flag as we're repositioning the ball
