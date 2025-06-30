@@ -40,7 +40,7 @@ export class SoccerMap {
         // When ball enters here, Blue team scores
         x: { min: GAME_CONFIG.AI_GOAL_LINE_X_RED - 5, max: GAME_CONFIG.AI_GOAL_LINE_X_RED + 3 },
         z: { min: GAME_CONFIG.AI_FIELD_CENTER_Z - 20, max: GAME_CONFIG.AI_FIELD_CENTER_Z + 20 }, // Wider goal area
-        y: { min: -1, max: 6 }, // Allow for slight ground variations
+        y: { min: -1, max: 4 }, // Realistic goal height - prevents high arc shots from counting as goals
         team: 'blue' // Blue team scores when ball enters Red's goal
       },
       {
@@ -48,7 +48,7 @@ export class SoccerMap {
         // When ball enters here, Red team scores
         x: { min: GAME_CONFIG.AI_GOAL_LINE_X_BLUE - 3, max: GAME_CONFIG.AI_GOAL_LINE_X_BLUE + 5 },
         z: { min: GAME_CONFIG.AI_FIELD_CENTER_Z - 20, max: GAME_CONFIG.AI_FIELD_CENTER_Z + 20 }, // Wider goal area
-        y: { min: -1, max: 6 }, // Allow for slight ground variations
+        y: { min: -1, max: 4 }, // Realistic goal height - prevents high arc shots from counting as goals
         team: 'red' // Red team scores when ball enters Blue's goal
       }
     ];
