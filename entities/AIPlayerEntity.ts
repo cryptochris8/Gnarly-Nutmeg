@@ -238,7 +238,7 @@ const RESTART_FORMATION_DISCIPLINE = 0.9;  // High discipline during restarts
 const CENTER_AVOIDANCE_RADIUS = 12.0;      // Radius around center to avoid crowding
 
 // Constants for arcing shots and passes
-const SHOT_ARC_FACTOR = 0.15; // Increased from 0.1 to create more noticeable shot arcs
+const SHOT_ARC_FACTOR = 0.22; // Increased from 0.15 to create more realistic goal shot arcs
 const PASS_ARC_FACTOR = 0.05; // Reduced from 0.08 to keep passes lower and more controlled
 const PASS_FORCE = 4; // Reduced from 6 to prevent balls going out of bounds
 const SHOT_FORCE = 4.5; // Increased from 1.8 to give AI players sufficient shooting power
@@ -1719,7 +1719,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     // Limit the vertical component to prevent excessively high arcs
     const verticalComponent = direction.y * effectiveShotForce;
-    const maxVerticalForce = 3.5; // Increased from 2.5 to allow higher arcs for longer shots
+    const maxVerticalForce = 4.5; // Increased from 3.5 to allow more realistic goal shot arcs
     const finalVerticalForce = Math.min(verticalComponent, maxVerticalForce);
     
     // Apply impulse with controlled vertical component
