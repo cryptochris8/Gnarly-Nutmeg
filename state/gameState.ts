@@ -29,6 +29,7 @@ import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 // import { AbilityConsumable } from "../abilities/AbilityConsumable";
 // import { shurikenThrowOptions, speedBoostOptions } from "../abilities/itemTypes";
 import AIPlayerEntity from "../entities/AIPlayerEntity";
+import { ArcadeEnhancementManager } from "./arcadeEnhancements";
 
 // Custom events for the SoccerGame
 declare module "hytopia" {
@@ -92,6 +93,7 @@ export class SoccerGame {
   private gameLoopInterval: Timer | null = null;
   // private abilityPickups: AbilityConsumable[] = [];
   private aiPlayersList: AIPlayerEntity[] = [];
+  private arcadeManager: ArcadeEnhancementManager | null = null;
 
   constructor(world: World, entity: Entity, aiPlayers: AIPlayerEntity[]) {
     this.state = {
@@ -383,6 +385,11 @@ export class SoccerGame {
   }
 
   private gameLoop() {
+    // Update arcade enhancements (only active in arcade mode)
+    if (this.arcadeManager) {
+      this.arcadeManager.update();
+    }
+
     if (this.state.timeRemaining <= 0) {
       console.log(`Time up! Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
       this.handleTimeUp();
@@ -803,6 +810,11 @@ export class SoccerGame {
   public updateAIPlayersList(aiPlayers: AIPlayerEntity[]): void {
     this.aiPlayersList = aiPlayers;
     console.log(`Updated SoccerGame AI players list: ${aiPlayers.length} players`);
+  }
+
+  public setArcadeManager(arcadeManager: ArcadeEnhancementManager): void {
+    this.arcadeManager = arcadeManager;
+    console.log("Arcade manager set for SoccerGame");
   }
 
   /**

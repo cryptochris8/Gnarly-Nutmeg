@@ -47,6 +47,15 @@ import sharedState from "./state/sharedState";
 import { getDirectionFromRotation } from "./utils/direction";
 import observerMode from "./utils/observerMode";
 import { soccerMap } from "./state/map";
+import { 
+  GameMode, 
+  getCurrentGameMode, 
+  setGameMode, 
+  isFIFAMode, 
+  isArcadeMode,
+  getCurrentModeConfig 
+} from "./state/gameModes";
+import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
 
 startServer((world) => {
     // Load the soccer map
@@ -75,9 +84,15 @@ startServer((world) => {
     // Ball is already spawned in createSoccerBall function, no need to spawn again
     console.log("Soccer ball created and spawned successfully");
     
+    // Initialize arcade enhancement system (only active in arcade mode)
+    const arcadeManager = new ArcadeEnhancementManager(world);
+    
     // Initialize game
     let aiPlayers: AIPlayerEntity[] = [];
     const game = new SoccerGame(world, soccerBall, aiPlayers);
+    
+    // Connect arcade manager to game
+    game.setArcadeManager(arcadeManager);
 
     // Function to spawn AI players for 6v6 setup
     // Takes the human player's chosen team
@@ -1022,5 +1037,121 @@ startServer((world) => {
           }
         });
       }
+    });
+
+    // Add game mode selection commands
+    world.chatManager.registerCommand("/fifa", (player, args) => {
+      setGameMode(GameMode.FIFA);
+      world.chatManager.sendPlayerMessage(
+        player,
+        `🏆 Switched to FIFA Mode - Realistic soccer simulation`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Match Duration: ${getCurrentModeConfig().matchDuration / 60} minutes`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Features: Pure soccer gameplay, no power-ups or abilities`
+      );
+    });
+
+    world.chatManager.registerCommand("/arcade", (player, args) => {
+      setGameMode(GameMode.ARCADE);
+      world.chatManager.sendPlayerMessage(
+        player,
+        `🎪 Switched to Arcade Mode - Enhanced soccer with power-ups!`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Match Duration: ${getCurrentModeConfig().matchDuration / 60} minutes`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Features: Power-ups, abilities, enhanced physics, and special effects!`
+      );
+    });
+
+    world.chatManager.registerCommand("/mode", (player, args) => {
+      const currentMode = getCurrentGameMode();
+      const config = getCurrentModeConfig();
+      
+      world.chatManager.sendPlayerMessage(
+        player,
+        `=== CURRENT GAME MODE ===`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Mode: ${config.name} (${currentMode.toUpperCase()})`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Description: ${config.description}`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Match Duration: ${config.matchDuration / 60} minutes`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Power-ups: ${config.enablePowerUps ? "✅ Enabled" : "❌ Disabled"}`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Abilities: ${config.enableAbilities ? "✅ Enabled" : "❌ Disabled"}`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Commands: /fifa (realistic) | /arcade (enhanced)`
+      );
+    });
+
+    // Add arcade-specific commands for testing enhancements
+    world.chatManager.registerCommand("/speed", (player, args) => {
+      if (!isArcadeMode()) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `❌ Speed enhancement only available in Arcade Mode! Use /arcade first.`
+        );
+        return;
+      }
+      
+      arcadeManager.addEnhancement(player.id, 'speed', 15000); // 15 seconds
+      world.chatManager.sendPlayerMessage(
+        player,
+        `⚡ Speed enhancement activated for 15 seconds!`
+      );
+    });
+
+    world.chatManager.registerCommand("/power", (player, args) => {
+      if (!isArcadeMode()) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `❌ Power enhancement only available in Arcade Mode! Use /arcade first.`
+        );
+        return;
+      }
+      
+      arcadeManager.addEnhancement(player.id, 'power', 15000); // 15 seconds
+      world.chatManager.sendPlayerMessage(
+        player,
+        `💥 Power enhancement activated for 15 seconds!`
+      );
+    });
+
+    world.chatManager.registerCommand("/precision", (player, args) => {
+      if (!isArcadeMode()) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `❌ Precision enhancement only available in Arcade Mode! Use /arcade first.`
+        );
+        return;
+      }
+      
+      arcadeManager.addEnhancement(player.id, 'precision', 15000); // 15 seconds
+      world.chatManager.sendPlayerMessage(
+        player,
+        `🎯 Precision enhancement activated for 15 seconds!`
+      );
     });
   });
