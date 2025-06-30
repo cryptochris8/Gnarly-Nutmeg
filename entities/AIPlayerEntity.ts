@@ -3381,18 +3381,43 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     const distanceFromArea = Math.max(distanceToMinX, distanceToMaxX, distanceToMinZ, distanceToMaxZ);
     
-    // Special case for corners - always allow at least one player to pursue a ball in corners
+    // Special case for corners - always allow players to pursue balls in corners
+    // Increased corner detection range from 5 to 10 units to catch more corner situations
     const isInCorner = (
-      (Math.abs(ballPosition.x - FIELD_MIN_X) < 5 || Math.abs(ballPosition.x - FIELD_MAX_X) < 5) &&
-      (Math.abs(ballPosition.z - FIELD_MIN_Z) < 5 || Math.abs(ballPosition.z - FIELD_MAX_Z) < 5)
+      (Math.abs(ballPosition.x - FIELD_MIN_X) < 10 || Math.abs(ballPosition.x - FIELD_MAX_X) < 10) &&
+      (Math.abs(ballPosition.z - FIELD_MIN_Z) < 10 || Math.abs(ballPosition.z - FIELD_MAX_Z) < 10)
     );
     
-    if (isInCorner && this.isClosestTeammateToPosition(ballPosition)) {
-      return false; // Never too far if ball is in corner and this is closest player
+    // For corner situations, allow the closest 2 players to pursue (not just 1)
+    if (isInCorner) {
+      const teammates = this.getVisibleTeammates();
+      const myDistanceToBall = this.distanceBetween(this.position, ballPosition);
+      let playersCloserThanMe = 0;
+      
+      for (const teammate of teammates) {
+        if (teammate instanceof AIPlayerEntity && teammate.isSpawned) {
+          const teammateDistance = this.distanceBetween(teammate.position, ballPosition);
+          if (teammateDistance < myDistanceToBall) {
+            playersCloserThanMe++;
+          }
+        }
+      }
+      
+      // Allow up to 2 players to pursue corner balls (closest 2)
+      if (playersCloserThanMe < 2) {
+        return false; // Never too far if ball is in corner and we're one of the 2 closest
+      }
     }
     
-    // Ball is too far if outside preferred area AND distance from area OR player exceeds max pursuit
-    const maxAllowedDistance = maxPursuitDistance * 1.3; // Increased buffer from 1.2 to 1.3
+    // For corner situations, significantly increase pursuit distance to ensure ball retrieval
+    let maxAllowedDistance = maxPursuitDistance * 1.3; // Increased buffer from 1.2 to 1.3
+    
+    // Special corner pursuit boost - double the allowed distance for corner balls
+    if (isInCorner) {
+      maxAllowedDistance = maxPursuitDistance * 2.5; // Much more generous for corners
+      console.log(`Player ${this.player.username} (${this.aiRole}) using extended corner pursuit distance: ${maxAllowedDistance}`);
+    }
+    
     return distanceFromArea > maxAllowedDistance || distanceToBall > maxAllowedDistance;
   }
   
