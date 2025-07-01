@@ -94,6 +94,7 @@ export class SoccerGame {
   // private abilityPickups: AbilityConsumable[] = [];
   private aiPlayersList: AIPlayerEntity[] = [];
   private arcadeManager: ArcadeEnhancementManager | null = null;
+  private fifaCrowdManager: any | null = null; // FIFA crowd manager for stadium atmosphere
 
   constructor(world: World, entity: Entity, aiPlayers: AIPlayerEntity[]) {
     this.state = {
@@ -574,6 +575,11 @@ export class SoccerGame {
       volume: 0.8,
     }).play(this.world);
 
+    // Play FIFA crowd goal reaction if in FIFA mode and crowd manager is available
+    if (this.fifaCrowdManager && this.fifaCrowdManager.playGoalReaction) {
+      this.fifaCrowdManager.playGoalReaction();
+    }
+
     // Reset the ball movement flag as we're repositioning the ball
     sharedState.resetBallMovementFlag();
 
@@ -815,6 +821,11 @@ export class SoccerGame {
   public setArcadeManager(arcadeManager: ArcadeEnhancementManager): void {
     this.arcadeManager = arcadeManager;
     console.log("Arcade manager set for SoccerGame");
+  }
+
+  public setFIFACrowdManager(fifaCrowdManager: any): void {
+    this.fifaCrowdManager = fifaCrowdManager;
+    console.log("FIFA crowd manager set for SoccerGame");
   }
 
   /**

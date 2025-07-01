@@ -16,7 +16,7 @@ if (!process.env.MEDIASOUP_WORKER_BIN) {
 }
 // === END MEDIASOUP SETUP ===
 
-import { startServer, Audio, PlayerEntity, PlayerEvent, PlayerUIEvent, PlayerCameraMode, type Vector3Like, EntityEvent } from "hytopia";
+import { startServer, Audio, PlayerEntity, PlayerEvent, PlayerUIEvent, PlayerCameraMode, PlayerManager, type Vector3Like, EntityEvent } from "hytopia";
 import worldMap from "./assets/maps/soccer.json"; // Uncommented to load the soccer map
 import { SoccerGame } from "./state/gameState";
 import createSoccerBall from "./utils/ball";
@@ -56,6 +56,7 @@ import {
   getCurrentModeConfig 
 } from "./state/gameModes";
 import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
+import { FIFACrowdManager } from "./utils/fifaCrowdManager";
 
 startServer((world) => {
     // Load the soccer map
@@ -99,12 +100,18 @@ startServer((world) => {
     // Initialize arcade enhancement system (only active in arcade mode)
     const arcadeManager = new ArcadeEnhancementManager(world);
     
+    // Initialize FIFA crowd atmosphere system (only active in FIFA mode)
+    const fifaCrowdManager = new FIFACrowdManager(world);
+    
     // Initialize game
     let aiPlayers: AIPlayerEntity[] = [];
     const game = new SoccerGame(world, soccerBall, aiPlayers);
     
     // Connect arcade manager to game
     game.setArcadeManager(arcadeManager);
+    
+    // Connect FIFA crowd manager to game
+    game.setFIFACrowdManager(fifaCrowdManager);
 
     // Function to spawn AI players for 6v6 setup
     // Takes the human player's chosen team
@@ -436,6 +443,12 @@ startServer((world) => {
           console.log(`Switching from opening music to gameplay music (${getCurrentGameMode()} mode)`);
           mainMusic.pause();
           getGameplayMusic().play(world);
+          
+          // Start FIFA crowd atmosphere if in FIFA mode
+          if (isFIFAMode()) {
+            fifaCrowdManager.start();
+            fifaCrowdManager.playGameStart();
+          }
 
           // Single player mode - uses the new spawnAIPlayers
           if (data.singlePlayerMode) {
@@ -464,6 +477,52 @@ startServer((world) => {
             game.performCoinToss({
               playerId: player.username,
               choice: data.choice
+            });
+          }
+        }
+        else if (data.type === "activate-powerup" && data.powerUpType) {
+          // Handle power-up activation (Arcade Mode only)
+          console.log(`Player ${player.username} activated power-up: ${data.powerUpType}`);
+          
+          // Only allow in arcade mode
+          if (isArcadeMode()) {
+            const success = arcadeManager.activatePowerUp(player.username, data.powerUpType);
+            
+            if (success) {
+              // Send confirmation to UI
+              player.ui.sendData({
+                type: "powerup-activated",
+                powerUpType: data.powerUpType,
+                success: true
+              });
+              
+                             // Broadcast to all players for visual effects
+               // Use the game's sendDataToAllPlayers method through a helper
+               const broadcastData = {
+                 type: "powerup-effect",
+                 playerId: player.username,
+                 powerUpType: data.powerUpType
+               };
+               
+               // Send to all connected players
+               PlayerManager.instance.getConnectedPlayers().forEach((p) => {
+                 p.ui.sendData(broadcastData);
+               });
+            } else {
+              // Send failure message
+              player.ui.sendData({
+                type: "powerup-activated",
+                powerUpType: data.powerUpType,
+                success: false,
+                message: "Power-up not available or on cooldown"
+              });
+            }
+          } else {
+            // Not in arcade mode
+            player.ui.sendData({
+              type: "powerup-activated",
+              success: false,
+              message: "Power-ups only available in Arcade Mode"
             });
           }
         }
@@ -556,6 +615,9 @@ startServer((world) => {
            console.log("Resetting music back to opening music");
            getGameplayMusic().pause();
            mainMusic.play(world);
+           
+           // Stop FIFA crowd atmosphere
+           fifaCrowdManager.stop();
         } else if (game.inProgress() && playerTeam && game.getPlayerCountOnTeam(playerTeam) === 0 && !playerStillConnected) {
            // Check if a team is now empty in multiplayer
            console.log(`Team ${playerTeam} is now empty. Ending game.`);
@@ -565,6 +627,9 @@ startServer((world) => {
            console.log("Resetting music back to opening music");
            getGameplayMusic().pause();
            mainMusic.play(world);
+           
+           // Stop FIFA crowd atmosphere
+           fifaCrowdManager.stop();
         } else {
            console.log(`Player left but game continues - Human players: ${humanPlayerCount}, Player still connected: ${playerStillConnected}`);
         }
@@ -643,14 +708,66 @@ startServer((world) => {
       } else if (musicType === "status") {
         const currentMode = getCurrentGameMode();
         const trackName = currentMode === GameMode.FIFA ? "hytopia-main.mp3" : "always-win.mp3";
-        world.chatManager.sendPlayerMessage(player, `=== MUSIC STATUS ===`);
+        const crowdStatus = fifaCrowdManager.isActivated() ? "🏟️ Active" : "🔇 Inactive";
+        
+        world.chatManager.sendPlayerMessage(player, `=== AUDIO STATUS ===`);
         world.chatManager.sendPlayerMessage(player, `Current Mode: ${currentMode.toUpperCase()}`);
         world.chatManager.sendPlayerMessage(player, `Gameplay Track: ${trackName}`);
         world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game.inProgress() ? "Yes" : "No"}`);
+        world.chatManager.sendPlayerMessage(player, `FIFA Crowd: ${crowdStatus}`);
+        world.chatManager.sendPlayerMessage(player, `Commands: /crowd <action> | /music <action>`);
       } else {
         world.chatManager.sendPlayerMessage(
           player,
           "Invalid option. Use 'opening', 'gameplay', or 'status'"
+        );
+      }
+    });
+
+    // Add FIFA crowd testing commands
+    world.chatManager.registerCommand("/crowd", (player, args) => {
+      if (args.length < 2) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "Usage: /crowd <start|stop|goal|foul|miss|applause|status>"
+        );
+        return;
+      }
+      
+      const action = args[1].toLowerCase();
+      
+      if (action === "start") {
+        fifaCrowdManager.start();
+        world.chatManager.sendPlayerMessage(player, "🏟️ FIFA crowd atmosphere started");
+      } else if (action === "stop") {
+        fifaCrowdManager.stop();
+        world.chatManager.sendPlayerMessage(player, "🔇 FIFA crowd atmosphere stopped");
+      } else if (action === "goal") {
+        fifaCrowdManager.playGoalReaction();
+        world.chatManager.sendPlayerMessage(player, "🥅 Playing goal celebration");
+      } else if (action === "foul") {
+        fifaCrowdManager.playFoulReaction();
+        world.chatManager.sendPlayerMessage(player, "😠 Playing foul reaction");
+      } else if (action === "miss") {
+        fifaCrowdManager.playNearMissReaction();
+        world.chatManager.sendPlayerMessage(player, "😲 Playing near miss reaction");
+      } else if (action === "applause") {
+        fifaCrowdManager.playApplause();
+        world.chatManager.sendPlayerMessage(player, "👏 Playing applause");
+      } else if (action === "status") {
+        const isActive = fifaCrowdManager.isActivated();
+        const currentMode = getCurrentGameMode();
+        const shouldBeActive = isFIFAMode() && game.inProgress();
+        
+        world.chatManager.sendPlayerMessage(player, `=== FIFA CROWD STATUS ===`);
+        world.chatManager.sendPlayerMessage(player, `Current Mode: ${currentMode.toUpperCase()}`);
+        world.chatManager.sendPlayerMessage(player, `Crowd Manager: ${isActive ? "🏟️ Active" : "🔇 Inactive"}`);
+        world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game.inProgress() ? "✅ Yes" : "❌ No"}`);
+        world.chatManager.sendPlayerMessage(player, `Should Be Active: ${shouldBeActive ? "✅ Yes" : "❌ No"}`);
+      } else {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "Invalid action. Use: start, stop, goal, foul, miss, applause, status"
         );
       }
     });
@@ -1090,6 +1207,10 @@ startServer((world) => {
         console.log("Switching to FIFA mode music during active game");
         arcadeGameplayMusic.pause();
         fifaGameplayMusic.play(world);
+        
+        // Start FIFA crowd atmosphere when switching to FIFA during active game
+        fifaCrowdManager.start();
+        
         world.chatManager.sendPlayerMessage(
           player,
           `🎵 Switched to FIFA mode music`
@@ -1119,6 +1240,10 @@ startServer((world) => {
         console.log("Switching to Arcade mode music during active game");
         fifaGameplayMusic.pause();
         arcadeGameplayMusic.play(world);
+        
+        // Stop FIFA crowd atmosphere when switching to arcade
+        fifaCrowdManager.stop();
+        
         world.chatManager.sendPlayerMessage(
           player,
           `🎵 Switched to Arcade mode music`

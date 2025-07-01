@@ -141,6 +141,10 @@ export default class PlayerEntityController extends BaseEntityController {
   /** @internal */
   private _lastBounceTime: number | null = null;
 
+  // Power-up cooldown tracking
+  private _lastPowerUpTime: number = 0;
+  private static readonly POWER_UP_COOLDOWN_MS = 3000; // 3 second cooldown between power-ups
+
   /**
    * @param options - Options for the controller.
    */
@@ -411,7 +415,25 @@ export default class PlayerEntityController extends BaseEntityController {
         const basePower = 1.5;
         const maxChargePower = 3.5;
         const powerScale = Math.min(1500, chargeDuration) / 1500; // 0 to 1 based on charge time up to 1.5s
-        const totalPower = basePower + (maxChargePower * powerScale);
+        let totalPower = basePower + (maxChargePower * powerScale);
+        
+        // Apply mega kick enhancement if active (only in arcade mode)
+        if (entity instanceof SoccerPlayerEntity) {
+          // Import arcade enhancement manager
+          const { isArcadeMode } = require("../state/gameModes");
+          
+          if (isArcadeMode()) {
+            // Get enhancement manager from shared state or game state
+            const gameState = require("../state/gameState").default;
+            if (gameState && gameState.arcadeManager && gameState.arcadeManager.hasMegaKick(entity.player.username)) {
+              totalPower *= 3.0; // Triple kick power!
+              console.log(`⚽ MEGA KICK! ${entity.player.username} used enhanced power: ${totalPower.toFixed(2)}`);
+              
+              // Consume the mega kick
+              gameState.arcadeManager.consumeMegaKick(entity.player.username);
+            }
+          }
+        }
 
         console.log("Charge Duration:", chargeDuration, "Power:", totalPower);
         sharedState.setAttachedPlayer(null);
@@ -452,6 +474,26 @@ export default class PlayerEntityController extends BaseEntityController {
             direction,
             entity 
           );
+        }
+      }
+
+      // Handle power-up activation with F key (only in arcade mode)
+      if (input["f"]) {
+        console.log(`🎮 F key pressed by ${entity.player?.username || 'unknown'}`);
+        
+        // Check cooldown to prevent spam
+        const currentTime = Date.now();
+        if (currentTime - this._lastPowerUpTime >= PlayerEntityController.POWER_UP_COOLDOWN_MS) {
+          this._lastPowerUpTime = currentTime;
+          this._activateRandomPowerUp(entity);
+          
+          // Cancel the input to prevent multiple activations
+          input["f"] = false;
+        } else {
+          // Still on cooldown, cancel the input
+          input["f"] = false;
+          const remainingCooldown = Math.ceil((PlayerEntityController.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
+          console.log(`🎮 Power-up on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
         }
       }
 
@@ -1236,5 +1278,44 @@ export default class PlayerEntityController extends BaseEntityController {
     } catch (error) {
       console.error(`Error in directional pass: ${error}`);
     }
+  }
+
+  /**
+   * Activate a random power-up for the player (only in arcade mode)
+   * @param entity - The player entity
+   */
+  private _activateRandomPowerUp(entity: PlayerEntity): void {
+    console.log(`🎮 _activateRandomPowerUp called for ${entity.player?.username || 'unknown'}`);
+    
+    // Import the arcade mode check and enhancement types
+    const { isArcadeMode } = require("../state/gameModes");
+    
+    // Only work in arcade mode
+    if (!isArcadeMode()) {
+      console.log("🎮 Power-ups only available in Arcade Mode!");
+      return;
+    }
+
+    if (!(entity instanceof SoccerPlayerEntity)) {
+      console.log("🎮 Entity is not a SoccerPlayerEntity");
+      return;
+    }
+
+    // For now, we'll use the UI messaging system to trigger server-side power-up activation
+    // This will be handled in the main server loop where the arcade manager is available
+    
+    // Get available power-ups
+    const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'shuriken_throw', 'fireball', 'mega_kick', 'shield'];
+    const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
+    
+    // Send power-up activation request to the server through UI messaging
+    entity.player.ui.sendData({
+      type: "activate-powerup",
+      powerUpType: randomPowerUp,
+      playerId: entity.player.username,
+      timestamp: Date.now()
+    });
+    
+    console.log(`🎮 ARCADE POWER-UP REQUEST: ${entity.player.username} requesting ${randomPowerUp}!`);
   }
 }

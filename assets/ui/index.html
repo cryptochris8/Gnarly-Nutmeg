@@ -264,6 +264,94 @@
     color: #cccccc;
   }
 
+  /* ===== POWER-UP PANEL (ARCADE MODE ONLY) ===== */
+  .powerup-panel {
+    position: fixed;
+    top: 100px;
+    left: 20px;
+    background: linear-gradient(135deg, rgba(255, 102, 0, 0.9), rgba(255, 140, 0, 0.9));
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid rgba(255, 215, 0, 0.6);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(255, 102, 0, 0.4);
+    min-width: 220px;
+    transition: all 0.3s ease;
+    z-index: 998;
+  }
+
+  .powerup-panel.hidden {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  .powerup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .powerup-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .powerup-active {
+    background: rgba(255, 215, 0, 0.2);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255, 215, 0, 0.4);
+  }
+
+  .powerup-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #FFD700;
+    margin-bottom: 5px;
+  }
+
+  .powerup-description {
+    font-size: 12px;
+    color: #ffffff;
+    opacity: 0.9;
+    line-height: 1.3;
+  }
+
+  .powerup-cooldown {
+    font-size: 11px;
+    color: #ffcccc;
+    margin-top: 5px;
+    font-style: italic;
+  }
+
+  .powerup-instructions {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .powerup-key {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-right: 5px;
+  }
+
   /* ===== CONTROL BUTTONS ===== */
   .control-buttons {
     position: fixed;
@@ -1564,6 +1652,7 @@
 <div class="control-buttons">
   <button class="control-btn" id="audio-toggle" onclick="toggleAudio()" title="Toggle Audio">🔊</button>
   <button class="control-btn" id="stats-toggle" onclick="toggleStatsPanel()" title="Toggle Statistics">📊</button>
+  <button class="control-btn" id="powerup-toggle" onclick="togglePowerUpPanel()" title="Toggle Power-Ups (Arcade Mode)" style="display: none;">🎪</button>
 </div>
 
 <!-- Statistics Panel -->
@@ -1600,6 +1689,36 @@
   </div>
 </div>
 
+<!-- Power-Up Panel (Arcade Mode Only) -->
+<div class="powerup-panel hidden" id="powerup-panel">
+  <div class="powerup-header">
+    <div class="powerup-title">🎪 Arcade Power-Ups</div>
+  </div>
+  
+  <div class="powerup-active" id="active-powerup" style="display: none;">
+    <div class="powerup-name" id="powerup-name">No Power-Up</div>
+    <div class="powerup-description" id="powerup-description">Collect power-ups around the field!</div>
+    <div class="powerup-cooldown" id="powerup-cooldown"></div>
+  </div>
+  
+  <div class="powerup-instructions">
+    <div style="color: #ffffff; font-size: 13px; margin-bottom: 8px;">
+      <strong>Available Power-Ups:</strong>
+    </div>
+    <div style="font-size: 11px; color: #ffcccc; line-height: 1.4;">
+      🧊 <strong>Freeze Blast</strong> - Freezes nearby opponents<br>
+      ⚡ <strong>Speed Boost</strong> - Doubles movement speed<br>
+      🥷 <strong>Shuriken Throw</strong> - Stuns opponents<br>
+      🔥 <strong>Fireball</strong> - Explosive projectile<br>
+      ⚽ <strong>Mega Kick</strong> - 3x ball power<br>
+      🛡️ <strong>Shield</strong> - Blocks one attack
+    </div>
+    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+      Press <span class="powerup-key">F</span> to activate power-up
+    </div>
+  </div>
+</div>
+
 <div class="goals-display" id="goals-display" style="display: none;">Goals: 0</div>
 
 <div class="game-text">GOAL!!!</div>
@@ -1625,6 +1744,7 @@
         <p>⚽ Left Click to pass</p>
         <p>⚽ Hold Right Mouse Button to charge a shot / Release to shoot</p>
         <p>⚽ Space bar to tackle or dodge</p>
+        <p>🎪 Press F to activate power-ups (Arcade Mode only)</p>
         <p>⚽ Highest score when time expires wins!</p>
         <p>⚽ Select your game mode and team to get started!</p>
       </div>
@@ -1899,6 +2019,9 @@
     
     infoPanel.style.display = 'block';
     
+    // Update power-up panel visibility based on selected mode
+    updatePowerUpPanelVisibility(mode);
+    
     // Delay server communication to avoid immediate cursor mode switch
     setTimeout(() => {
       // Send mode selection to server only when user proceeds
@@ -1980,6 +2103,75 @@
     } else {
       statsPanel.classList.add("hidden");
       toggleBtn.textContent = "📊";
+    }
+  }
+
+  function togglePowerUpPanel() {
+    const powerUpPanel = document.getElementById("powerup-panel");
+    const toggleBtn = document.getElementById("powerup-toggle");
+    
+    playUISound("button-click");
+    
+    if (powerUpPanel.classList.contains("hidden")) {
+      powerUpPanel.classList.remove("hidden");
+      toggleBtn.textContent = "🎪";
+    } else {
+      powerUpPanel.classList.add("hidden");
+      toggleBtn.textContent = "🎪";
+    }
+  }
+
+  // Show/hide power-up panel based on game mode
+  function updatePowerUpPanelVisibility(gameMode) {
+    const powerUpPanel = document.getElementById("powerup-panel");
+    const powerUpToggle = document.getElementById("powerup-toggle");
+    
+    if (gameMode === "arcade") {
+      // Show power-up panel and toggle button in arcade mode
+      powerUpToggle.style.display = "flex";
+      powerUpPanel.classList.remove("hidden");
+    } else {
+      // Hide power-up panel and toggle button in FIFA mode
+      powerUpToggle.style.display = "none";
+      powerUpPanel.classList.add("hidden");
+    }
+  }
+
+  // Update active power-up display
+  function updateActivePowerUp(powerUpData) {
+    const activePowerUp = document.getElementById("active-powerup");
+    const powerUpName = document.getElementById("powerup-name");
+    const powerUpDescription = document.getElementById("powerup-description");
+    const powerUpCooldown = document.getElementById("powerup-cooldown");
+    
+    if (powerUpData && powerUpData.type) {
+      activePowerUp.style.display = "block";
+      
+      // Map power-up types to display names and descriptions
+      const powerUpInfo = {
+        'freeze_blast': { name: '🧊 Freeze Blast', desc: 'Freezes nearby opponents for 4 seconds' },
+        'speed_boost': { name: '⚡ Speed Boost', desc: 'Doubles movement speed for 8 seconds' },
+        'shuriken_throw': { name: '🥷 Shuriken Throw', desc: 'Throws a stunning shuriken at opponents' },
+        'fireball': { name: '🔥 Fireball', desc: 'Launches an explosive fireball' },
+        'mega_kick': { name: '⚽ Mega Kick', desc: 'Next ball kick has 3x power and speed' },
+        'shield': { name: '🛡️ Shield', desc: 'Blocks one tackle or projectile attack' },
+        'speed': { name: '⚡ Speed Enhancement', desc: 'Increased movement speed' },
+        'power': { name: '💪 Power Enhancement', desc: 'Increased shot power' },
+        'precision': { name: '🎯 Precision Enhancement', desc: 'Improved accuracy' }
+      };
+      
+      const info = powerUpInfo[powerUpData.type] || { name: powerUpData.type, desc: 'Unknown power-up' };
+      powerUpName.textContent = info.name;
+      powerUpDescription.textContent = info.desc;
+      
+      if (powerUpData.cooldownRemaining && powerUpData.cooldownRemaining > 0) {
+        powerUpCooldown.textContent = `Cooldown: ${powerUpData.cooldownRemaining}s`;
+        powerUpCooldown.style.display = "block";
+      } else {
+        powerUpCooldown.style.display = "none";
+      }
+    } else {
+      activePowerUp.style.display = "none";
     }
   }
 
