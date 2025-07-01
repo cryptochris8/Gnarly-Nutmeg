@@ -70,12 +70,24 @@ startServer((world) => {
     });
     mainMusic.play(world); // Start playing immediately
 
-    // Store the gameplay music instance
-    const gameplayMusic = new Audio({
+    // Store the arcade gameplay music instance (energetic for arcade mode)
+    const arcadeGameplayMusic = new Audio({
       uri: "audio/music/always-win.mp3",
       loop: true,
       volume: 0.1,
     });
+
+    // Store the FIFA gameplay music instance (more serious/professional for FIFA mode)
+    const fifaGameplayMusic = new Audio({
+      uri: "audio/music/hytopia-main.mp3",
+      loop: true,
+      volume: 0.1,
+    });
+
+    // Helper function to get the appropriate gameplay music based on current game mode
+    const getGameplayMusic = (): Audio => {
+      return isFIFAMode() ? fifaGameplayMusic : arcadeGameplayMusic;
+    };
 
     // Create and spawn soccer ball entity
     console.log("Creating soccer ball");
@@ -353,7 +365,27 @@ startServer((world) => {
       });
 
       player.ui.on(PlayerUIEvent.DATA, async ({ playerUI, data }) => {
-        if (data.type === "team-selected" && data.team) {
+        if (data.type === "select-game-mode" && data.mode) {
+          // Handle game mode selection
+          console.log(`Player ${player.username} selected game mode: ${data.mode}`);
+          
+          // Set the game mode using the imported functions
+          if (data.mode === "fifa") {
+            setGameMode(GameMode.FIFA);
+            console.log("Game mode set to FIFA Mode");
+          } else if (data.mode === "arcade") {
+            setGameMode(GameMode.ARCADE);
+            console.log("Game mode set to Arcade Mode");
+          }
+          
+          // Send confirmation back to UI
+          player.ui.sendData({
+            type: "game-mode-confirmed",
+            mode: data.mode,
+            config: getCurrentModeConfig()
+          });
+        }
+        else if (data.type === "team-selected" && data.team) {
           // Handle game mode selection if provided
           if (data.gameMode) {
             console.log(`Player selected game mode: ${data.gameMode}${data.playerCount ? ` with ${data.playerCount}v${data.playerCount}` : ''}`);
@@ -401,9 +433,9 @@ startServer((world) => {
           playerEntity.freeze();
           
           // Music change - switch from opening music to gameplay music
-          console.log("Switching from opening music to gameplay music");
+          console.log(`Switching from opening music to gameplay music (${getCurrentGameMode()} mode)`);
           mainMusic.pause();
-          gameplayMusic.play(world);
+          getGameplayMusic().play(world);
 
           // Single player mode - uses the new spawnAIPlayers
           if (data.singlePlayerMode) {
@@ -522,7 +554,7 @@ startServer((world) => {
            
            // Reset music back to opening music
            console.log("Resetting music back to opening music");
-           gameplayMusic.pause();
+           getGameplayMusic().pause();
            mainMusic.play(world);
         } else if (game.inProgress() && playerTeam && game.getPlayerCountOnTeam(playerTeam) === 0 && !playerStillConnected) {
            // Check if a team is now empty in multiplayer
@@ -531,7 +563,7 @@ startServer((world) => {
            
            // Reset music back to opening music
            console.log("Resetting music back to opening music");
-           gameplayMusic.pause();
+           getGameplayMusic().pause();
            mainMusic.play(world);
         } else {
            console.log(`Player left but game continues - Human players: ${humanPlayerCount}, Player still connected: ${playerStillConnected}`);
@@ -590,7 +622,7 @@ startServer((world) => {
       if (args.length < 2) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Usage: /music <opening|gameplay> - Switch between music tracks"
+          "Usage: /music <opening|gameplay|status> - Switch between music tracks or check status"
         );
         return;
       }
@@ -598,18 +630,27 @@ startServer((world) => {
       const musicType = args[1].toLowerCase();
       if (musicType === "opening") {
         console.log("Manual switch to opening music");
-        gameplayMusic.pause();
+        // Pause both gameplay tracks
+        arcadeGameplayMusic.pause();
+        fifaGameplayMusic.pause();
         mainMusic.play(world);
         world.chatManager.sendPlayerMessage(player, "Switched to opening music");
       } else if (musicType === "gameplay") {
-        console.log("Manual switch to gameplay music");
+        console.log(`Manual switch to gameplay music (${getCurrentGameMode()} mode)`);
         mainMusic.pause();
-        gameplayMusic.play(world);
-        world.chatManager.sendPlayerMessage(player, "Switched to gameplay music");
+        getGameplayMusic().play(world);
+        world.chatManager.sendPlayerMessage(player, `Switched to gameplay music (${getCurrentGameMode()} mode)`);
+      } else if (musicType === "status") {
+        const currentMode = getCurrentGameMode();
+        const trackName = currentMode === GameMode.FIFA ? "hytopia-main.mp3" : "always-win.mp3";
+        world.chatManager.sendPlayerMessage(player, `=== MUSIC STATUS ===`);
+        world.chatManager.sendPlayerMessage(player, `Current Mode: ${currentMode.toUpperCase()}`);
+        world.chatManager.sendPlayerMessage(player, `Gameplay Track: ${trackName}`);
+        world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game.inProgress() ? "Yes" : "No"}`);
       } else {
         world.chatManager.sendPlayerMessage(
           player,
-          "Invalid option. Use 'opening' or 'gameplay'"
+          "Invalid option. Use 'opening', 'gameplay', or 'status'"
         );
       }
     });
@@ -1041,7 +1082,20 @@ startServer((world) => {
 
     // Add game mode selection commands
     world.chatManager.registerCommand("/fifa", (player, args) => {
+      const previousMode = getCurrentGameMode();
       setGameMode(GameMode.FIFA);
+      
+      // Switch music if game is in progress and mode actually changed
+      if (previousMode !== GameMode.FIFA && game.inProgress()) {
+        console.log("Switching to FIFA mode music during active game");
+        arcadeGameplayMusic.pause();
+        fifaGameplayMusic.play(world);
+        world.chatManager.sendPlayerMessage(
+          player,
+          `🎵 Switched to FIFA mode music`
+        );
+      }
+      
       world.chatManager.sendPlayerMessage(
         player,
         `🏆 Switched to FIFA Mode - Realistic soccer simulation`
@@ -1057,7 +1111,20 @@ startServer((world) => {
     });
 
     world.chatManager.registerCommand("/arcade", (player, args) => {
+      const previousMode = getCurrentGameMode();
       setGameMode(GameMode.ARCADE);
+      
+      // Switch music if game is in progress and mode actually changed
+      if (previousMode !== GameMode.ARCADE && game.inProgress()) {
+        console.log("Switching to Arcade mode music during active game");
+        fifaGameplayMusic.pause();
+        arcadeGameplayMusic.play(world);
+        world.chatManager.sendPlayerMessage(
+          player,
+          `🎵 Switched to Arcade mode music`
+        );
+      }
+      
       world.chatManager.sendPlayerMessage(
         player,
         `🎪 Switched to Arcade Mode - Enhanced soccer with power-ups!`
