@@ -21,6 +21,7 @@
     background: transparent;
     overflow: hidden;
     user-select: none;
+    cursor: default;
   }
 
   /* ===== PHASE 1: ENHANCED SCORE DISPLAY ===== */
@@ -303,13 +304,15 @@
     background: linear-gradient(135deg, rgba(20, 20, 20, 0.95), rgba(40, 40, 40, 0.95));
     border: 3px solid #ffffff;
     border-radius: 20px;
-    padding: 40px;
+    padding: 30px;
     text-align: center;
     color: #ffffff;
     font-family: "Trebuchet MS", "Arial", sans-serif;
     z-index: 1000;
-    min-width: 840px;
-    max-width: 1040px;
+    width: 90vw;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
     transition: all 0.3s ease-in-out;
     backdrop-filter: blur(15px);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
@@ -332,8 +335,8 @@
   }
 
   .title-logo {
-    width: 350px;
-    height: 350px;
+    width: min(280px, 40vw);
+    height: min(280px, 40vw);
     object-fit: contain;
     filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
   }
@@ -349,11 +352,12 @@
     border-radius: 12px;
     color: white;
     padding: 12px 24px;
-    cursor: pointer;
+    cursor: pointer !important;
     font-size: 16px;
     transition: all 0.3s ease;
     font-weight: bold;
     backdrop-filter: blur(10px);
+    pointer-events: auto;
   }
 
   .how-to-play-btn:hover {
@@ -418,8 +422,8 @@
     display: flex;
     gap: 24px;
     justify-content: center;
-    margin-bottom: 24px;
-    margin-top: 15px;
+    margin: 20px 0;
+    flex-wrap: wrap;
   }
 
   .team-column {
@@ -427,11 +431,12 @@
     flex-direction: column;
     align-items: center;
     gap: 8px;
+    min-width: 140px;
   }
 
   .team-btn {
     padding: 16px 32px;
-    border: 2px solid transparent;
+    border: 3px solid transparent;
     border-radius: 8px;
     font-size: 16px;
     font-weight: bold;
@@ -440,6 +445,23 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     min-width: 140px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .team-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .team-btn:hover::before {
+    left: 100%;
   }
 
   .team-btn.red {
@@ -451,14 +473,14 @@
   .team-btn.red:hover {
     background: linear-gradient(135deg, #ff6666, #ff4444);
     border-color: #ffffff;
-    box-shadow: 0 0 12px rgba(255, 68, 68, 0.6);
-    transform: translateY(-1px);
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.6);
+    transform: translateY(-2px) scale(1.05);
   }
 
   .team-btn.red.selected {
     border-color: #ffffff;
-    box-shadow: 0 0 16px rgba(255, 68, 68, 0.8);
-    transform: translateY(-1px);
+    box-shadow: 0 0 25px rgba(255, 68, 68, 0.8);
+    transform: translateY(-2px) scale(1.05);
   }
 
   .team-btn.blue {
@@ -470,21 +492,24 @@
   .team-btn.blue:hover {
     background: linear-gradient(135deg, #6666ff, #4444ff);
     border-color: #ffffff;
-    box-shadow: 0 0 12px rgba(68, 68, 255, 0.6);
-    transform: translateY(-1px);
+    box-shadow: 0 0 20px rgba(68, 68, 255, 0.6);
+    transform: translateY(-2px) scale(1.05);
   }
 
   .team-btn.blue.selected {
     border-color: #ffffff;
-    box-shadow: 0 0 16px rgba(68, 68, 255, 0.8);
-    transform: translateY(-1px);
+    box-shadow: 0 0 25px rgba(68, 68, 255, 0.8);
+    transform: translateY(-2px) scale(1.05);
   }
 
   .player-count {
     font-size: 13px;
     color: #cccccc;
     font-weight: bold;
-    opacity: 0.8;
+    opacity: 0.9;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 8px;
+    border-radius: 4px;
   }
 
   .score-time-container {
@@ -869,14 +894,57 @@
     }
     
     .instructions-panel {
-      min-width: 90%;
-      max-width: 95%;
-      padding: 30px 20px;
+      width: 95vw;
+      padding: 20px;
+      max-height: 95vh;
     }
     
     .title-logo {
-      width: 250px;
-      height: 250px;
+      width: min(200px, 50vw);
+      height: min(200px, 50vw);
+    }
+    
+    .game-mode-buttons {
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+    }
+    
+    .game-mode-btn {
+      min-width: 80%;
+      max-width: 300px;
+      padding: 18px 20px;
+    }
+    
+    .team-selection {
+      gap: 15px;
+    }
+    
+    .team-btn {
+      min-width: 120px;
+      padding: 14px 24px;
+      font-size: 14px;
+    }
+    
+    .selected-mode-info {
+      margin: 15px 0;
+      padding: 12px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .instructions-panel {
+      padding: 15px;
+    }
+    
+    .game-mode-title {
+      font-size: 20px;
+    }
+    
+    .team-selection {
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
     }
   }
 
@@ -1049,6 +1117,420 @@
     color: #ccc;
     text-transform: uppercase;
   }
+
+  /* ===== GAME MODE SELECTION STYLES ===== */
+  .game-mode-selection {
+    margin: 20px 0;
+    padding: 0 10px;
+  }
+
+  .game-mode-title {
+    color: #FFD700;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .game-mode-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .game-mode-btn {
+    position: relative;
+    padding: 20px 25px;
+    border: 3px solid transparent;
+    border-radius: 15px;
+    background: rgba(0, 0, 0, 0.4);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer !important;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    min-width: 200px;
+    flex: 1;
+    max-width: 300px;
+    pointer-events: auto;
+    outline: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .game-mode-btn.fifa {
+    border-color: #00AA00;
+    background: linear-gradient(135deg, rgba(0, 170, 0, 0.2), rgba(0, 170, 0, 0.1));
+  }
+
+  .game-mode-btn.fifa:hover {
+    border-color: #00FF00;
+    background: linear-gradient(135deg, rgba(0, 170, 0, 0.4), rgba(0, 170, 0, 0.2));
+    box-shadow: 0 10px 30px rgba(0, 170, 0, 0.3);
+    transform: translateY(-3px);
+  }
+
+  .game-mode-btn.arcade {
+    border-color: #FF6600;
+    background: linear-gradient(135deg, rgba(255, 102, 0, 0.2), rgba(255, 102, 0, 0.1));
+  }
+
+  .game-mode-btn.arcade:hover {
+    border-color: #FF8800;
+    background: linear-gradient(135deg, rgba(255, 102, 0, 0.4), rgba(255, 102, 0, 0.2));
+    box-shadow: 0 10px 30px rgba(255, 102, 0, 0.3);
+    transform: translateY(-3px);
+  }
+
+  .game-mode-btn.selected {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+    border-color: #FFD700;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1));
+  }
+
+  .game-mode-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .game-mode-btn:hover::before {
+    left: 100%;
+  }
+
+  .mode-description {
+    font-size: 12px;
+    margin-top: 8px;
+    opacity: 0.8;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .mode-features {
+    font-size: 10px;
+    margin-top: 5px;
+    opacity: 0.6;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .selected-mode-info {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 20px auto;
+    max-width: 100%;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    backdrop-filter: blur(10px);
+  }
+
+  .selected-mode-info h3 {
+    color: #FFD700;
+    font-size: 16px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .selected-mode-info p {
+    color: #ffffff;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+
+  .selected-mode-info .features-list {
+    color: #cccccc;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  /* Enhanced Team Selection */
+  .team-selection {
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .team-selection-title {
+    color: #FFD700;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .team-buttons-container {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .team-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+  }
+
+  .team-btn {
+    padding: 16px 32px;
+    border: 3px solid transparent;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer !important;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 140px;
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+    outline: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .team-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .team-btn:hover::before {
+    left: 100%;
+  }
+
+  .team-btn.red {
+    background: linear-gradient(135deg, #ff4444, #cc3333);
+    color: #ffffff;
+    border-color: #ff6666;
+  }
+
+  .team-btn.red:hover {
+    background: linear-gradient(135deg, #ff6666, #ff4444);
+    border-color: #ffffff;
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.6);
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  .team-btn.red.selected {
+    border-color: #ffffff;
+    box-shadow: 0 0 25px rgba(255, 68, 68, 0.8);
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  .team-btn.blue {
+    background: linear-gradient(135deg, #4444ff, #3333cc);
+    color: #ffffff;
+    border-color: #6666ff;
+  }
+
+  .team-btn.blue:hover {
+    background: linear-gradient(135deg, #6666ff, #4444ff);
+    border-color: #ffffff;
+    box-shadow: 0 0 20px rgba(68, 68, 255, 0.6);
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  .team-btn.blue.selected {
+    border-color: #ffffff;
+    box-shadow: 0 0 25px rgba(68, 68, 255, 0.8);
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  .player-count {
+    font-size: 13px;
+    color: #cccccc;
+    font-weight: bold;
+    opacity: 0.9;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  /* Game Options Styling */
+  .game-options {
+    text-align: center;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .option-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer !important;
+    color: #ffffff;
+    font-size: 14px;
+    user-select: none;
+    position: relative;
+    padding-left: 30px;
+    pointer-events: auto;
+  }
+
+  .option-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+
+  .checkmark {
+    position: absolute;
+    left: 0;
+    height: 20px;
+    width: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+
+  .option-label:hover .checkmark {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .option-label input:checked ~ .checkmark {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+  }
+
+  .checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+  }
+
+  .option-label input:checked ~ .checkmark:after {
+    display: block;
+  }
+
+  .option-label .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+  }
+
+  .option-text {
+    margin-left: 8px;
+    opacity: 0.9;
+  }
+
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    .instructions-panel {
+      width: 95vw;
+      padding: 20px;
+      max-height: 95vh;
+    }
+    
+    .title-logo {
+      width: min(200px, 50vw);
+      height: min(200px, 50vw);
+    }
+    
+    .game-mode-buttons {
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+    }
+    
+    .game-mode-btn {
+      min-width: 80%;
+      max-width: 300px;
+      padding: 18px 20px;
+    }
+    
+         .team-selection {
+       padding: 15px;
+     }
+
+     .team-selection-title {
+       font-size: 18px;
+       margin-bottom: 15px;
+     }
+
+     .team-buttons-container {
+       gap: 15px;
+     }
+     
+     .team-btn {
+       min-width: 120px;
+       padding: 14px 24px;
+       font-size: 14px;
+     }
+    
+    .selected-mode-info {
+      margin: 15px 0;
+      padding: 12px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .instructions-panel {
+      padding: 15px;
+    }
+    
+    .game-mode-title {
+      font-size: 20px;
+    }
+    
+    .team-selection {
+      padding: 12px;
+    }
+
+    .team-selection-title {
+      font-size: 16px;
+    }
+
+    .team-buttons-container {
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .team-btn {
+      min-width: 200px;
+      padding: 16px 20px;
+    }
+  }
 </style>
 
 <!-- SIMPLE BULLETPROOF SCOREBOARD -->
@@ -1144,9 +1626,32 @@
         <p>⚽ Hold Right Mouse Button to charge a shot / Release to shoot</p>
         <p>⚽ Space bar to tackle or dodge</p>
         <p>⚽ Highest score when time expires wins!</p>
-        <p>⚽ Select your team to get started!</p>
+        <p>⚽ Select your game mode and team to get started!</p>
       </div>
     </button>
+  </div>
+
+  <!-- Game Mode Selection -->
+  <div class="game-mode-selection" id="gameModeSelection">
+    <div class="game-mode-title">Choose Game Mode</div>
+    <div class="game-mode-buttons">
+      <button class="game-mode-btn fifa" id="fifaModeBtn">
+        🏆 FIFA Mode
+        <div class="mode-description">Realistic Soccer Simulation</div>
+        <div class="mode-features">• Pure soccer gameplay • 5-minute matches • No power-ups</div>
+      </button>
+      <button class="game-mode-btn arcade" id="arcadeModeBtn">
+        🎪 Arcade Mode
+        <div class="mode-description">Enhanced Soccer Action</div>
+        <div class="mode-features">• Power-ups & abilities • 3-minute matches • Special effects</div>
+      </button>
+    </div>
+    
+    <div class="selected-mode-info" id="selectedModeInfo" style="display: none;">
+      <h3 id="modeInfoTitle">Select a Game Mode</h3>
+      <p id="modeInfoDescription"></p>
+      <div class="features-list" id="modeInfoFeatures"></div>
+    </div>
   </div>
   
   <div id="game-over-content" style="display: none;">
@@ -1252,26 +1757,31 @@
     </div>
   </div>
 
-  <div class="team-selection">
-    <div class="team-column">
-      <button id="redTeamBtn" class="team-btn red">
-        Join Red
-      </button>
-      <div class="player-count" id="red-team-count">Players: 0/6</div>
+  <!-- Team Selection Section -->
+  <div class="team-selection" id="teamSelection" style="display: none;">
+    <div class="team-selection-title">Choose Your Team</div>
+    <div class="team-buttons-container">
+      <div class="team-column">
+        <button id="redTeamBtn" class="team-btn red">
+          🔴 Join Red Team
+        </button>
+        <div class="player-count" id="red-team-count">Players: 0/6</div>
+      </div>
+      <div class="team-column">
+        <button id="blueTeamBtn" class="team-btn blue">
+          🔵 Join Blue Team
+        </button>
+        <div class="player-count" id="blue-team-count">Players: 0/6</div>
+      </div>
     </div>
-    <div class="team-column">
-      <button id="blueTeamBtn" class="team-btn blue">
-        Join Blue
-      </button>
-      <div class="player-count" id="blue-team-count">Players: 0/6</div>
+    
+    <div class="game-options">
+      <label class="option-label">
+        <input type="checkbox" id="singlePlayerToggle" checked>
+        <span class="checkmark"></span>
+        <span class="option-text">Play with AI teammates & opponents</span>
+      </label>
     </div>
-  </div>
-  
-  <div style="margin-top: 20px; text-align: center;">
-    <label style="color: white; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; font-size: 13px; opacity: 0.9;">
-      <input type="checkbox" id="singlePlayerToggle" checked style="transform: scale(1.0); margin-right: 8px;">
-      <span>Play with AI teammates & opponents</span>
-    </label>
   </div>
 </div>
 
@@ -1307,7 +1817,7 @@
   let powerBarPercentage = 0;
   let timeUntilStart = 0;
   let timeUntilStartInterval = null;
-  let selectedGameMode = "large-stadium";
+  let selectedGameMode = null; // Will be set to 'fifa' or 'arcade'
   
   // New Phase 1 variables
   let currentGameStats = {
@@ -1336,6 +1846,85 @@
       team: team
     });
   }
+
+  // ===== GAME MODE SELECTION FUNCTIONS =====
+  function selectGameMode(mode, event) {
+    // Prevent any default behavior that might trigger cursor mode change
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    console.log(`Game mode selected: ${mode}`); // Debug log
+    selectedGameMode = mode;
+    
+    // Play UI sound without sending to server immediately
+    if (audioEnabled) {
+      console.log("Playing UI sound locally"); // Debug log
+    }
+    
+    // Update button states
+    document.querySelectorAll('.game-mode-btn').forEach(btn => {
+      btn.classList.remove('selected');
+    });
+    document.querySelector(`.game-mode-btn.${mode}`).classList.add('selected');
+    
+    // Show mode info
+    const infoPanel = document.getElementById('selectedModeInfo');
+    const titleEl = document.getElementById('modeInfoTitle');
+    const descEl = document.getElementById('modeInfoDescription');
+    const featuresEl = document.getElementById('modeInfoFeatures');
+    
+    if (mode === 'fifa') {
+      titleEl.textContent = '🏆 FIFA Mode Selected';
+      descEl.textContent = 'Experience realistic soccer simulation with authentic gameplay mechanics and timing.';
+      featuresEl.innerHTML = `
+        • 5-minute regulation matches with possible overtime<br>
+        • Pure soccer gameplay - no power-ups or special abilities<br>
+        • Realistic physics and player movement<br>
+        • Focus on skill, strategy, and teamwork<br>
+        • Traditional soccer rules and mechanics
+      `;
+    } else if (mode === 'arcade') {
+      titleEl.textContent = '🎪 Arcade Mode Selected';
+      descEl.textContent = 'Fast-paced soccer action with enhanced gameplay features and special effects.';
+      featuresEl.innerHTML = `
+        • 3-minute quick matches for rapid gameplay<br>
+        • Power-ups and special abilities for enhanced action<br>
+        • Enhanced physics with special moves<br>
+        • Particle effects and visual enhancements<br>
+        • Style points and arcade-style scoring
+      `;
+    }
+    
+    infoPanel.style.display = 'block';
+    
+    // Delay server communication to avoid immediate cursor mode switch
+    setTimeout(() => {
+      // Send mode selection to server only when user proceeds
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        console.log("Sending game mode to server:", mode); // Debug log
+        hytopia.sendData({
+          type: "select-game-mode",
+          mode: mode
+        });
+      }
+    }, 100);
+    
+    // Show team selection after a brief delay
+    setTimeout(() => {
+      document.getElementById('teamSelection').style.display = 'block';
+      
+      // Smooth scroll to team selection
+      document.getElementById('teamSelection').scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 500);
+  }
+
+  // Make function globally accessible
+  window.selectGameMode = selectGameMode;
 
   // ===== ENHANCED SCORE ANIMATIONS =====
   function animateScoreChange(team, newScore) {
@@ -1471,10 +2060,25 @@
   window.testScoreDisplay = testScoreDisplay;
 
   // ===== TEAM SELECTION =====
-  function selectTeam(team) {
+  function selectTeam(team, event) {
+    // Prevent any default behavior that might trigger cursor mode change
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
     console.log(`Team selected: ${team}`);
     
-    playUISound("team-select");
+    // Ensure a game mode has been selected
+    if (!selectedGameMode) {
+      alert("Please select a game mode first!");
+      return;
+    }
+    
+    // Play UI sound locally without server communication
+    if (audioEnabled) {
+      console.log("Playing team selection sound locally");
+    }
     
     const buttons = document.querySelectorAll(".team-btn");
     buttons.forEach((btn) => btn.classList.remove("selected"));
@@ -1484,14 +2088,21 @@
 
     const singlePlayerMode = document.getElementById("singlePlayerToggle").checked;
 
+    // Hide the instructions panel
     document.getElementById("instructionsPanel").classList.add("hidden");
     
-    hytopia.sendData({
-      type: "team-selected",
-      team: team,
-      singlePlayerMode: singlePlayerMode,
-      gameMode: selectedGameMode
-    });
+    // Send team selection to server after a brief delay to ensure UI transition completes
+    setTimeout(() => {
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        console.log("Sending team selection to server:", team);
+        hytopia.sendData({
+          type: "team-selected",
+          team: team,
+          singlePlayerMode: singlePlayerMode,
+          gameMode: selectedGameMode
+        });
+      }
+    }, 200);
   }
 
   // ===== INITIALIZATION =====
@@ -1542,20 +2153,68 @@
   // Add click event listeners immediately (DOM is already loaded since script is at bottom)
   const redTeamBtn = document.getElementById("redTeamBtn");
   const blueTeamBtn = document.getElementById("blueTeamBtn");
+  const fifaModeBtn = document.getElementById("fifaModeBtn");
+  const arcadeModeBtn = document.getElementById("arcadeModeBtn");
   
   console.log("Red button:", redTeamBtn); // Debug log
   console.log("Blue button:", blueTeamBtn); // Debug log
+  console.log("FIFA button:", fifaModeBtn); // Debug log
+  console.log("Arcade button:", arcadeModeBtn); // Debug log
   
+  // Team selection event listeners
   if (redTeamBtn && blueTeamBtn) {
-    redTeamBtn.addEventListener("click", () => selectTeam("red"));
-    blueTeamBtn.addEventListener("click", () => selectTeam("blue"));
-    console.log("Event listeners added successfully"); // Debug log
+    redTeamBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectTeam("red", e);
+    });
+    blueTeamBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectTeam("blue", e);
+    });
+    console.log("Team selection event listeners added successfully"); // Debug log
   } else {
     console.error("Could not find team buttons!"); // Debug log
+  }
+  
+  // Game mode selection event listeners
+  if (fifaModeBtn && arcadeModeBtn) {
+    fifaModeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectGameMode("fifa", e);
+    });
+    arcadeModeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectGameMode("arcade", e);
+    });
+    console.log("Game mode event listeners added successfully"); // Debug log
+  } else {
+    console.error("Could not find game mode buttons!"); // Debug log
   }
 
   // Initialize the UI
   initializeScoreDisplay();
+  
+  // ===== MESSAGE HANDLERS =====
+  // Listen for messages from the server
+  if (typeof hytopia !== 'undefined' && hytopia.onMessage) {
+    hytopia.onMessage((data) => {
+      if (data.type === "game-mode-confirmed") {
+        console.log(`Game mode confirmed: ${data.mode}`);
+        // Update UI to show the confirmed mode
+        const selectedModeInfo = document.getElementById('selectedModeInfo');
+        if (selectedModeInfo) {
+          selectedModeInfo.style.borderColor = '#00FF00';
+          setTimeout(() => {
+            selectedModeInfo.style.borderColor = 'rgba(255, 215, 0, 0.3)';
+          }, 1000);
+        }
+      }
+    });
+  }
   
   // Add debugging function to test score visibility
   function testScoreDisplay() {
@@ -1871,12 +2530,14 @@
     const gameOverContent = document.getElementById("game-over-content");
     const howToPlayContainer = document.querySelector(".how-to-play-container");
     const teamSelection = document.querySelector(".team-selection");
+    const gameModeSelection = document.getElementById("gameModeSelection");
     
     playUISound("game-over");
     
     // Hide other content
     if (howToPlayContainer) howToPlayContainer.style.display = "none";
     if (teamSelection) teamSelection.style.display = "none";
+    if (gameModeSelection) gameModeSelection.style.display = "none";
     gameOverContent.style.display = "block";
     
     // Update header information
@@ -2045,19 +2706,35 @@
     document.getElementById('blue-players-stats').style.display = team === 'blue' ? 'block' : 'none';
   }
 
+  // Make function globally accessible
+  window.showPlayerTab = showPlayerTab;
+
   function closeGameOverScreen() {
     const panel = document.getElementById("instructionsPanel");
     const gameOverContent = document.getElementById("game-over-content");
     const howToPlayContainer = document.querySelector(".how-to-play-container");
     const teamSelection = document.querySelector(".team-selection");
+    const gameModeSelection = document.getElementById("gameModeSelection");
+    const selectedModeInfo = document.getElementById("selectedModeInfo");
+    
+    // Reset game mode selection
+    selectedGameMode = null;
+    document.querySelectorAll('.game-mode-btn').forEach(btn => {
+      btn.classList.remove('selected');
+    });
+    if (selectedModeInfo) selectedModeInfo.style.display = "none";
     
     // Hide game over content and show normal lobby
     gameOverContent.style.display = "none";
     if (howToPlayContainer) howToPlayContainer.style.display = "block";
-    if (teamSelection) teamSelection.style.display = "block";
+    if (gameModeSelection) gameModeSelection.style.display = "block";
+    if (teamSelection) teamSelection.style.display = "none"; // Hide until mode is selected again
     
     playUISound("button-click");
   }
+
+  // Make function globally accessible
+  window.closeGameOverScreen = closeGameOverScreen;
 </script>
 
 </body>
