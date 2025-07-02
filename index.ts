@@ -413,6 +413,18 @@ startServer((world) => {
             return;
           }
           
+          // Check if player already has an entity (shouldn't happen after fix)
+          const existingEntities = world.entityManager.getPlayerEntitiesByPlayer(player);
+          if (existingEntities.length > 0) {
+            console.warn(`⚠️  Player ${player.username} already has ${existingEntities.length} entities! Cleaning up...`);
+            existingEntities.forEach(entity => {
+              if (entity.isSpawned) {
+                console.log(`Despawning existing entity: ${entity.id}`);
+                entity.despawn();
+              }
+            });
+          }
+
           // Join game and team
           game.joinGame(player.username, player.username);
           game.joinTeam(player.username, data.team);

@@ -2636,6 +2636,10 @@
     if (data.type === "regulation-time-stats") {
       showRegulationTimeStats(data);
     }
+
+    if (data.type === "game-reset") {
+      handleGameReset(data);
+    }
   });
 
   // ===== ENHANCED GOAL CELEBRATION =====
@@ -2927,6 +2931,67 @@
 
   // Make function globally accessible
   window.closeGameOverScreen = closeGameOverScreen;
+
+  function handleGameReset(data) {
+    console.log("Game reset received:", data.message);
+    
+    // Reset UI state to lobby
+    const panel = document.getElementById("instructionsPanel");
+    const gameOverContent = document.getElementById("game-over-content");
+    const howToPlayContainer = document.querySelector(".how-to-play-container");
+    const teamSelection = document.querySelector(".team-selection");
+    const gameModeSelection = document.getElementById("gameModeSelection");
+    const selectedModeInfo = document.getElementById("selectedModeInfo");
+    
+    // Reset game mode selection
+    selectedGameMode = null;
+    document.querySelectorAll('.game-mode-btn').forEach(btn => {
+      btn.classList.remove('selected');
+    });
+    if (selectedModeInfo) selectedModeInfo.style.display = "none";
+    
+    // Clear team selection
+    document.querySelectorAll('.team-btn').forEach(btn => {
+      btn.classList.remove('selected');
+    });
+    
+    // Show lobby UI
+    gameOverContent.style.display = "none";
+    if (howToPlayContainer) howToPlayContainer.style.display = "block";
+    if (gameModeSelection) gameModeSelection.style.display = "block";
+    if (teamSelection) teamSelection.style.display = "none"; // Hide until mode is selected again
+    
+    // Reset scoreboard
+    initializeScoreDisplay();
+    
+    // Show notification message
+    if (data.message) {
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 193, 7, 0.9);
+        color: black;
+        padding: 15px 25px;
+        border-radius: 8px;
+        font-weight: bold;
+        z-index: 10000;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      `;
+      notification.textContent = data.message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        if (notification.parentNode) {
+          document.body.removeChild(notification);
+        }
+      }, 4000);
+    }
+    
+    playUISound("button-click");
+  }
 </script>
 
 </body>

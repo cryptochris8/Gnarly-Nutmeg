@@ -710,6 +710,8 @@ export class SoccerGame {
   }
 
   public resetGame() {
+    console.log("🔄 RESETTING GAME - Starting cleanup process...");
+    
     // Clear all intervals
     if (this.gameLoopInterval) {
       clearInterval(this.gameLoopInterval);
@@ -723,19 +725,35 @@ export class SoccerGame {
         ai.despawn();
       }
     });
+    
+    // Clear the AI players list to prevent stale references
+    this.aiPlayersList = [];
 
-    // Reset player stats and clean up entities
+    // Reset player stats and clean up ALL entities (including human players)
     this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
       if (entity instanceof SoccerPlayerEntity) {
         entity.resetStats();
-        entity.player.ui.sendData({
-          type: "update-goals",
-          goals: 0,
-        });
+        
+        // Send UI update only if player is still connected
+        try {
+          entity.player.ui.sendData({
+            type: "update-goals",
+            goals: 0,
+          });
+        } catch (error) {
+          console.log(`Could not send UI update to disconnected player: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+        
         // Ensure no ball attachments remain
         if (this.attachedPlayer === entity) {
           this.attachedPlayer = null;
           sharedState.setAttachedPlayer(null);
+        }
+        
+        // Despawn ALL player entities to prevent duplicates when restarting
+        if (entity.isSpawned) {
+          console.log(`Despawning player entity: ${entity.id} (${entity instanceof AIPlayerEntity ? 'AI' : 'Human'})`);
+          entity.despawn();
         }
       }
     });
@@ -768,7 +786,15 @@ export class SoccerGame {
     
     sharedState.resetBallMovementFlag();
 
+    // Notify all connected players that the game has been reset
+    this.sendDataToAllPlayers({
+      type: "game-reset",
+      message: "Game has been reset. Please select your team again."
+    });
+
     this.sendTeamCounts();
+    
+    console.log("✅ GAME RESET COMPLETE - All entities cleaned up, UI notified");
   }
 
   public getState(): GameState {
