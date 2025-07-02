@@ -2640,6 +2640,12 @@
     if (data.type === "game-reset") {
       handleGameReset(data);
     }
+
+    // Handle powerup feedback from F key activation
+    if (data.type === "powerup-feedback") {
+      console.log("Powerup feedback received:", data);
+      showPowerupFeedback(data);
+    }
   });
 
   // ===== ENHANCED GOAL CELEBRATION =====
@@ -2717,6 +2723,60 @@
     
     setTimeout(() => {
       abilityIcon.classList.remove("visible");
+    }, 3000);
+  }
+
+  // ===== POWERUP FEEDBACK =====
+  function showPowerupFeedback(data) {
+    // Create or update powerup feedback notification
+    let notification = document.getElementById("powerup-notification");
+    
+    if (!notification) {
+      notification = document.createElement('div');
+      notification.id = "powerup-notification";
+      notification.style.cssText = `
+        position: fixed;
+        top: 150px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px 25px;
+        border-radius: 10px;
+        font-weight: bold;
+        font-size: 16px;
+        z-index: 9999;
+        transition: all 0.3s ease;
+        opacity: 0;
+        pointer-events: none;
+        max-width: 300px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+      `;
+      document.body.appendChild(notification);
+    }
+
+    // Style based on success/failure
+    if (data.success) {
+      notification.style.background = "linear-gradient(135deg, rgba(0, 200, 0, 0.9), rgba(0, 150, 0, 0.9))";
+      notification.style.color = "#ffffff";
+      notification.style.borderColor = "#00ff00";
+      notification.textContent = data.message || `🎮 POWERUP ACTIVATED!`;
+      
+      // Play success sound
+      playUISound("button-click");
+    } else {
+      notification.style.background = "linear-gradient(135deg, rgba(200, 100, 0, 0.9), rgba(150, 80, 0, 0.9))";
+      notification.style.color = "#ffffff";
+      notification.style.borderColor = "#ffaa00";
+      notification.textContent = data.message || "❌ Powerup failed";
+    }
+
+    // Show notification
+    notification.style.opacity = "1";
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+      notification.style.opacity = "0";
     }, 3000);
   }
 

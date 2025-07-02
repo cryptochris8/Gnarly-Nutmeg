@@ -100,6 +100,9 @@ startServer((world) => {
     // Initialize arcade enhancement system (only active in arcade mode)
     const arcadeManager = new ArcadeEnhancementManager(world);
     
+    // Attach arcade manager to world for direct access from controllers
+    (world as any)._arcadeManager = arcadeManager;
+    
     // Initialize FIFA crowd atmosphere system (only active in FIFA mode)
     const fifaCrowdManager = new FIFACrowdManager(world);
     
