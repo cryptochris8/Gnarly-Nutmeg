@@ -1657,67 +1657,117 @@
     right: 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     pointer-events: none;
     z-index: 1000;
   }
 
   .powerup-button {
-    width: 80px;
-    height: 80px;
+    width: 85px;
+    height: 85px;
     border-radius: 50%;
     border: 3px solid #ffd700;
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    background: linear-gradient(135deg, #ff6b35, #f7931e, #ff8c42);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     pointer-events: auto;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+    box-shadow: 
+      0 4px 15px rgba(255, 107, 53, 0.4),
+      inset 0 2px 4px rgba(255, 255, 255, 0.2),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .powerup-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s ease;
   }
 
   .powerup-button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 25px rgba(255, 107, 53, 0.6);
+    transform: scale(1.15) rotate(5deg);
+    box-shadow: 
+      0 8px 30px rgba(255, 107, 53, 0.6),
+      0 0 20px rgba(255, 215, 0, 0.4),
+      inset 0 2px 6px rgba(255, 255, 255, 0.3);
     border-color: #ffed4e;
+    border-width: 4px;
+  }
+
+  .powerup-button:hover::before {
+    left: 100%;
+  }
+
+  .powerup-button:active {
+    transform: scale(1.05) rotate(2deg);
+    transition: all 0.1s ease;
   }
 
   .powerup-button.on-cooldown {
-    background: linear-gradient(135deg, #666, #888);
+    background: linear-gradient(135deg, #666, #888, #777);
     border-color: #aaa;
     cursor: not-allowed;
-    transform: scale(0.9);
+    transform: scale(0.85);
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.3),
+      inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    filter: grayscale(0.7);
+  }
+
+  .powerup-button.on-cooldown:hover {
+    transform: scale(0.85);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   .powerup-button.activating {
-    animation: powerup-activation 0.6s ease-out;
+    animation: powerup-activation 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
 
   @keyframes powerup-activation {
     0% { 
-      transform: scale(1);
+      transform: scale(1) rotate(0deg);
       box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
     }
-    50% { 
-      transform: scale(1.3);
-      box-shadow: 0 8px 30px rgba(255, 215, 0, 0.8);
+    30% { 
+      transform: scale(1.4) rotate(15deg);
+      box-shadow: 0 12px 40px rgba(255, 215, 0, 0.8);
       border-color: #ffed4e;
+      border-width: 5px;
+    }
+    60% {
+      transform: scale(1.2) rotate(-5deg);
+      box-shadow: 0 10px 35px rgba(255, 107, 53, 0.7);
     }
     100% { 
-      transform: scale(1);
+      transform: scale(1) rotate(0deg);
       box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
     }
   }
 
   .powerup-icon {
-    font-size: 32px;
+    font-size: 36px;
     color: white;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    text-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(255, 255, 255, 0.3);
     z-index: 2;
+    transition: all 0.3s ease;
+  }
+
+  .powerup-button:hover .powerup-icon {
+    font-size: 40px;
+    text-shadow: 
+      3px 3px 6px rgba(0, 0, 0, 0.8),
+      0 0 15px rgba(255, 255, 255, 0.5);
   }
 
   .powerup-cooldown-overlay {
@@ -1726,23 +1776,39 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: conic-gradient(from 0deg, transparent 0%, rgba(0, 0, 0, 0.7) 0%);
+    background: conic-gradient(from 0deg, transparent 0%, rgba(0, 0, 0, 0.8) 0%);
     border-radius: 50%;
     transition: background 0.1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .powerup-key-hint {
     position: absolute;
-    top: -25px;
+    top: -30px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
     color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 6px 10px;
+    border-radius: 6px;
     font-size: 12px;
     font-weight: bold;
     pointer-events: none;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+
+  .powerup-button:hover .powerup-key-hint {
+    opacity: 1;
+    top: -35px;
   }
 
   .powerup-effect-display {
@@ -1753,29 +1819,35 @@
     font-size: 48px;
     font-weight: bold;
     color: #ffd700;
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+    text-shadow: 
+      3px 3px 6px rgba(0, 0, 0, 0.8),
+      0 0 20px rgba(255, 215, 0, 0.6);
     pointer-events: none;
     z-index: 2000;
     opacity: 0;
-    animation: powerup-effect-flash 2s ease-out;
+    animation: powerup-effect-flash 2.5s ease-out;
   }
 
   @keyframes powerup-effect-flash {
     0% { 
       opacity: 0;
-      transform: translate(-50%, -50%) scale(0.5);
+      transform: translate(-50%, -50%) scale(0.3) rotate(-10deg);
     }
-    20% { 
+    15% { 
       opacity: 1;
-      transform: translate(-50%, -50%) scale(1.2);
+      transform: translate(-50%, -50%) scale(1.3) rotate(5deg);
     }
-    80% { 
+    30% {
       opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
+      transform: translate(-50%, -50%) scale(1.1) rotate(-2deg);
+    }
+    70% { 
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1) rotate(0deg);
     }
     100% { 
       opacity: 0;
-      transform: translate(-50%, -50%) scale(0.8);
+      transform: translate(-50%, -50%) scale(0.8) rotate(0deg);
     }
   }
 
@@ -1783,30 +1855,401 @@
     position: fixed;
     top: 20px;
     left: 20px;
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    background: linear-gradient(135deg, #ff6b35, #f7931e, #ff8c42);
     color: white;
-    padding: 10px 20px;
-    border-radius: 25px;
+    padding: 12px 24px;
+    border-radius: 30px;
     font-weight: bold;
     font-size: 16px;
-    border: 2px solid #ffd700;
-    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+    border: 3px solid #ffd700;
+    box-shadow: 
+      0 4px 15px rgba(255, 107, 53, 0.4),
+      inset 0 2px 4px rgba(255, 255, 255, 0.2);
     z-index: 1000;
     display: none;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    letter-spacing: 1px;
+    text-transform: uppercase;
   }
 
   .arcade-mode-indicator.visible {
     display: block;
-    animation: arcade-mode-pulse 2s infinite;
+    animation: arcade-mode-pulse 3s infinite;
   }
 
   @keyframes arcade-mode-pulse {
     0%, 100% { 
-      box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+      box-shadow: 
+        0 4px 15px rgba(255, 107, 53, 0.4),
+        inset 0 2px 4px rgba(255, 255, 255, 0.2);
+      transform: scale(1);
     }
     50% { 
-      box-shadow: 0 6px 25px rgba(255, 215, 0, 0.6);
+      box-shadow: 
+        0 8px 30px rgba(255, 215, 0, 0.6),
+        0 0 20px rgba(255, 107, 53, 0.4),
+        inset 0 2px 6px rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
     }
+  }
+
+  /* ===== ENHANCED POWER-UP PANEL STYLES ===== */
+  .powerup-panel {
+    position: fixed;
+    top: 100px;
+    left: 20px;
+    background: linear-gradient(135deg, rgba(255, 102, 0, 0.95), rgba(255, 140, 0, 0.95), rgba(255, 165, 0, 0.95));
+    border-radius: 20px;
+    padding: 25px;
+    border: 3px solid rgba(255, 215, 0, 0.8);
+    backdrop-filter: blur(15px);
+    box-shadow: 
+      0 10px 40px rgba(255, 102, 0, 0.5),
+      inset 0 2px 4px rgba(255, 255, 255, 0.2),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+    min-width: 280px;
+    max-width: 320px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 998;
+  }
+
+  .powerup-panel.hidden {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
+
+  .powerup-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    border-radius: 17px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .powerup-panel:hover::before {
+    opacity: 1;
+  }
+
+  .powerup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .powerup-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(255, 255, 255, 0.3);
+  }
+
+  .powerup-active {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.3));
+    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 12px;
+    border: 2px solid rgba(255, 215, 0, 0.6);
+    box-shadow: 
+      0 4px 15px rgba(255, 215, 0, 0.2),
+      inset 0 2px 4px rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .powerup-active:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 6px 20px rgba(255, 215, 0, 0.3),
+      inset 0 2px 6px rgba(255, 255, 255, 0.3);
+  }
+
+  .powerup-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #FFD700;
+    margin-bottom: 6px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .powerup-description {
+    font-size: 13px;
+    color: #ffffff;
+    opacity: 0.95;
+    line-height: 1.4;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+  }
+
+  .powerup-cooldown {
+    font-size: 11px;
+    color: #ffcccc;
+    margin-top: 6px;
+    font-style: italic;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+  }
+
+  .powerup-instructions {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 20, 0.4));
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .powerup-key {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-right: 6px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    box-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  }
+
+  /* ===== RESPONSIVE DESIGN ENHANCEMENTS ===== */
+  @media (max-width: 1024px) {
+    .powerup-container {
+      bottom: 15px;
+      right: 15px;
+      gap: 10px;
+    }
+    
+    .powerup-button {
+      width: 75px;
+      height: 75px;
+    }
+    
+    .powerup-icon {
+      font-size: 30px;
+    }
+    
+    .powerup-panel {
+      min-width: 250px;
+      max-width: 280px;
+      padding: 20px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .powerup-container {
+      bottom: 10px;
+      right: 10px;
+      gap: 8px;
+    }
+    
+    .powerup-button {
+      width: 65px;
+      height: 65px;
+    }
+    
+    .powerup-icon {
+      font-size: 26px;
+    }
+    
+    .powerup-button:hover .powerup-icon {
+      font-size: 28px;
+    }
+    
+    .powerup-key-hint {
+      font-size: 10px;
+      padding: 4px 6px;
+    }
+    
+    .powerup-panel {
+      min-width: 220px;
+      max-width: 250px;
+      padding: 18px;
+      top: 80px;
+      left: 10px;
+    }
+    
+    .powerup-title {
+      font-size: 16px;
+      letter-spacing: 1px;
+    }
+    
+    .arcade-mode-indicator {
+      padding: 10px 18px;
+      font-size: 14px;
+      top: 15px;
+      left: 15px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .powerup-container {
+      flex-direction: row;
+      bottom: 10px;
+      right: 50%;
+      transform: translateX(50%);
+      gap: 6px;
+    }
+    
+    .powerup-button {
+      width: 55px;
+      height: 55px;
+    }
+    
+    .powerup-icon {
+      font-size: 22px;
+    }
+    
+    .powerup-key-hint {
+      top: -25px;
+      font-size: 9px;
+    }
+    
+    .powerup-panel {
+      position: fixed;
+      top: auto;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 90vw;
+      max-width: 90vw;
+      padding: 15px;
+    }
+    
+    .powerup-panel.hidden {
+      transform: translateX(-50%) translateY(100%);
+    }
+    
+    .arcade-mode-indicator {
+      padding: 8px 15px;
+      font-size: 12px;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+  }
+
+  /* ===== ENHANCED VISUAL EFFECTS ===== */
+  .powerup-ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.4);
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+  }
+
+  @keyframes ripple {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+
+  .powerup-glow {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #ffd700, #ff8c42, #ffd700);
+    opacity: 0;
+    z-index: -1;
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes glow {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 0.3;
+      transform: scale(1.05);
+    }
+  }
+
+  .powerup-button.ready .powerup-glow {
+    animation-duration: 1.5s;
+  }
+
+  /* ===== FEEDBACK ANIMATIONS ===== */
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideOutRight {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  /* ===== ENHANCED GAME MODE SELECTION POLISH ===== */
+  .game-mode-btn.fifa {
+    background: linear-gradient(135deg, #1e3c72, #2a5298, #3b6eb8);
+    border: 3px solid #4a90e2;
+    box-shadow: 
+      0 6px 20px rgba(30, 60, 114, 0.4),
+      inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  }
+
+  .game-mode-btn.fifa:hover {
+    background: linear-gradient(135deg, #2a5298, #3b6eb8, #4a90e2);
+    box-shadow: 
+      0 8px 30px rgba(30, 60, 114, 0.6),
+      0 0 20px rgba(74, 144, 226, 0.4),
+      inset 0 2px 6px rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+  }
+
+  .game-mode-btn.arcade {
+    background: linear-gradient(135deg, #ff6b35, #f7931e, #ff8c42);
+    border: 3px solid #ffd700;
+    box-shadow: 
+      0 6px 20px rgba(255, 107, 53, 0.4),
+      inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  }
+
+  .game-mode-btn.arcade:hover {
+    background: linear-gradient(135deg, #f7931e, #ff8c42, #ffb366);
+    box-shadow: 
+      0 8px 30px rgba(255, 107, 53, 0.6),
+      0 0 20px rgba(255, 215, 0, 0.4),
+      inset 0 2px 6px rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+  }
+
+  .game-mode-btn.selected {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 
+      0 10px 35px rgba(255, 215, 0, 0.5),
+      0 0 25px rgba(255, 255, 255, 0.3),
+      inset 0 3px 8px rgba(255, 255, 255, 0.4);
   }
 </style>
 
@@ -1926,31 +2369,31 @@
   </div>
 
   <div id="powerup-container" class="powerup-container" style="display: none;">
-    <div class="powerup-button" id="freeze-blast-btn" onclick="activatePowerUp('freeze_blast')">
+    <div class="powerup-button" id="freeze-blast-btn" onclick="activatePowerUp('freeze_blast')" title="Freeze Blast - Freezes nearby opponents">
       <div class="powerup-key-hint">1</div>
       <div class="powerup-icon">🧊</div>
       <div class="powerup-cooldown-overlay" id="freeze-blast-cooldown"></div>
     </div>
     
-    <div class="powerup-button" id="shuriken-btn" onclick="activatePowerUp('shuriken_throw')">
+    <div class="powerup-button" id="shuriken-btn" onclick="activatePowerUp('shuriken_throw')" title="Shuriken Throw - Stuns opponents">
       <div class="powerup-key-hint">2</div>
       <div class="powerup-icon">🌟</div>
       <div class="powerup-cooldown-overlay" id="shuriken-cooldown"></div>
     </div>
     
-    <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')">
+    <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')" title="Fireball - Explosive projectile">
       <div class="powerup-key-hint">3</div>
       <div class="powerup-icon">🔥</div>
       <div class="powerup-cooldown-overlay" id="fireball-cooldown"></div>
     </div>
     
-    <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')">
+    <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')" title="Mega Kick - 3x ball power">
       <div class="powerup-key-hint">4</div>
       <div class="powerup-icon">⚽</div>
       <div class="powerup-cooldown-overlay" id="mega-kick-cooldown"></div>
     </div>
 
-    <div class="powerup-button" id="random-powerup-btn" onclick="activateRandomPowerUp()">
+    <div class="powerup-button" id="random-powerup-btn" onclick="activateRandomPowerUp()" title="Random Power-up - Surprise ability">
       <div class="powerup-key-hint">F</div>
       <div class="powerup-icon">🎲</div>
       <div class="powerup-cooldown-overlay" id="random-powerup-cooldown"></div>
@@ -3428,7 +3871,203 @@
     'random_powerup': { onCooldown: false, endTime: 0 }
   };
 
-  // Show arcade mode UI when in arcade mode
+  // Enhanced power-up activation with visual effects
+  function activatePowerUpWithEffects(powerUpType) {
+    const button = document.getElementById(`${powerUpType.replace('_', '-')}-btn`);
+    if (!button) return false;
+
+    // Check if on cooldown
+    if (powerupCooldownStates[powerUpType] && powerupCooldownStates[powerUpType].onCooldown) {
+      showPowerUpFeedback('Power-up on cooldown!', 'error');
+      return false;
+    }
+
+    // Add activation animation
+    button.classList.add('activating');
+    
+    // Create ripple effect
+    createRippleEffect(button);
+    
+    // Add glow effect temporarily
+    const glowElement = document.createElement('div');
+    glowElement.className = 'powerup-glow';
+    button.appendChild(glowElement);
+    
+    // Remove effects after animation
+    setTimeout(() => {
+      button.classList.remove('activating');
+      if (glowElement.parentNode) {
+        glowElement.parentNode.removeChild(glowElement);
+      }
+    }, 800);
+
+    // Send activation to server
+    if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+      hytopia.sendData({
+        type: "activate-powerup",
+        powerUpType: powerUpType
+      });
+    }
+
+    // Start cooldown
+    startPowerUpCooldown(powerUpType);
+    
+    // Show activation feedback
+    showPowerUpActivationEffect(powerUpType);
+    
+    return true;
+  }
+
+  // Create ripple effect on button click
+  function createRippleEffect(button) {
+    const ripple = document.createElement('div');
+    ripple.className = 'powerup-ripple';
+    
+    const rect = button.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = rect.width / 2 - size / 2;
+    const y = rect.height / 2 - size / 2;
+    
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    
+    button.appendChild(ripple);
+    
+    setTimeout(() => {
+      if (ripple.parentNode) {
+        ripple.parentNode.removeChild(ripple);
+      }
+    }, 600);
+  }
+
+  // Enhanced power-up activation effect
+  function showPowerUpActivationEffect(powerUpType) {
+    const effectDisplay = document.getElementById('powerup-effect-display');
+    if (!effectDisplay) return;
+
+    const powerUpEmojis = {
+      'freeze_blast': '🧊 FREEZE!',
+      'shuriken_throw': '🌟 SHURIKEN!',
+      'fireball': '🔥 FIREBALL!',
+      'mega_kick': '⚽ MEGA KICK!',
+      'random_powerup': '🎲 RANDOM!'
+    };
+
+    effectDisplay.textContent = powerUpEmojis[powerUpType] || '✨ POWER-UP!';
+    effectDisplay.style.display = 'block';
+    
+    // Reset animation
+    effectDisplay.style.animation = 'none';
+    effectDisplay.offsetHeight; // Trigger reflow
+    effectDisplay.style.animation = 'powerup-effect-flash 2.5s ease-out';
+    
+    setTimeout(() => {
+      effectDisplay.style.display = 'none';
+    }, 2500);
+  }
+
+  // Enhanced cooldown management
+  function startPowerUpCooldown(powerUpType) {
+    const cooldownTime = POWERUP_COOLDOWNS[powerUpType] || 5000;
+    const endTime = Date.now() + cooldownTime;
+    
+    powerupCooldownStates[powerUpType] = {
+      onCooldown: true,
+      endTime: endTime
+    };
+
+    const button = document.getElementById(`${powerUpType.replace('_', '-')}-btn`);
+    const overlay = document.getElementById(`${powerUpType.replace('_', '-')}-cooldown`);
+    
+    if (button) {
+      button.classList.add('on-cooldown');
+    }
+
+    // Update cooldown display
+    updateCooldownDisplay(powerUpType, cooldownTime);
+  }
+
+  // Update cooldown visual display
+  function updateCooldownDisplay(powerUpType, totalTime) {
+    const overlay = document.getElementById(`${powerUpType.replace('_', '-')}-cooldown`);
+    const button = document.getElementById(`${powerUpType.replace('_', '-')}-btn`);
+    
+    if (!overlay || !button) return;
+
+    const updateInterval = setInterval(() => {
+      const now = Date.now();
+      const endTime = powerupCooldownStates[powerUpType].endTime;
+      const remaining = Math.max(0, endTime - now);
+      const progress = 1 - (remaining / totalTime);
+      
+      // Update conic gradient
+      overlay.style.background = `conic-gradient(from 0deg, transparent ${progress * 360}deg, rgba(0, 0, 0, 0.8) ${progress * 360}deg)`;
+      
+      // Show remaining time
+      const remainingSeconds = Math.ceil(remaining / 1000);
+      if (remainingSeconds > 0) {
+        overlay.textContent = remainingSeconds;
+      } else {
+        overlay.textContent = '';
+      }
+
+      if (remaining <= 0) {
+        clearInterval(updateInterval);
+        
+        // Reset cooldown state
+        powerupCooldownStates[powerUpType] = { onCooldown: false, endTime: 0 };
+        
+        // Reset visual state
+        button.classList.remove('on-cooldown');
+        button.classList.add('ready');
+        overlay.style.background = 'transparent';
+        overlay.textContent = '';
+        
+        // Add ready glow effect
+        setTimeout(() => {
+          button.classList.remove('ready');
+        }, 3000);
+        
+        // Show ready notification
+        showPowerUpFeedback(`${powerUpType.replace('_', ' ').toUpperCase()} Ready!`, 'success');
+      }
+    }, 100);
+  }
+
+  // Show power-up feedback messages
+  function showPowerUpFeedback(message, type = 'info') {
+    const feedback = document.createElement('div');
+    feedback.style.cssText = `
+      position: fixed;
+      top: 120px;
+      right: 20px;
+      background: ${type === 'error' ? 'rgba(220, 53, 69, 0.9)' : type === 'success' ? 'rgba(40, 167, 69, 0.9)' : 'rgba(255, 193, 7, 0.9)'};
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      z-index: 10001;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      border: 2px solid ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#ffc107'};
+      animation: slideInRight 0.3s ease;
+    `;
+    
+    feedback.textContent = message;
+    document.body.appendChild(feedback);
+    
+    setTimeout(() => {
+      feedback.style.animation = 'slideOutRight 0.3s ease';
+      setTimeout(() => {
+        if (feedback.parentNode) {
+          document.body.removeChild(feedback);
+        }
+      }, 300);
+    }, 2000);
+  }
+
+  // Show arcade mode UI when in arcade mode (enhanced)
   function showArcadeModeUI() {
     const indicator = document.getElementById('arcade-mode-indicator');
     const container = document.getElementById('powerup-container');
@@ -3438,12 +4077,51 @@
     }
     if (container) {
       container.style.display = 'flex';
+      
+      // Add entrance animation for power-up buttons
+      const buttons = container.querySelectorAll('.powerup-button');
+      buttons.forEach((button, index) => {
+        button.style.opacity = '0';
+        button.style.transform = 'scale(0.5) translateY(20px)';
+        setTimeout(() => {
+          button.style.transition = 'all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+          button.style.opacity = '1';
+          button.style.transform = 'scale(1) translateY(0)';
+        }, index * 100);
+      });
     }
     
     // Set up keyboard controls
     setupPowerupKeyboardControls();
     
-    console.log('🎪 Arcade Mode UI activated!');
+    // Initialize enhanced visual effects
+    initializeEnhancedPowerUpSystem();
+    
+    console.log('🎪 Enhanced Arcade Mode UI activated!');
+  }
+
+  // Initialize enhanced power-up system
+  function initializeEnhancedPowerUpSystem() {
+    // Reset all cooldown states
+    Object.keys(powerupCooldownStates).forEach(powerUp => {
+      powerupCooldownStates[powerUp] = { onCooldown: false, endTime: 0 };
+      
+      // Reset button states
+      const button = document.getElementById(`${powerUp.replace('_', '-')}-btn`);
+      if (button) {
+        button.classList.remove('on-cooldown', 'activating', 'ready');
+        
+        // Add ready glow effect for available power-ups
+        setTimeout(() => {
+          if (!powerupCooldownStates[powerUp].onCooldown) {
+            button.classList.add('ready');
+            setTimeout(() => button.classList.remove('ready'), 2000);
+          }
+        }, 1000);
+      }
+    });
+    
+    console.log('✨ Enhanced power-up system initialized');
   }
 
   // Hide arcade mode UI when in FIFA mode
@@ -3496,64 +4174,28 @@
     });
   }
 
-  // Activate specific power-up
+  // Activate specific power-up (enhanced version)
   function activatePowerUp(powerUpType) {
     console.log(`🎮 Attempting to activate power-up: ${powerUpType}`);
     
-    // Check if on cooldown
-    const cooldownState = powerupCooldownStates[powerUpType];
-    if (cooldownState && cooldownState.onCooldown) {
-      const timeLeft = Math.max(0, cooldownState.endTime - Date.now());
-      console.log(`⏱️ Power-up ${powerUpType} on cooldown for ${Math.ceil(timeLeft / 1000)}s`);
-      showPowerupFeedback({
-        success: false,
-        message: `${getPowerupName(powerUpType)} on cooldown (${Math.ceil(timeLeft / 1000)}s)`,
-        powerUpType
-      });
-      return;
+    // Use the enhanced activation system
+    const success = activatePowerUpWithEffects(powerUpType);
+    
+    if (success) {
+      playUISound("button-click");
     }
-
-    // Send activation request to server
-    if (window.hytopia && window.hytopia.ui && window.hytopia.ui.sendData) {
-      window.hytopia.ui.sendData({
-        type: "activate-powerup",
-        powerUpType: powerUpType
-      });
-    }
-
-    // Start cooldown and visual feedback
-    startPowerupCooldown(powerUpType);
-    showPowerupActivation(powerUpType);
   }
 
-  // Activate random power-up (F key functionality)
+  // Activate random power-up (F key functionality) - enhanced version
   function activateRandomPowerUp() {
     console.log(`🎲 Attempting to activate random power-up`);
     
-    // Check if on cooldown
-    const cooldownState = powerupCooldownStates['random_powerup'];
-    if (cooldownState && cooldownState.onCooldown) {
-      const timeLeft = Math.max(0, cooldownState.endTime - Date.now());
-      console.log(`⏱️ Random power-up on cooldown for ${Math.ceil(timeLeft / 1000)}s`);
-      showPowerupFeedback({
-        success: false,
-        message: `Random Power-up on cooldown (${Math.ceil(timeLeft / 1000)}s)`
-      });
-      return;
+    // Use the enhanced activation system
+    const success = activatePowerUpWithEffects('random_powerup');
+    
+    if (success) {
+      playUISound("button-click");
     }
-
-    // For F key, we let the server handle the random selection
-    // Send a generic request and let server pick randomly
-    const randomTypes = ['freeze_blast', 'shuriken_throw', 'fireball', 'mega_kick'];
-    const randomType = randomTypes[Math.floor(Math.random() * randomTypes.length)];
-    
-    console.log(`🎲 Server will handle random power-up selection`);
-    
-    // Start F key cooldown
-    startPowerupCooldown('random_powerup');
-    
-    // Show activation feedback
-    showPowerupActivation('random_powerup');
   }
 
   // Start cooldown for a power-up
