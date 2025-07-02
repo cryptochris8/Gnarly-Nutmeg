@@ -1,7 +1,7 @@
 // Arcade Enhancement System - Only Active in Arcade Mode
 // This system enhances existing gameplay without modifying FIFA mode
 
-import { World, Audio } from "hytopia";
+import { World, Audio, Entity, RigidBodyType, type Vector3Like } from "hytopia";
 import { isArcadeMode, ARCADE_PHYSICS_MULTIPLIERS } from "./gameModes";
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 
@@ -178,7 +178,7 @@ export class ArcadeEnhancementManager {
         this.executeFreezeBlast(playerId);
         break;
       case 'shuriken_throw':
-        this.executeShurikenThrow(playerId);
+        this.executeShurikenProjectile(playerId);
         break;
       case 'fireball':
         this.executeFireball(playerId);
@@ -198,139 +198,854 @@ export class ArcadeEnhancementManager {
     return true;
   }
 
-  // Execute freeze blast power-up
+  // Execute freeze blast power-up with area effect and visual feedback
   private executeFreezeBlast(playerId: string): void {
-    console.log(`🧊 Freeze Blast activated by ${playerId}!`);
+    console.log(`🧊 FREEZE BLAST: ${playerId} activating freeze blast!`);
     
-    // Find the player entity
     const playerEntity = this.findPlayerEntity(playerId);
-    if (!playerEntity) return;
-    
-    // Find nearby opponents within radius (5 units)
-    const freezeRadius = 5;
-    const nearbyOpponents = this.world.entityManager.getAllPlayerEntities()
-      .filter(entity => {
-        if (!(entity instanceof SoccerPlayerEntity)) return false;
-        if (entity === playerEntity) return false; // Don't freeze self
-        if (entity.team === playerEntity.team) return false; // Don't freeze teammates
+    if (!playerEntity) {
+      console.error(`Player entity not found for freeze blast: ${playerId}`);
+      return;
+    }
+
+    // Play freeze blast activation sound
+    const freezeActivationAudio = new Audio({
+      uri: "audio/sfx/liquid/large-splash.mp3", // Using splash as ice crackling sound
+      loop: false,
+      volume: 0.6,
+      position: playerEntity.position,
+      referenceDistance: 15
+    });
+    freezeActivationAudio.play(this.world);
+
+    // Create spectacular visual effect for freeze blast activation
+    this.createPowerUpEffect(playerEntity.position, 'freeze_blast');
+
+    // Create visual freeze effect entity
+    const freezeEffect = new Entity({
+      name: 'freeze-effect',
+      modelUri: 'models/misc/selection-indicator.gltf', // Using existing model as freeze indicator
+      modelScale: 5.0, // Large scale for area effect
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_POSITION,
+      },
+    });
+
+    // Spawn freeze effect at player position
+    freezeEffect.spawn(this.world, {
+      x: playerEntity.position.x,
+      y: playerEntity.position.y + 0.5,
+      z: playerEntity.position.z
+    });
+
+    // Find all enemy players within 5 unit radius
+    const allPlayers = this.world.entityManager.getAllPlayerEntities()
+      .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
+
+    const frozenPlayers: SoccerPlayerEntity[] = [];
+    const freezeRadius = 5.0;
+
+    allPlayers.forEach(targetPlayer => {
+      // Skip self and teammates
+      if (targetPlayer.player.username === playerId || 
+          (playerEntity instanceof SoccerPlayerEntity && targetPlayer.team === playerEntity.team)) {
+        return;
+      }
+
+      // Calculate distance from freeze blast center
+      const distance = Math.sqrt(
+        Math.pow(targetPlayer.position.x - playerEntity.position.x, 2) +
+        Math.pow(targetPlayer.position.z - playerEntity.position.z, 2)
+      );
+
+      if (distance <= freezeRadius) {
+        // Freeze the target player
+        this.freezePlayer(targetPlayer);
+        frozenPlayers.push(targetPlayer);
         
-        const distance = Math.sqrt(
-          Math.pow(entity.position.x - playerEntity.position.x, 2) +
-          Math.pow(entity.position.z - playerEntity.position.z, 2)
-        );
-        
-        return distance <= freezeRadius;
-      });
-    
-    // Apply freeze effect to nearby opponents
-    nearbyOpponents.forEach(opponent => {
-      if (opponent instanceof SoccerPlayerEntity) {
-        opponent.freeze();
-        opponent.stunPlayer();
-        
-        // Unfreeze after 4 seconds
-        setTimeout(() => {
-          if (opponent.isSpawned) {
-            opponent.unfreeze();
-          }
-        }, 4000);
-        
-        console.log(`🧊 Froze ${opponent.player.username} for 4 seconds`);
+        console.log(`🧊 FROZEN: ${targetPlayer.player.username} frozen by freeze blast!`);
       }
     });
+
+    // Play freeze hit sound for each frozen player
+    frozenPlayers.forEach(frozenPlayer => {
+      const freezeHitAudio = new Audio({
+        uri: "audio/sfx/liquid/water-splash.mp3", // Using water splash as freeze hit sound
+        loop: false,
+        volume: 0.4,
+        position: frozenPlayer.position,
+        referenceDistance: 10
+      });
+      freezeHitAudio.play(this.world);
+    });
+
+    // Remove visual effect after 1 second
+    setTimeout(() => {
+      if (freezeEffect.isSpawned) {
+        freezeEffect.despawn();
+      }
+    }, 1000);
+
+    // Unfreeze all players after 4 seconds
+    setTimeout(() => {
+      frozenPlayers.forEach(frozenPlayer => {
+        this.unfreezePlayer(frozenPlayer);
+        console.log(`🧊 UNFROZEN: ${frozenPlayer.player.username} unfrozen!`);
+      });
+    }, 4000);
+
+    console.log(`🧊 FREEZE BLAST COMPLETE: Affected ${frozenPlayers.length} players`);
+  }
+
+  // Freeze a player by disabling movement and adding visual indicator
+  private freezePlayer(player: SoccerPlayerEntity): void {
+    // Disable player movement by setting velocity to zero and adding mass
+    player.setLinearVelocity({ x: 0, y: 0, z: 0 });
+    player.setAngularVelocity({ x: 0, y: 0, z: 0 });
     
-    // Play freeze sound effect
-    new Audio({
-      uri: "audio/sfx/liquid/water-freeze.mp3",
+    // Store original state
+    (player as any)._frozenState = {
+      originalMass: player.mass,
+      wasFrozen: true
+    };
+
+    // Make player much heavier to prevent movement
+    player.setAdditionalMass(1000);
+
+    // Create ice effect indicator above player
+    const iceEffect = new Entity({
+      name: 'ice-indicator',
+      modelUri: 'models/misc/selection-indicator.gltf',
+      modelScale: 1.5,
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_POSITION,
+      },
+      parent: player,
+      parentNodeName: "head_anchor" // Attach to player's head if available
+    });
+
+    iceEffect.spawn(this.world, { x: 0, y: 1.5, z: 0 }); // Position above player
+    
+    // Store ice effect reference for cleanup
+    (player as any)._iceEffect = iceEffect;
+  }
+
+  // Unfreeze a player by restoring movement
+  private unfreezePlayer(player: SoccerPlayerEntity): void {
+    const frozenState = (player as any)._frozenState;
+    if (!frozenState || !frozenState.wasFrozen) {
+      return; // Player wasn't frozen
+    }
+
+    // Restore original mass
+    player.setAdditionalMass(0);
+    
+    // Remove ice effect
+    const iceEffect = (player as any)._iceEffect;
+    if (iceEffect && iceEffect.isSpawned) {
+      iceEffect.despawn();
+    }
+
+    // Clear frozen state
+    delete (player as any)._frozenState;
+    delete (player as any)._iceEffect;
+
+    // Play unfreeze sound
+    const unfreezeAudio = new Audio({
+      uri: "audio/sfx/dig/dig-grass.mp3", // Using dig sound as ice breaking
+      loop: false,
+      volume: 0.3,
+      position: player.position,
+      referenceDistance: 8
+    });
+    unfreezeAudio.play(this.world);
+  }
+
+  // Execute shuriken projectile power-up with advanced physics and effects
+  private executeShurikenProjectile(playerId: string): void {
+    console.log(`🌟 SHURIKEN: ${playerId} launching shuriken projectile!`);
+    
+    const playerEntity = this.findPlayerEntity(playerId);
+    if (!playerEntity) {
+      console.error(`Player entity not found for shuriken: ${playerId}`);
+      return;
+    }
+
+    // Play shuriken throw sound
+    const throwAudio = new Audio({
+      uri: "audio/sfx/player/bow-01.mp3", // Using bow sound as throwing sound
+      loop: false,
+      volume: 0.7,
+      position: playerEntity.position,
+      referenceDistance: 12
+    });
+    throwAudio.play(this.world);
+
+    // Create spectacular visual effect for shuriken activation
+    this.createPowerUpEffect(playerEntity.position, 'shuriken_throw');
+
+    // Calculate throw direction from player's facing direction
+    const rotation = playerEntity.rotation;
+    const direction = this.calculateDirectionFromRotation(rotation);
+    
+    // Create shuriken projectile entity
+    const shuriken = new Entity({
+      name: 'shuriken-projectile',
+      modelUri: 'models/projectiles/arrow.gltf', // Using arrow model as shuriken base
+      modelScale: 0.8,
+      rigidBodyOptions: {
+        type: RigidBodyType.DYNAMIC,
+        ccdEnabled: true, // Enable continuous collision detection for fast-moving projectiles
+        linearDamping: 0.1, // Slight air resistance
+        angularDamping: 0.05, // Minimal rotational damping for spinning effect
+        enabledRotations: { x: true, y: true, z: true }, // Allow full rotation for spinning
+        gravityScale: 0.3, // Reduced gravity for projectile flight
+      },
+    });
+
+    // Spawn shuriken slightly in front of player
+    const spawnOffset = 1.5;
+    const shurikenPosition = {
+      x: playerEntity.position.x + direction.x * spawnOffset,
+      y: playerEntity.position.y + 1.0, // Eye level
+      z: playerEntity.position.z + direction.z * spawnOffset
+    };
+
+    shuriken.spawn(this.world, shurikenPosition);
+
+    // Apply launch velocity and spinning motion
+    const launchForce = 15.0;
+    const launchVelocity = {
+      x: direction.x * launchForce,
+      y: 2.0, // Slight upward trajectory
+      z: direction.z * launchForce
+    };
+    
+    shuriken.setLinearVelocity(launchVelocity);
+    
+    // Add spinning motion for visual effect
+    shuriken.setAngularVelocity({
+      x: 0,
+      y: 20, // Fast spinning around Y axis
+      z: 0
+    });
+
+    // Play whoosh sound that follows the projectile
+    const whooshAudio = new Audio({
+      uri: "audio/sfx/player/bow-02.mp3", // Projectile flight sound
+      loop: true,
+      volume: 0.4,
+      attachedToEntity: shuriken,
+      referenceDistance: 8
+    });
+    whooshAudio.play(this.world);
+
+    // Track projectile for collision detection and cleanup
+    this.trackShurikenProjectile(shuriken, playerId, whooshAudio);
+
+    console.log(`🌟 SHURIKEN LAUNCHED: Direction [${direction.x.toFixed(2)}, ${direction.z.toFixed(2)}], Force: ${launchForce}`);
+  }
+
+  // Track shuriken projectile for collision detection and effects
+  private trackShurikenProjectile(shuriken: Entity, playerId: string, whooshAudio: Audio): void {
+    let hasHit = false;
+    const maxFlightTime = 5000; // 5 seconds max flight time
+    const checkInterval = 100; // Check every 100ms
+    let flightTime = 0;
+
+    const trackingInterval = setInterval(() => {
+      flightTime += checkInterval;
+
+      // Check if projectile still exists
+      if (!shuriken.isSpawned || hasHit) {
+        clearInterval(trackingInterval);
+        whooshAudio.pause();
+        return;
+      }
+
+      // Check for collision with players
+      const shurikenPos = shuriken.position;
+      const allPlayers = this.world.entityManager.getAllPlayerEntities()
+        .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
+
+      const hitPlayer = allPlayers.find(player => {
+        // Skip self
+        if (player.player.username === playerId) return false;
+        
+        // Calculate distance to player
+        const distance = Math.sqrt(
+          Math.pow(player.position.x - shurikenPos.x, 2) +
+          Math.pow(player.position.y - shurikenPos.y, 2) +
+          Math.pow(player.position.z - shurikenPos.z, 2)
+        );
+
+        return distance <= 1.2; // Hit radius
+      });
+
+      if (hitPlayer) {
+        hasHit = true;
+        this.applyShurikenHit(hitPlayer, shurikenPos);
+        
+        // Stop tracking and clean up
+        clearInterval(trackingInterval);
+        whooshAudio.pause();
+        
+        // Remove shuriken after impact
+        setTimeout(() => {
+          if (shuriken.isSpawned) {
+            shuriken.despawn();
+          }
+        }, 500);
+        
+        return;
+      }
+
+      // Check for out of bounds or max flight time
+      if (flightTime >= maxFlightTime || shurikenPos.y < -10) {
+        console.log(`🌟 SHURIKEN: Projectile expired or went out of bounds`);
+        hasHit = true;
+        clearInterval(trackingInterval);
+        whooshAudio.pause();
+        
+        // Clean up projectile
+        if (shuriken.isSpawned) {
+          shuriken.despawn();
+        }
+      }
+    }, checkInterval);
+  }
+
+  // Apply shuriken hit effects to target player
+  private applyShurikenHit(hitPlayer: SoccerPlayerEntity, impactPosition: { x: number, y: number, z: number }): void {
+    console.log(`🌟 SHURIKEN HIT: ${hitPlayer.player.username} hit by shuriken!`);
+
+    // Play impact sound at hit location
+    const impactAudio = new Audio({
+      uri: "audio/sfx/damage/fall-big.mp3", // Using damage sound for impact
       loop: false,
       volume: 0.8,
-    }).play(this.world);
-    
-    console.log(`🧊 Freeze Blast affected ${nearbyOpponents.length} opponents!`);
-    
-    // Add temporary enhancement to track the effect
-    this.addEnhancement(playerId, 'freeze_blast', 1000); // Very short duration for instant effect
-  }
-
-  // Execute shuriken throw power-up
-  private executeShurikenThrow(playerId: string): void {
-    console.log(`🥷 Shuriken Throw activated by ${playerId}!`);
-    
-    // Find the player entity
-    const playerEntity = this.findPlayerEntity(playerId);
-    if (!playerEntity) return;
-    
-    // Import and launch shuriken projectile
-    import("../entities/ProjectileEntity").then(({ launchProjectile, ProjectileType }) => {
-      // Get player's facing direction
-      const facingDirection = {
-        x: Math.sin(playerEntity.rotation.y * 2), // Convert quaternion to direction
-        y: 0,
-        z: Math.cos(playerEntity.rotation.y * 2)
-      };
-      
-      // Launch shuriken
-      const projectile = launchProjectile(ProjectileType.SHURIKEN, playerEntity, facingDirection);
-      
-      if (projectile) {
-        console.log(`🥷 Shuriken launched by ${playerId}!`);
-      }
-    }).catch(error => {
-      console.error("Failed to load ProjectileEntity:", error);
-      
-      // Fallback: just play sound
-      new Audio({
-        uri: "audio/sfx/player/bow-01.mp3",
-        loop: false,
-        volume: 0.7,
-      }).play(this.world);
+      position: impactPosition,
+      referenceDistance: 10
     });
+    impactAudio.play(this.world);
+
+    // Apply knockback force to hit player
+    const knockbackForce = 8.0;
+    const knockbackDirection = this.calculateKnockbackDirection(impactPosition, hitPlayer.position);
     
-    // Add temporary enhancement to track the effect
-    this.addEnhancement(playerId, 'shuriken_throw', 1000);
+    hitPlayer.applyImpulse({
+      x: knockbackDirection.x * knockbackForce * hitPlayer.mass,
+      y: 2.0 * hitPlayer.mass, // Slight upward knock
+      z: knockbackDirection.z * knockbackForce * hitPlayer.mass
+    });
+
+    // Create impact effect at hit location
+    const impactEffect = new Entity({
+      name: 'shuriken-impact',
+      modelUri: 'models/misc/firework.gltf', // Using firework as impact effect
+      modelScale: 1.0,
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_POSITION,
+      },
+    });
+
+    impactEffect.spawn(this.world, impactPosition);
+
+    // Stun the hit player briefly
+    this.stunPlayer(hitPlayer, 2000); // 2 second stun
+
+    // Remove impact effect after 2 seconds
+    setTimeout(() => {
+      if (impactEffect.isSpawned) {
+        impactEffect.despawn();
+      }
+    }, 2000);
+
+    console.log(`🌟 SHURIKEN IMPACT: Applied knockback and 2s stun to ${hitPlayer.player.username}`);
   }
 
-  // Execute fireball power-up
+  // Calculate direction from quaternion rotation
+  private calculateDirectionFromRotation(rotation: { x: number, y: number, z: number, w: number }): { x: number, z: number } {
+    // Convert quaternion to forward direction vector
+    // For Hytopia, forward is typically the negative Z direction before rotation
+    const { x, y, z, w } = rotation;
+    
+    // Calculate forward vector from quaternion
+    const forwardX = 2 * (x * z + w * y);
+    const forwardZ = 2 * (y * z - w * x);
+    
+    // Normalize the direction
+    const magnitude = Math.sqrt(forwardX * forwardX + forwardZ * forwardZ);
+    
+    if (magnitude > 0) {
+      return {
+        x: forwardX / magnitude,
+        z: forwardZ / magnitude
+      };
+    }
+    
+    // Default forward direction if calculation fails
+    return { x: 0, z: -1 };
+  }
+
+  // Calculate knockback direction from impact point to target
+  private calculateKnockbackDirection(impactPos: { x: number, z: number }, targetPos: { x: number, z: number }): { x: number, z: number } {
+    const directionX = targetPos.x - impactPos.x;
+    const directionZ = targetPos.z - impactPos.z;
+    
+    const magnitude = Math.sqrt(directionX * directionX + directionZ * directionZ);
+    
+    if (magnitude > 0) {
+      return {
+        x: directionX / magnitude,
+        z: directionZ / magnitude
+      };
+    }
+    
+    return { x: 1, z: 0 }; // Default direction
+  }
+
+  // Stun a player temporarily
+  private stunPlayer(player: SoccerPlayerEntity, durationMs: number): void {
+    // Store stun state
+    (player as any)._stunState = {
+      isStunned: true,
+      originalMass: player.mass
+    };
+
+    // Increase mass to reduce mobility
+    player.setAdditionalMass(500);
+
+    // Create stun effect above player
+    const stunEffect = new Entity({
+      name: 'stun-indicator',
+      modelUri: 'models/misc/selection-indicator.gltf',
+      modelScale: 1.0,
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_POSITION,
+      },
+    });
+
+    stunEffect.spawn(this.world, {
+      x: player.position.x,
+      y: player.position.y + 2.0,
+      z: player.position.z
+    });
+
+    // Store effect reference
+    (player as any)._stunEffect = stunEffect;
+
+    // Remove stun after duration
+    setTimeout(() => {
+      this.unstunPlayer(player);
+    }, durationMs);
+  }
+
+  // Remove stun effect from player
+  private unstunPlayer(player: SoccerPlayerEntity): void {
+    const stunState = (player as any)._stunState;
+    if (!stunState || !stunState.isStunned) {
+      return;
+    }
+
+    // Restore original mass
+    player.setAdditionalMass(0);
+
+    // Remove stun effect
+    const stunEffect = (player as any)._stunEffect;
+    if (stunEffect && stunEffect.isSpawned) {
+      stunEffect.despawn();
+    }
+
+    // Clear stun state
+    delete (player as any)._stunState;
+    delete (player as any)._stunEffect;
+
+    console.log(`🌟 UNSTUNNED: ${player.player.username} recovered from stun`);
+  }
+
+  // Execute fireball power-up with explosive area damage and spectacular effects
   private executeFireball(playerId: string): void {
-    console.log(`🔥 Fireball activated by ${playerId}!`);
+    console.log(`🔥 FIREBALL: ${playerId} launching explosive fireball!`);
     
-    // Find the player entity
     const playerEntity = this.findPlayerEntity(playerId);
-    if (!playerEntity) return;
-    
-    // Import and launch fireball projectile
-    import("../entities/ProjectileEntity").then(({ launchProjectile, ProjectileType }) => {
-      // Get player's facing direction
-      const facingDirection = {
-        x: Math.sin(playerEntity.rotation.y * 2),
-        y: 0.1, // Slight upward angle
-        z: Math.cos(playerEntity.rotation.y * 2)
-      };
-      
-      // Launch fireball
-      const projectile = launchProjectile(ProjectileType.FIREBALL, playerEntity, facingDirection);
-      
-      if (projectile) {
-        console.log(`🔥 Fireball launched by ${playerId}!`);
-      }
-    }).catch(error => {
-      console.error("Failed to load ProjectileEntity:", error);
-      
-      // Fallback: just play sound
-      new Audio({
-        uri: "audio/sfx/fire/fire-ignite.mp3",
-        loop: false,
-        volume: 0.7,
-      }).play(this.world);
+    if (!playerEntity) {
+      console.error(`Player entity not found for fireball: ${playerId}`);
+      return;
+    }
+
+    // Play fireball launch sound
+    const launchAudio = new Audio({
+      uri: "audio/sfx/fire/fire-ignite.mp3", // Fire ignition sound for launch
+      loop: false,
+      volume: 0.8,
+      position: playerEntity.position,
+      referenceDistance: 15
     });
+    launchAudio.play(this.world);
+
+    // Create spectacular visual effect for fireball activation
+    this.createPowerUpEffect(playerEntity.position, 'fireball');
+
+    // Calculate launch direction from player's facing direction
+    const rotation = playerEntity.rotation;
+    const direction = this.calculateDirectionFromRotation(rotation);
     
-    // Add temporary enhancement to track the effect
-    this.addEnhancement(playerId, 'fireball', 1000);
+    // Create fireball projectile entity with fire model
+    const fireball = new Entity({
+      name: 'fireball-projectile',
+      modelUri: 'models/projectiles/fireball.gltf', // Using dedicated fireball model
+      modelScale: 1.2,
+      rigidBodyOptions: {
+        type: RigidBodyType.DYNAMIC,
+        ccdEnabled: true, // High-speed projectile needs CCD
+        linearDamping: 0.05, // Minimal air resistance for fireballs
+        angularDamping: 0.1,
+        gravityScale: 0.4, // Slight downward arc
+        enabledRotations: { x: true, y: true, z: true },
+      },
+    });
+
+    // Spawn fireball in front of player at chest height
+    const spawnOffset = 2.0;
+    const fireballPosition = {
+      x: playerEntity.position.x + direction.x * spawnOffset,
+      y: playerEntity.position.y + 1.2, // Chest level
+      z: playerEntity.position.z + direction.z * spawnOffset
+    };
+
+    fireball.spawn(this.world, fireballPosition);
+
+    // Apply powerful launch velocity
+    const launchForce = 18.0;
+    const launchVelocity = {
+      x: direction.x * launchForce,
+      y: 3.0, // Higher arc for dramatic effect
+      z: direction.z * launchForce
+    };
+    
+    fireball.setLinearVelocity(launchVelocity);
+    
+    // Add tumbling motion for realistic fireball flight
+    fireball.setAngularVelocity({
+      x: 5,
+      y: 10,
+      z: 3
+    });
+
+    // Play continuous burning sound that follows the fireball
+    const burnAudio = new Audio({
+      uri: "audio/sfx/fire/fire-burning.mp3", // Continuous burning sound
+      loop: true,
+      volume: 0.5,
+      attachedToEntity: fireball,
+      referenceDistance: 12
+    });
+    burnAudio.play(this.world);
+
+    // Track fireball for explosion detection
+    this.trackFireballProjectile(fireball, playerId, burnAudio);
+
+    console.log(`🔥 FIREBALL LAUNCHED: Direction [${direction.x.toFixed(2)}, ${direction.z.toFixed(2)}], Force: ${launchForce}`);
+  }
+
+  // Track fireball projectile for collision detection and explosion
+  private trackFireballProjectile(fireball: Entity, playerId: string, burnAudio: Audio): void {
+    let hasExploded = false;
+    const maxFlightTime = 6000; // 6 seconds max flight time
+    const checkInterval = 50; // Check every 50ms for responsive collision
+    let flightTime = 0;
+
+    const trackingInterval = setInterval(() => {
+      flightTime += checkInterval;
+
+      // Check if projectile still exists
+      if (!fireball.isSpawned || hasExploded) {
+        clearInterval(trackingInterval);
+        burnAudio.pause();
+        return;
+      }
+
+      const fireballPos = fireball.position;
+
+      // Check for collision with players
+      const allPlayers = this.world.entityManager.getAllPlayerEntities()
+        .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
+
+      const hitPlayer = allPlayers.find(player => {
+        // Skip self (though friendly fire could be enabled later)
+        if (player.player.username === playerId) return false;
+        
+        // Calculate distance to player
+        const distance = Math.sqrt(
+          Math.pow(player.position.x - fireballPos.x, 2) +
+          Math.pow(player.position.y - fireballPos.y, 2) +
+          Math.pow(player.position.z - fireballPos.z, 2)
+        );
+
+        return distance <= 1.5; // Fireball hit radius
+      });
+
+      // Check for ground collision or player hit
+      const groundHit = fireballPos.y <= 0.5; // Near ground level
+      
+      if (hitPlayer || groundHit) {
+        hasExploded = true;
+        
+        // Trigger explosion at current position
+        this.triggerFireballExplosion(fireballPos, playerId);
+        
+        // Stop tracking and clean up
+        clearInterval(trackingInterval);
+        burnAudio.pause();
+        
+        // Remove fireball (explosion will handle visual effects)
+        if (fireball.isSpawned) {
+          fireball.despawn();
+        }
+        
+        return;
+      }
+
+      // Check for max flight time or out of bounds
+      if (flightTime >= maxFlightTime || fireballPos.y < -15) {
+        console.log(`🔥 FIREBALL: Projectile expired or went out of bounds`);
+        hasExploded = true;
+        
+        // Trigger explosion anyway for dramatic effect
+        this.triggerFireballExplosion(fireballPos, playerId);
+        
+        clearInterval(trackingInterval);
+        burnAudio.pause();
+        
+        if (fireball.isSpawned) {
+          fireball.despawn();
+        }
+      }
+    }, checkInterval);
+  }
+
+  // Trigger spectacular fireball explosion with area damage
+  private triggerFireballExplosion(explosionPos: { x: number, y: number, z: number }, playerId: string): void {
+    console.log(`💥 FIREBALL EXPLOSION at [${explosionPos.x.toFixed(2)}, ${explosionPos.y.toFixed(2)}, ${explosionPos.z.toFixed(2)}]!`);
+
+    // Play massive explosion sound
+    const explosionAudio = new Audio({
+      uri: "audio/sfx/damage/explode.mp3", // Main explosion sound
+      loop: false,
+      volume: 1.0,
+      position: explosionPos,
+      referenceDistance: 25 // Large radius for explosion
+    });
+    explosionAudio.play(this.world);
+
+    // Create massive explosion visual effect
+    const explosionEffect = new Entity({
+      name: 'fireball-explosion',
+      modelUri: 'models/misc/firework.gltf', // Using firework as explosion base
+      modelScale: 8.0, // Huge explosion effect
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_POSITION,
+      },
+    });
+
+    explosionEffect.spawn(this.world, explosionPos);
+
+    // Apply explosion effects to all nearby players
+    const explosionRadius = 8.0; // Large damage radius
+    const allPlayers = this.world.entityManager.getAllPlayerEntities()
+      .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
+
+    const affectedPlayers: SoccerPlayerEntity[] = [];
+
+    allPlayers.forEach(player => {
+      // Skip self (optional - could add friendly fire)
+      if (player.player.username === playerId) return;
+
+      // Calculate distance from explosion center
+      const distance = Math.sqrt(
+        Math.pow(player.position.x - explosionPos.x, 2) +
+        Math.pow(player.position.y - explosionPos.y, 2) +
+        Math.pow(player.position.z - explosionPos.z, 2)
+      );
+
+      if (distance <= explosionRadius) {
+        // Calculate damage falloff based on distance
+        const damageMultiplier = Math.max(0.3, 1.0 - (distance / explosionRadius));
+        
+        this.applyExplosionDamage(player, explosionPos, damageMultiplier);
+        affectedPlayers.push(player);
+        
+        console.log(`💥 EXPLOSION HIT: ${player.player.username} (distance: ${distance.toFixed(2)}, multiplier: ${damageMultiplier.toFixed(2)})`);
+      }
+    });
+
+    // Create secondary fire effects around explosion
+    this.createFirePatches(explosionPos, 3);
+
+    // Remove main explosion effect after 3 seconds
+    setTimeout(() => {
+      if (explosionEffect.isSpawned) {
+        explosionEffect.despawn();
+      }
+    }, 3000);
+
+    console.log(`💥 FIREBALL EXPLOSION COMPLETE: Affected ${affectedPlayers.length} players`);
+  }
+
+  // Apply explosion damage and knockback to a player
+  private applyExplosionDamage(player: SoccerPlayerEntity, explosionPos: { x: number, y: number, z: number }, damageMultiplier: number): void {
+    // Calculate knockback direction from explosion center
+    const knockbackDirection = this.calculateKnockbackDirection(explosionPos, player.position);
+    
+    // Apply massive knockback force scaled by distance
+    const baseKnockback = 15.0;
+    const knockbackForce = baseKnockback * damageMultiplier;
+    
+    player.applyImpulse({
+      x: knockbackDirection.x * knockbackForce * player.mass,
+      y: 5.0 * damageMultiplier * player.mass, // Strong upward launch
+      z: knockbackDirection.z * knockbackForce * player.mass
+    });
+
+    // Apply burn effect (temporary movement debuff)
+    const burnDuration = Math.floor(3000 * damageMultiplier); // 1-3 seconds based on distance
+    this.applyBurnEffect(player, burnDuration);
+
+    // Play damage sound at player location
+    const damageAudio = new Audio({
+      uri: "audio/sfx/damage/fall-big.mp3",
+      loop: false,
+      volume: 0.6 * damageMultiplier,
+      position: player.position,
+      referenceDistance: 10
+    });
+    damageAudio.play(this.world);
+  }
+
+  // Apply burn effect to reduce player mobility temporarily
+  private applyBurnEffect(player: SoccerPlayerEntity, durationMs: number): void {
+    // Store burn state
+    (player as any)._burnState = {
+      isBurning: true,
+      originalMass: player.mass,
+      startTime: Date.now()
+    };
+
+    // Reduce mobility by increasing mass
+    player.setAdditionalMass(300);
+
+    // Create fire effect above player
+    const fireEffect = new Entity({
+      name: 'burn-indicator',
+      modelUri: 'models/misc/selection-indicator.gltf', // Visual indicator of burn
+      modelScale: 1.2,
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_POSITION,
+      },
+    });
+
+    fireEffect.spawn(this.world, {
+      x: player.position.x,
+      y: player.position.y + 1.8,
+      z: player.position.z
+    });
+
+    // Store effect reference
+    (player as any)._fireEffect = fireEffect;
+
+    // Play burning sound attached to player
+    const burnAudio = new Audio({
+      uri: "audio/sfx/fire/fire-burning.mp3",
+      loop: true,
+      volume: 0.3,
+      attachedToEntity: player,
+      referenceDistance: 6
+    });
+    burnAudio.play(this.world);
+    
+    // Store audio reference for cleanup
+    (player as any)._burnAudio = burnAudio;
+
+    // Remove burn effect after duration
+    setTimeout(() => {
+      this.removeBurnEffect(player);
+    }, durationMs);
+
+    console.log(`🔥 BURN APPLIED: ${player.player.username} burning for ${durationMs}ms`);
+  }
+
+  // Remove burn effect from player
+  private removeBurnEffect(player: SoccerPlayerEntity): void {
+    const burnState = (player as any)._burnState;
+    if (!burnState || !burnState.isBurning) {
+      return;
+    }
+
+    // Restore original mobility
+    player.setAdditionalMass(0);
+
+    // Remove fire effect
+    const fireEffect = (player as any)._fireEffect;
+    if (fireEffect && fireEffect.isSpawned) {
+      fireEffect.despawn();
+    }
+
+    // Stop burning audio
+    const burnAudio = (player as any)._burnAudio;
+    if (burnAudio) {
+      burnAudio.pause();
+    }
+
+    // Clear burn state
+    delete (player as any)._burnState;
+    delete (player as any)._fireEffect;
+    delete (player as any)._burnAudio;
+
+    console.log(`🔥 BURN REMOVED: ${player.player.username} recovered from burn`);
+  }
+
+  // Create decorative fire patches around explosion site
+  private createFirePatches(centerPos: { x: number, y: number, z: number }, patchCount: number): void {
+    for (let i = 0; i < patchCount; i++) {
+      // Random position around explosion center
+      const angle = (i / patchCount) * 2 * Math.PI;
+      const radius = 2 + Math.random() * 3; // 2-5 units from center
+      
+      const firePatch = new Entity({
+        name: 'fire-patch',
+        modelUri: 'models/misc/firework.gltf',
+        modelScale: 2.0 + Math.random() * 1.0, // Varied sizes
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        },
+      });
+
+      firePatch.spawn(this.world, {
+        x: centerPos.x + Math.cos(angle) * radius,
+        y: centerPos.y + 0.2,
+        z: centerPos.z + Math.sin(angle) * radius
+      });
+
+      // Remove fire patch after 5-8 seconds
+      const lifetime = 5000 + Math.random() * 3000;
+      setTimeout(() => {
+        if (firePatch.isSpawned) {
+          firePatch.despawn();
+        }
+      }, lifetime);
+    }
   }
 
   // Execute mega kick power-up
   private executeMegaKick(playerId: string): void {
     console.log(`⚽ Mega Kick activated by ${playerId}!`);
+    
+    const playerEntity = this.findPlayerEntity(playerId);
+    if (playerEntity) {
+      // Create spectacular visual effect for mega kick activation
+      this.createPowerUpEffect(playerEntity.position, 'mega_kick');
+    }
     
     // Apply mega kick enhancement for 10 seconds
     this.addEnhancement(playerId, 'mega_kick', 10000);
@@ -421,6 +1136,177 @@ export class ArcadeEnhancementManager {
     this.playerEnhancements.clear();
     this.lastEnhancementTime = 0;
     console.log("ArcadeEnhancementManager cleaned up");
+  }
+
+  /**
+   * Create spectacular particle effect for power-up activation
+   * @param position - Position to create the effect
+   * @param effectType - Type of effect to create
+   */
+  private createPowerUpEffect(position: Vector3Like, effectType: string): void {
+    console.log(`✨ Creating power-up effect: ${effectType} at position:`, position);
+
+    // Create main effect entity with appropriate model and scale
+    let effectModel = 'models/misc/selection-indicator.gltf';
+    let effectScale = 3.0;
+    let effectColor = '#FFD700'; // Default gold
+    
+    switch (effectType) {
+      case 'freeze_blast':
+        effectModel = 'models/misc/selection-indicator.gltf';
+        effectScale = 8.0;
+        effectColor = '#00BFFF'; // Ice blue
+        break;
+      case 'shuriken_throw':
+        effectModel = 'models/misc/selection-indicator.gltf';
+        effectScale = 2.0;
+        effectColor = '#C0C0C0'; // Silver
+        break;
+      case 'fireball':
+        effectModel = 'models/misc/selection-indicator.gltf';
+        effectScale = 5.0;
+        effectColor = '#FF4500'; // Fire red-orange
+        break;
+      case 'mega_kick':
+        effectModel = 'models/misc/selection-indicator.gltf';
+        effectScale = 4.0;
+        effectColor = '#FFD700'; // Golden
+        break;
+    }
+
+    // Create main effect entity
+    const mainEffect = new Entity({
+      name: `powerup-effect-${effectType}`,
+      modelUri: effectModel,
+      modelScale: effectScale,
+      rigidBodyOptions: {
+        type: RigidBodyType.KINEMATIC_POSITION,
+      },
+    });
+
+    // Spawn to world at specified position
+    const effectPosition = {
+      x: position.x,
+      y: position.y + 1.5,
+      z: position.z
+    };
+    mainEffect.spawn(this.world, effectPosition);
+
+    // Create surrounding particle effects
+    this.createParticleRing(position, effectType, effectColor);
+
+    // Create light effect
+    this.createLightEffect(position, effectType, effectColor);
+
+    // Remove main effect after animation
+    setTimeout(() => {
+      try {
+        if (mainEffect.isSpawned) {
+          mainEffect.despawn();
+        }
+      } catch (error) {
+        console.log('Effect entity already removed:', error);
+      }
+    }, 2000);
+  }
+
+  /**
+   * Create a ring of particle effects around the power-up activation
+   */
+  private createParticleRing(position: Vector3Like, effectType: string, color: string): void {
+    const particleCount = 8;
+    const radius = 2.0;
+
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2;
+      const particleX = position.x + Math.cos(angle) * radius;
+      const particleZ = position.z + Math.sin(angle) * radius;
+
+      const particle = new Entity({
+        name: `particle-${effectType}-${i}`,
+        modelUri: 'models/misc/selection-indicator.gltf',
+        modelScale: 0.5,
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        },
+      });
+
+      const particlePosition = {
+        x: particleX,
+        y: position.y + 0.5,
+        z: particleZ
+      };
+      particle.spawn(this.world, particlePosition);
+
+      // Animate particle upward and outward
+      this.animateParticle(particle, angle, effectType);
+
+      // Remove particle after animation
+      setTimeout(() => {
+        try {
+          if (particle.isSpawned) {
+            particle.despawn();
+          }
+        } catch (error) {
+          console.log('Particle entity already removed:', error);
+        }
+      }, 1500);
+    }
+  }
+
+  /**
+   * Animate a single particle with upward and outward motion
+   */
+  private animateParticle(particle: Entity, angle: number, effectType: string): void {
+    const startTime = Date.now();
+    const duration = 1500;
+    const startPos = { ...particle.position };
+    const endHeight = startPos.y + 3.0;
+    const endRadius = 3.5;
+
+    const animateFrame = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      
+      const newY = startPos.y + (endHeight - startPos.y) * easeProgress;
+      const newX = startPos.x + Math.cos(angle) * endRadius * easeProgress;
+      const newZ = startPos.z + Math.sin(angle) * endRadius * easeProgress;
+
+      // Use setPosition instead of direct assignment
+      particle.setPosition({ x: newX, y: newY, z: newZ });
+
+      if (progress < 1) {
+        setTimeout(animateFrame, 16); // ~60fps
+      }
+    };
+
+    animateFrame();
+  }
+
+  /**
+   * Create dynamic lighting effect for power-up activation using audio as indicator
+   */
+  private createLightEffect(position: Vector3Like, effectType: string, color: string): void {
+    // Since direct lighting entities are complex, use audio with 3D positioning
+    // to create an immersive effect that represents the light/energy
+    const lightEffectAudio = new Audio({
+      uri: "audio/sfx/ui/inventory-grab-item.mp3",
+      loop: false,
+      volume: 0.3,
+      position: {
+        x: position.x,
+        y: position.y + 2.0,
+        z: position.z
+      },
+      referenceDistance: 8
+    });
+
+    lightEffectAudio.play(this.world);
+    
+    console.log(`✨ Light effect simulated for ${effectType} at position:`, position);
   }
 }
 

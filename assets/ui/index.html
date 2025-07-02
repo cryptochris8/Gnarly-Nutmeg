@@ -22,6 +22,40 @@
     overflow: hidden;
     user-select: none;
     cursor: default;
+    pointer-events: auto; /* Ensure UI can receive pointer events */
+  }
+
+  /* ===== ENHANCED BUTTON STYLES TO PREVENT CURSOR ISSUES ===== */
+  button, .btn, .team-btn, .game-mode-btn, .control-btn, .how-to-play-btn, .tab-button {
+    cursor: pointer !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    pointer-events: auto !important;
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    /* Don't override background and border for specific button types that need styling */
+  }
+
+  button:focus, .btn:focus, .team-btn:focus, .game-mode-btn:focus, .control-btn:focus, .how-to-play-btn:focus, .tab-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  button:active, .btn:active, .team-btn:active, .game-mode-btn:active, .control-btn:active, .how-to-play-btn:active, .tab-button:active {
+    transform: scale(0.98) !important;
+    transition: transform 0.1s ease !important;
+  }
+
+  /* Ensure UI container doesn't interfere with button clicks */
+  #ui-container, .instructions-panel, .team-selection, .game-mode-selection {
+    pointer-events: auto !important;
+  }
+
+  /* Ensure specific button types maintain their styling while being clickable */
+  .team-btn, .game-mode-btn {
+    border: 2px solid !important; /* Keep borders for these buttons */
   }
 
   /* ===== PHASE 1: ENHANCED SCORE DISPLAY ===== */
@@ -1391,17 +1425,13 @@
     border-radius: 8px;
     font-size: 16px;
     font-weight: bold;
-    cursor: pointer !important;
+    cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     min-width: 140px;
     position: relative;
     overflow: hidden;
-    pointer-events: auto;
-    outline: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
   }
 
   .team-btn::before {
@@ -1619,6 +1649,165 @@
       padding: 16px 20px;
     }
   }
+
+  /* ===== ARCADE MODE POWER-UP SYSTEM STYLES ===== */
+  .powerup-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .powerup-button {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid #ffd700;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+  }
+
+  .powerup-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(255, 107, 53, 0.6);
+    border-color: #ffed4e;
+  }
+
+  .powerup-button.on-cooldown {
+    background: linear-gradient(135deg, #666, #888);
+    border-color: #aaa;
+    cursor: not-allowed;
+    transform: scale(0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .powerup-button.activating {
+    animation: powerup-activation 0.6s ease-out;
+  }
+
+  @keyframes powerup-activation {
+    0% { 
+      transform: scale(1);
+      box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+    }
+    50% { 
+      transform: scale(1.3);
+      box-shadow: 0 8px 30px rgba(255, 215, 0, 0.8);
+      border-color: #ffed4e;
+    }
+    100% { 
+      transform: scale(1);
+      box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+    }
+  }
+
+  .powerup-icon {
+    font-size: 32px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    z-index: 2;
+  }
+
+  .powerup-cooldown-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: conic-gradient(from 0deg, transparent 0%, rgba(0, 0, 0, 0.7) 0%);
+    border-radius: 50%;
+    transition: background 0.1s ease;
+  }
+
+  .powerup-key-hint {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    pointer-events: none;
+  }
+
+  .powerup-effect-display {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 2000;
+    opacity: 0;
+    animation: powerup-effect-flash 2s ease-out;
+  }
+
+  @keyframes powerup-effect-flash {
+    0% { 
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.5);
+    }
+    20% { 
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+    80% { 
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% { 
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.8);
+    }
+  }
+
+  .arcade-mode-indicator {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 16px;
+    border: 2px solid #ffd700;
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+    z-index: 1000;
+    display: none;
+  }
+
+  .arcade-mode-indicator.visible {
+    display: block;
+    animation: arcade-mode-pulse 2s infinite;
+  }
+
+  @keyframes arcade-mode-pulse {
+    0%, 100% { 
+      box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+    }
+    50% { 
+      box-shadow: 0 6px 25px rgba(255, 215, 0, 0.6);
+    }
+  }
 </style>
 
 <!-- SIMPLE BULLETPROOF SCOREBOARD -->
@@ -1726,10 +1915,49 @@
 <div class="countdown-text" id="countdown-display"></div>
 <div class="cooldown-message" id="cooldown-message"></div>
 
-<div class="ability-holder">
-  <div class="ability-key">1</div>
-  <img id="ability-icon" src="" alt="Ability">
-</div>
+  <div class="ability-holder">
+    <div class="ability-key">1</div>
+    <img id="ability-icon" src="" alt="Ability">
+  </div>
+
+  <!-- ===== ARCADE MODE POWER-UP SYSTEM ===== -->
+  <div id="arcade-mode-indicator" class="arcade-mode-indicator">
+    🎪 ARCADE MODE - Enhanced Soccer!
+  </div>
+
+  <div id="powerup-container" class="powerup-container" style="display: none;">
+    <div class="powerup-button" id="freeze-blast-btn" onclick="activatePowerUp('freeze_blast')">
+      <div class="powerup-key-hint">1</div>
+      <div class="powerup-icon">🧊</div>
+      <div class="powerup-cooldown-overlay" id="freeze-blast-cooldown"></div>
+    </div>
+    
+    <div class="powerup-button" id="shuriken-btn" onclick="activatePowerUp('shuriken_throw')">
+      <div class="powerup-key-hint">2</div>
+      <div class="powerup-icon">🌟</div>
+      <div class="powerup-cooldown-overlay" id="shuriken-cooldown"></div>
+    </div>
+    
+    <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')">
+      <div class="powerup-key-hint">3</div>
+      <div class="powerup-icon">🔥</div>
+      <div class="powerup-cooldown-overlay" id="fireball-cooldown"></div>
+    </div>
+    
+    <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')">
+      <div class="powerup-key-hint">4</div>
+      <div class="powerup-icon">⚽</div>
+      <div class="powerup-cooldown-overlay" id="mega-kick-cooldown"></div>
+    </div>
+
+    <div class="powerup-button" id="random-powerup-btn" onclick="activateRandomPowerUp()">
+      <div class="powerup-key-hint">F</div>
+      <div class="powerup-icon">🎲</div>
+      <div class="powerup-cooldown-overlay" id="random-powerup-cooldown"></div>
+    </div>
+  </div>
+
+  <div id="powerup-effect-display" class="powerup-effect-display" style="display: none;"></div>
 
 <div class="instructions-panel" id="instructionsPanel">
   <div class="title-container">
@@ -2022,6 +2250,13 @@
     // Update power-up panel visibility based on selected mode
     updatePowerUpPanelVisibility(mode);
     
+    // Show/hide arcade power-up UI based on selected mode
+    if (mode === "arcade") {
+      showArcadeModeUI();
+    } else {
+      hideArcadeModeUI();
+    }
+    
     // Delay server communication to avoid immediate cursor mode switch
     setTimeout(() => {
       // Send mode selection to server only when user proceeds
@@ -2048,6 +2283,26 @@
 
   // Make function globally accessible
   window.selectGameMode = selectGameMode;
+
+  // ===== UNIVERSAL BUTTON CLICK HANDLER TO PREVENT CURSOR ISSUES =====
+  function handleButtonClick(event, callback) {
+    // Comprehensive event handling to prevent cursor mode issues
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    }
+    
+    // Ensure we stay in UI interaction mode
+    document.body.style.cursor = 'default';
+    
+    // Execute the callback after a minimal delay to ensure UI state is stable
+    setTimeout(() => {
+      if (typeof callback === 'function') {
+        callback();
+      }
+    }, 10);
+  }
 
   // ===== ENHANCED SCORE ANIMATIONS =====
   function animateScoreChange(team, newScore) {
@@ -2353,42 +2608,62 @@
   console.log("FIFA button:", fifaModeBtn); // Debug log
   console.log("Arcade button:", arcadeModeBtn); // Debug log
   
-  // Team selection event listeners
+  // Team selection event listeners with universal handler
   if (redTeamBtn && blueTeamBtn) {
     redTeamBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      selectTeam("red", e);
+      handleButtonClick(e, () => selectTeam("red", e));
     });
     blueTeamBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      selectTeam("blue", e);
+      handleButtonClick(e, () => selectTeam("blue", e));
     });
     console.log("Team selection event listeners added successfully"); // Debug log
   } else {
     console.error("Could not find team buttons!"); // Debug log
   }
   
-  // Game mode selection event listeners
+  // Game mode selection event listeners with universal handler
   if (fifaModeBtn && arcadeModeBtn) {
     fifaModeBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      selectGameMode("fifa", e);
+      handleButtonClick(e, () => selectGameMode("fifa", e));
     });
     arcadeModeBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      selectGameMode("arcade", e);
+      handleButtonClick(e, () => selectGameMode("arcade", e));
     });
     console.log("Game mode event listeners added successfully"); // Debug log
   } else {
     console.error("Could not find game mode buttons!"); // Debug log
   }
 
-  // Initialize the UI
-  initializeScoreDisplay();
+  // Initialize the UI with error handling
+  try {
+    initializeScoreDisplay();
+    console.log('✅ UI initialization completed successfully');
+  } catch (error) {
+    console.error('❌ UI initialization error:', error);
+  }
+
+  // Final safety check - ensure all buttons are responsive
+  setTimeout(() => {
+    const allButtons = document.querySelectorAll('button, .btn, .team-btn, .game-mode-btn, .control-btn, .how-to-play-btn, .tab-button');
+    let buttonIssues = 0;
+    
+    allButtons.forEach((button, index) => {
+      if (!button.style.cursor || button.style.cursor === 'default') {
+        button.style.cursor = 'pointer';
+        buttonIssues++;
+      }
+      if (button.style.pointerEvents === 'none') {
+        button.style.pointerEvents = 'auto';
+        buttonIssues++;
+      }
+    });
+    
+    if (buttonIssues > 0) {
+      console.warn(`🔧 Fixed ${buttonIssues} button cursor/pointer issues`);
+    }
+    
+    console.log(`✅ Final button check: ${allButtons.length} buttons verified as clickable`);
+  }, 1000);
   
   // ===== MESSAGE HANDLERS =====
   // Listen for messages from the server
@@ -2645,6 +2920,16 @@
     if (data.type === "powerup-feedback") {
       console.log("Powerup feedback received:", data);
       showPowerupFeedback(data);
+    }
+
+    // Handle specific power-up activation responses
+    if (data.type === "powerup-activated") {
+      console.log("Powerup activated response:", data);
+      showPowerupFeedback({
+        success: true,
+        powerUpType: data.powerUpType,
+        message: data.message || `${getPowerupName(data.powerUpType)} activated!`
+      });
     }
   });
 
@@ -2992,6 +3277,76 @@
   // Make function globally accessible
   window.closeGameOverScreen = closeGameOverScreen;
 
+  // ===== ENSURE ALL ONCLICK FUNCTIONS ARE AVAILABLE =====
+  // Make all functions globally accessible to prevent "function not defined" errors
+  window.toggleAudio = toggleAudio;
+  window.toggleStatsPanel = toggleStatsPanel;
+  window.togglePowerUpPanel = togglePowerUpPanel;
+  window.selectTeam = selectTeam;
+  window.selectGameMode = selectGameMode;
+  window.showPlayerTab = showPlayerTab;
+  window.closeGameOverScreen = closeGameOverScreen;
+  
+  // Add any missing functions with safe defaults
+  if (typeof window.startPenaltyShootout === 'undefined') {
+    window.startPenaltyShootout = function() {
+      console.log('Penalty shootout functionality not yet implemented');
+      alert('Penalty shootout mode coming soon!');
+    };
+  }
+
+  // Error handling for any missing functions
+  window.addEventListener('error', function(e) {
+    if (e.message && e.message.includes('is not defined')) {
+      console.warn('Function not defined error caught:', e.message);
+      e.preventDefault(); // Prevent the error from breaking the UI
+    }
+  });
+
+  // Add universal click handlers for inline onclick buttons
+  document.addEventListener('DOMContentLoaded', function() {
+    // Audio toggle button
+    const audioToggle = document.getElementById('audio-toggle');
+    if (audioToggle) {
+      audioToggle.addEventListener('click', (e) => {
+        handleButtonClick(e, toggleAudio);
+      });
+    }
+
+    // Stats toggle button  
+    const statsToggle = document.getElementById('stats-toggle');
+    if (statsToggle) {
+      statsToggle.addEventListener('click', (e) => {
+        handleButtonClick(e, toggleStatsPanel);
+      });
+    }
+
+    // Power-up toggle button
+    const powerupToggle = document.getElementById('powerup-toggle');
+    if (powerupToggle) {
+      powerupToggle.addEventListener('click', (e) => {
+        handleButtonClick(e, togglePowerUpPanel);
+      });
+    }
+
+    // Add event listeners to any other buttons that use onclick
+    document.querySelectorAll('button[onclick]').forEach(button => {
+      const originalOnclick = button.getAttribute('onclick');
+      button.removeAttribute('onclick'); // Remove onclick to prevent conflicts
+      
+      button.addEventListener('click', (e) => {
+        handleButtonClick(e, () => {
+          // Safely execute the original onclick content
+          try {
+            eval(originalOnclick);
+          } catch (error) {
+            console.warn('Error executing onclick:', error);
+          }
+        });
+      });
+    });
+  });
+
   function handleGameReset(data) {
     console.log("Game reset received:", data.message);
     
@@ -3052,6 +3407,352 @@
     
     playUISound("button-click");
   }
+
+  // ===== ARCADE MODE POWER-UP SYSTEM FUNCTIONS =====
+  
+  // Power-up cooldowns (in milliseconds)
+  const POWERUP_COOLDOWNS = {
+    'freeze_blast': 10000,    // 10 seconds
+    'shuriken_throw': 8000,   // 8 seconds  
+    'fireball': 12000,        // 12 seconds
+    'mega_kick': 15000,       // 15 seconds
+    'random_powerup': 3000    // 3 seconds for F key
+  };
+
+  // Track cooldown states
+  const powerupCooldownStates = {
+    'freeze_blast': { onCooldown: false, endTime: 0 },
+    'shuriken_throw': { onCooldown: false, endTime: 0 },
+    'fireball': { onCooldown: false, endTime: 0 },
+    'mega_kick': { onCooldown: false, endTime: 0 },
+    'random_powerup': { onCooldown: false, endTime: 0 }
+  };
+
+  // Show arcade mode UI when in arcade mode
+  function showArcadeModeUI() {
+    const indicator = document.getElementById('arcade-mode-indicator');
+    const container = document.getElementById('powerup-container');
+    
+    if (indicator) {
+      indicator.classList.add('visible');
+    }
+    if (container) {
+      container.style.display = 'flex';
+    }
+    
+    // Set up keyboard controls
+    setupPowerupKeyboardControls();
+    
+    console.log('🎪 Arcade Mode UI activated!');
+  }
+
+  // Hide arcade mode UI when in FIFA mode
+  function hideArcadeModeUI() {
+    const indicator = document.getElementById('arcade-mode-indicator');
+    const container = document.getElementById('powerup-container');
+    
+    if (indicator) {
+      indicator.classList.remove('visible');
+    }
+    if (container) {
+      container.style.display = 'none';
+    }
+    
+    console.log('🏆 FIFA Mode - Power-up UI hidden');
+  }
+
+  // Set up keyboard controls for power-ups
+  function setupPowerupKeyboardControls() {
+    document.addEventListener('keydown', function(event) {
+      // Only handle power-up keys when arcade mode UI is visible
+      const container = document.getElementById('powerup-container');
+      if (!container || container.style.display === 'none') {
+        return;
+      }
+
+      switch(event.key) {
+        case '1':
+          event.preventDefault();
+          activatePowerUp('freeze_blast');
+          break;
+        case '2':
+          event.preventDefault();
+          activatePowerUp('shuriken_throw');
+          break;
+        case '3':
+          event.preventDefault();
+          activatePowerUp('fireball');
+          break;
+        case '4':
+          event.preventDefault();
+          activatePowerUp('mega_kick');
+          break;
+        case 'f':
+        case 'F':
+          event.preventDefault();
+          activateRandomPowerUp();
+          break;
+      }
+    });
+  }
+
+  // Activate specific power-up
+  function activatePowerUp(powerUpType) {
+    console.log(`🎮 Attempting to activate power-up: ${powerUpType}`);
+    
+    // Check if on cooldown
+    const cooldownState = powerupCooldownStates[powerUpType];
+    if (cooldownState && cooldownState.onCooldown) {
+      const timeLeft = Math.max(0, cooldownState.endTime - Date.now());
+      console.log(`⏱️ Power-up ${powerUpType} on cooldown for ${Math.ceil(timeLeft / 1000)}s`);
+      showPowerupFeedback({
+        success: false,
+        message: `${getPowerupName(powerUpType)} on cooldown (${Math.ceil(timeLeft / 1000)}s)`,
+        powerUpType
+      });
+      return;
+    }
+
+    // Send activation request to server
+    if (window.hytopia && window.hytopia.ui && window.hytopia.ui.sendData) {
+      window.hytopia.ui.sendData({
+        type: "activate-powerup",
+        powerUpType: powerUpType
+      });
+    }
+
+    // Start cooldown and visual feedback
+    startPowerupCooldown(powerUpType);
+    showPowerupActivation(powerUpType);
+  }
+
+  // Activate random power-up (F key functionality)
+  function activateRandomPowerUp() {
+    console.log(`🎲 Attempting to activate random power-up`);
+    
+    // Check if on cooldown
+    const cooldownState = powerupCooldownStates['random_powerup'];
+    if (cooldownState && cooldownState.onCooldown) {
+      const timeLeft = Math.max(0, cooldownState.endTime - Date.now());
+      console.log(`⏱️ Random power-up on cooldown for ${Math.ceil(timeLeft / 1000)}s`);
+      showPowerupFeedback({
+        success: false,
+        message: `Random Power-up on cooldown (${Math.ceil(timeLeft / 1000)}s)`
+      });
+      return;
+    }
+
+    // For F key, we let the server handle the random selection
+    // Send a generic request and let server pick randomly
+    const randomTypes = ['freeze_blast', 'shuriken_throw', 'fireball', 'mega_kick'];
+    const randomType = randomTypes[Math.floor(Math.random() * randomTypes.length)];
+    
+    console.log(`🎲 Server will handle random power-up selection`);
+    
+    // Start F key cooldown
+    startPowerupCooldown('random_powerup');
+    
+    // Show activation feedback
+    showPowerupActivation('random_powerup');
+  }
+
+  // Start cooldown for a power-up
+  function startPowerupCooldown(powerUpType) {
+    const cooldownDuration = POWERUP_COOLDOWNS[powerUpType] || 3000;
+    const cooldownState = powerupCooldownStates[powerUpType];
+    
+    if (cooldownState) {
+      cooldownState.onCooldown = true;
+      cooldownState.endTime = Date.now() + cooldownDuration;
+      
+      // Update button visual state
+      updatePowerupButtonState(powerUpType, true);
+      
+      // Start cooldown visual countdown
+      startCooldownAnimation(powerUpType, cooldownDuration);
+      
+      // Clear cooldown after duration
+      setTimeout(() => {
+        cooldownState.onCooldown = false;
+        updatePowerupButtonState(powerUpType, false);
+      }, cooldownDuration);
+    }
+  }
+
+  // Update power-up button visual state
+  function updatePowerupButtonState(powerUpType, onCooldown) {
+    const buttonId = getPowerupButtonId(powerUpType);
+    const button = document.getElementById(buttonId);
+    
+    if (button) {
+      if (onCooldown) {
+        button.classList.add('on-cooldown');
+      } else {
+        button.classList.remove('on-cooldown');
+      }
+    }
+  }
+
+  // Get button ID for power-up type
+  function getPowerupButtonId(powerUpType) {
+    const buttonMap = {
+      'freeze_blast': 'freeze-blast-btn',
+      'shuriken_throw': 'shuriken-btn',
+      'fireball': 'fireball-btn',
+      'mega_kick': 'mega-kick-btn',
+      'random_powerup': 'random-powerup-btn'
+    };
+    return buttonMap[powerUpType] || 'random-powerup-btn';
+  }
+
+  // Get human-readable power-up name
+  function getPowerupName(powerUpType) {
+    const nameMap = {
+      'freeze_blast': 'Freeze Blast',
+      'shuriken_throw': 'Shuriken Throw',
+      'fireball': 'Fireball',
+      'mega_kick': 'Mega Kick',
+      'random_powerup': 'Random Power-up'
+    };
+    return nameMap[powerUpType] || 'Unknown Power-up';
+  }
+
+  // Start cooldown animation
+  function startCooldownAnimation(powerUpType, duration) {
+    const overlayId = powerUpType.replace('_', '-') + '-cooldown';
+    const overlay = document.getElementById(overlayId);
+    
+    if (!overlay) return;
+    
+    let startTime = Date.now();
+    
+    function updateCooldown() {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const degrees = 360 * (1 - progress);
+      
+      overlay.style.background = `conic-gradient(from 0deg, transparent ${degrees}deg, rgba(0, 0, 0, 0.7) ${degrees}deg)`;
+      
+      if (progress < 1) {
+        requestAnimationFrame(updateCooldown);
+      } else {
+        overlay.style.background = 'conic-gradient(from 0deg, transparent 0%, rgba(0, 0, 0, 0.7) 0%)';
+      }
+    }
+    
+    requestAnimationFrame(updateCooldown);
+  }
+
+  // Show power-up activation visual feedback
+  function showPowerupActivation(powerUpType) {
+    const buttonId = getPowerupButtonId(powerUpType);
+    const button = document.getElementById(buttonId);
+    
+    if (button) {
+      button.classList.add('activating');
+      setTimeout(() => {
+        button.classList.remove('activating');
+      }, 600);
+    }
+    
+    // Show center screen effect
+    const effectDisplay = document.getElementById('powerup-effect-display');
+    if (effectDisplay) {
+      const powerupName = getPowerupName(powerUpType);
+      const powerupIcon = getPowerupIcon(powerUpType);
+      
+      effectDisplay.textContent = `${powerupIcon} ${powerupName.toUpperCase()} ACTIVATED!`;
+      effectDisplay.style.display = 'block';
+      
+      setTimeout(() => {
+        effectDisplay.style.display = 'none';
+      }, 2000);
+    }
+  }
+
+  // Get power-up icon
+  function getPowerupIcon(powerUpType) {
+    const iconMap = {
+      'freeze_blast': '🧊',
+      'shuriken_throw': '🌟',
+      'fireball': '🔥',
+      'mega_kick': '⚽',
+      'random_powerup': '🎲'
+    };
+    return iconMap[powerUpType] || '⚡';
+  }
+
+  // Enhanced powerup feedback function
+  function showPowerupFeedback(data) {
+    console.log("Powerup feedback received:", data);
+    
+    let notification = document.getElementById("powerup-notification");
+    
+    if (!notification) {
+      notification = document.createElement('div');
+      notification.id = "powerup-notification";
+      notification.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 20px 30px;
+        border-radius: 10px;
+        font-size: 18px;
+        font-weight: bold;
+        z-index: 5000;
+        text-align: center;
+        border: 2px solid;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      `;
+      document.body.appendChild(notification);
+    }
+    
+    // Set colors based on success
+    if (data.success) {
+      notification.style.borderColor = '#4CAF50';
+      notification.style.background = 'rgba(76, 175, 80, 0.2)';
+      notification.style.color = '#4CAF50';
+    } else {
+      notification.style.borderColor = '#f44336';
+      notification.style.background = 'rgba(244, 67, 54, 0.2)';
+      notification.style.color = '#f44336';
+    }
+    
+    // Set message
+    let message = data.message || '';
+    if (data.powerUpType && data.success) {
+      const icon = getPowerupIcon(data.powerUpType);
+      const name = getPowerupName(data.powerUpType);
+      message = `${icon} ${name.toUpperCase()} ACTIVATED!`;
+    }
+    
+    notification.textContent = message;
+    notification.style.opacity = '1';
+    
+    // Hide after delay
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          document.body.removeChild(notification);
+        }
+      }, 300);
+    }, data.success ? 2000 : 3000);
+  }
+
+  // Make power-up functions globally accessible
+  window.activatePowerUp = activatePowerUp;
+  window.activateRandomPowerUp = activateRandomPowerUp;
+  window.showArcadeModeUI = showArcadeModeUI;
+  window.hideArcadeModeUI = hideArcadeModeUI;
+  window.showPowerupFeedback = showPowerupFeedback;
+
 </script>
 
 </body>

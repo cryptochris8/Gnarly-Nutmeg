@@ -63,6 +63,26 @@ startServer((world) => {
     console.log("Loading soccer map...");
     world.loadMap(worldMap); // Uncommented to load the soccer map
 
+    // === DOMED STADIUM LIGHTING OPTIMIZATION ===
+    console.log("Setting up domed stadium lighting with glass ceiling...");
+    
+    // Simulate natural daylight filtering through glass dome
+    // Higher directional light intensity to represent bright daylight through glass
+    world.setDirectionalLightIntensity(0.6); // Moderate intensity for natural daylight effect
+    
+    // Position sun directly overhead to simulate dome opening
+    world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 }); // Very high overhead for dome effect
+    
+    // Bright warm directional light to simulate natural daylight through glass
+    world.setDirectionalLightColor({ r: 255, g: 248, b: 235 }); // Warm daylight color
+    
+    // High ambient light to simulate light bouncing off stadium surfaces and glass
+    world.setAmbientLightIntensity(1.2); // Bright ambient for indoor stadium feel
+    world.setAmbientLightColor({ r: 250, g: 250, b: 255 }); // Very bright, slightly cool ambient
+    
+    console.log("✅ Domed stadium lighting configured: Bright daylight through glass dome");
+    // === END DOMED STADIUM LIGHTING ===
+
     // Store the main background music instance
     const mainMusic = new Audio({
       uri: "audio/music/Ian Post - 8 Bit Samba - No FX.mp3",
@@ -1359,6 +1379,74 @@ startServer((world) => {
       world.chatManager.sendPlayerMessage(
         player,
         `🎯 Precision enhancement activated for 15 seconds!`
+      );
+    });
+
+    // Add lighting control commands for performance testing
+    world.chatManager.registerCommand("/noshadows", (player, args) => {
+      world.setDirectionalLightIntensity(0.05); // Minimal shadows
+      world.setAmbientLightIntensity(1.5); // Very bright ambient
+      world.chatManager.sendPlayerMessage(
+        player,
+        `🌞 Shadows minimized for maximum performance`
+      );
+    });
+
+    world.chatManager.registerCommand("/normallighting", (player, args) => {
+      world.setDirectionalLightIntensity(0.7); // Default intensity
+      world.setAmbientLightIntensity(0.4); // Default ambient
+      world.chatManager.sendPlayerMessage(
+        player,
+        `🌞 Normal lighting restored`
+      );
+    });
+
+    world.chatManager.registerCommand("/optimizedlighting", (player, args) => {
+      // Restore the domed stadium lighting settings from startup
+      world.setDirectionalLightIntensity(0.6); // Moderate daylight intensity
+      world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 }); // Very high overhead for dome
+      world.setDirectionalLightColor({ r: 255, g: 248, b: 235 }); // Warm daylight color
+      world.setAmbientLightIntensity(1.2); // Bright ambient for indoor stadium
+      world.setAmbientLightColor({ r: 250, g: 250, b: 255 }); // Very bright ambient
+      world.chatManager.sendPlayerMessage(
+        player,
+        `🏟️ Domed stadium lighting settings restored`
+      );
+    });
+
+    world.chatManager.registerCommand("/domelighting", (player, args) => {
+      // Enhanced domed stadium lighting for maximum brightness
+      world.setDirectionalLightIntensity(0.8); // Higher intensity for extra brightness
+      world.setDirectionalLightPosition({ x: 0, y: 350, z: 0 }); // Even higher overhead
+      world.setDirectionalLightColor({ r: 255, g: 255, b: 245 }); // Very bright warm white
+      world.setAmbientLightIntensity(1.5); // Maximum bright ambient
+      world.setAmbientLightColor({ r: 255, g: 255, b: 255 }); // Pure white ambient
+      world.chatManager.sendPlayerMessage(
+        player,
+        `☀️ Maximum brightness domed stadium lighting activated`
+      );
+    });
+
+    world.chatManager.registerCommand("/lighting", (player, args) => {
+      world.chatManager.sendPlayerMessage(
+        player,
+        `=== LIGHTING COMMANDS ===`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `/noshadows - Minimize shadows for max performance`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `/normallighting - Restore default lighting`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `/optimizedlighting - Restore domed stadium settings`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `/domelighting - Maximum brightness for glass dome`
       );
     });
   });
