@@ -97,6 +97,104 @@ Arcade Mode transforms the traditional soccer experience into an action-packed, 
 
 ---
 
+## 🤖 Power-Up Automation Guide
+
+**NEW PLAYERS: This is the most important section!** Understanding how power-ups activate will dramatically improve your gameplay experience.
+
+### 🔥 **INSTANT EFFECT POWER-UPS** 
+*These work 100% automatically - no additional input required!*
+
+#### 🧊 **Freeze Blast** - *Fully Automatic*
+- **What happens**: Immediately freezes all enemies within 5 units of you
+- **Your role**: Just press F - everything else is automatic
+- **No aiming needed**: Affects all nearby opponents instantly
+- **Visual feedback**: Ice effects appear around frozen players
+- **Pro tip**: Position yourself near enemy clusters before pressing F
+
+#### 🥷 **Shuriken Throw** - *Fully Automatic*
+- **What happens**: Instantly launches a spinning projectile straight ahead
+- **Your role**: Face your target, then press F
+- **Direction**: Throws exactly where you're looking when F is pressed
+- **Auto-targeting**: Automatically stuns any player it hits (1.2 unit radius)
+- **Flight path**: Flies in slight arc with realistic physics for 5 seconds max
+- **Pro tip**: Turn to face your target before pressing F - direction is locked on activation!
+
+#### 🔥 **Fireball** - *Fully Automatic*
+- **What happens**: Launches explosive projectile that detonates on impact
+- **Your role**: Aim direction, then press F
+- **Auto-explosion**: Explodes automatically when hitting players or ground
+- **Area damage**: 8-unit blast radius affects multiple enemies
+- **Flight time**: Up to 6 seconds of flight before auto-detonation
+- **Pro tip**: Great for clearing crowded penalty areas!
+
+### ⚡ **PASSIVE ENHANCEMENT POWER-UPS**
+*These automatically enhance your normal actions - just play normally!*
+
+#### ⚡ **Speed Boost** - *Passive Enhancement*
+- **What happens**: Your movement speed doubles instantly
+- **Your role**: Move with WASD as normal - you'll automatically be faster
+- **No special input**: Regular movement keys work normally, just faster
+- **Duration**: 10 seconds of enhanced mobility
+- **Visual**: Speed trail effects follow your player
+- **Pro tip**: Perfect for counter-attacks and ball chasing!
+
+#### 🎯 **Precision** - *Passive Enhancement*
+- **What happens**: All your shots and passes become 30% more accurate
+- **Your role**: Play normally - every ball interaction is automatically enhanced
+- **No special technique**: Use normal controls (Q, E, Left Click) - they're just better
+- **Duration**: 10 seconds of improved accuracy
+- **Best for**: Crucial shots and difficult passes
+- **Pro tip**: Save for important scoring opportunities!
+
+#### 💪 **Power** - *Passive Enhancement*
+- **What happens**: All your shots and passes get significantly more power
+- **Your role**: Play normally - every ball kick is automatically stronger
+- **No special input**: Regular controls work the same, just with more force
+- **Duration**: 10 seconds of enhanced strength
+- **Best for**: Long-range shots and powerful clearances
+- **Pro tip**: Great for breaking through defensive walls!
+
+### 🎯 **TRIGGERED ENHANCEMENT POWER-UPS**
+*These activate but require specific actions to use their benefits*
+
+#### ⚽ **Mega Kick** - *Requires Ball Interaction*
+- **What happens**: Next ball kick gets 3x power boost
+- **Your role**: You MUST kick the ball to use the enhancement
+- **Trigger actions**: Any ball interaction (Q hold, E pass, Left Click)
+- **One-time use**: Power consumed on first ball kick only
+- **Expiration**: 10 seconds OR until you kick the ball (whichever comes first)
+- **Visual**: Enhanced kick animation when power is used
+- **Pro tip**: Save for clear scoring opportunities - don't waste on passes!
+
+#### 🛡️ **Shield** - *Automatic Defense*
+- **What happens**: Next incoming attack is automatically blocked
+- **Your role**: Play normally - shield activates automatically when needed
+- **Auto-consumption**: Disappears when blocking stuns, freezes, or projectiles
+- **No input required**: Defensive effect triggers automatically
+- **Duration**: 30 seconds OR until you get attacked
+- **Sound**: Shield block sound plays when activated
+- **Pro tip**: Best used when carrying the ball through enemy territory!
+
+---
+
+## 📊 Power-Up Quick Reference Table
+
+| Power-Up | Activation Type | Additional Input? | Duration | Best Used For |
+|----------|----------------|-------------------|-----------|---------------|
+| 🧊 **Freeze Blast** | Instant Effect | ❌ **None** | 4 sec freeze | Breaking through defense |
+| 🥷 **Shuriken** | Instant Projectile | ❌ **None** | Instant | Long-range disruption |
+| 🔥 **Fireball** | Instant Projectile | ❌ **None** | Until impact | Area clearance |
+| ⚡ **Speed Boost** | Passive Enhancement | ❌ **None** | 10 seconds | Counter-attacks |
+| 🎯 **Precision** | Passive Enhancement | ❌ **None** | 10 seconds | Important shots |
+| 💪 **Power** | Passive Enhancement | ❌ **None** | 10 seconds | Power plays |
+| ⚽ **Mega Kick** | Triggered Enhancement | ✅ **Must kick ball** | 10 sec OR 1 kick | Scoring opportunities |
+| 🛡️ **Shield** | Auto-Defense | ❌ **None** | 30 sec OR 1 block | Ball carrying |
+
+### 🎮 **Key Takeaway for New Players**
+**7 out of 8 power-ups work completely automatically!** Only **Mega Kick** requires you to actually kick the ball. Everything else either activates instantly or enhances your normal gameplay without any extra input required.
+
+---
+
 ## 🏟️ Gameplay Strategy
 
 ### 🎮 Arcade Mode Tactics
