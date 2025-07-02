@@ -367,9 +367,15 @@ export class ArcadeEnhancementManager {
     
     const playerEntity = this.findPlayerEntity(playerId);
     if (!playerEntity) {
-      console.error(`Player entity not found for shuriken: ${playerId}`);
+      console.error(`❌ SHURIKEN ERROR: Player entity not found for shuriken: ${playerId}`);
+      // List all available players for debugging
+      const allPlayers = this.world.entityManager.getAllPlayerEntities()
+        .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
+      console.log(`Available players: ${allPlayers.map(p => p.player.username).join(', ')}`);
       return;
     }
+
+    console.log(`✅ SHURIKEN: Found player entity for ${playerId} at position [${playerEntity.position.x.toFixed(2)}, ${playerEntity.position.y.toFixed(2)}, ${playerEntity.position.z.toFixed(2)}]`);
 
     // Play shuriken throw sound
     const throwAudio = new Audio({
@@ -391,8 +397,8 @@ export class ArcadeEnhancementManager {
     // Create shuriken projectile entity
     const shuriken = new Entity({
       name: 'shuriken-projectile',
-      modelUri: 'models/projectiles/arrow.gltf', // Using arrow model as shuriken base
-      modelScale: 0.8,
+      modelUri: 'models/projectiles/shuriken.gltf', // Using proper shuriken model
+      modelScale: 1.2,
       rigidBodyOptions: {
         type: RigidBodyType.DYNAMIC,
         ccdEnabled: true, // Enable continuous collision detection for fast-moving projectiles
@@ -411,8 +417,6 @@ export class ArcadeEnhancementManager {
       z: playerEntity.position.z + direction.z * spawnOffset
     };
 
-    shuriken.spawn(this.world, shurikenPosition);
-
     // Apply launch velocity and spinning motion
     const launchForce = 15.0;
     const launchVelocity = {
@@ -420,15 +424,25 @@ export class ArcadeEnhancementManager {
       y: 2.0, // Slight upward trajectory
       z: direction.z * launchForce
     };
-    
-    shuriken.setLinearVelocity(launchVelocity);
-    
-    // Add spinning motion for visual effect
-    shuriken.setAngularVelocity({
-      x: 0,
-      y: 20, // Fast spinning around Y axis
-      z: 0
-    });
+
+    try {
+      shuriken.spawn(this.world, shurikenPosition);
+      console.log(`✅ SHURIKEN: Successfully spawned at [${shurikenPosition.x.toFixed(2)}, ${shurikenPosition.y.toFixed(2)}, ${shurikenPosition.z.toFixed(2)}]`);
+      
+      shuriken.setLinearVelocity(launchVelocity);
+      console.log(`✅ SHURIKEN: Applied velocity [${launchVelocity.x.toFixed(2)}, ${launchVelocity.y.toFixed(2)}, ${launchVelocity.z.toFixed(2)}]`);
+      
+      // Add spinning motion for visual effect
+      shuriken.setAngularVelocity({
+        x: 0,
+        y: 20, // Fast spinning around Y axis
+        z: 0
+      });
+      console.log(`✅ SHURIKEN: Applied spinning motion`);
+    } catch (error) {
+      console.error(`❌ SHURIKEN ERROR: Failed to spawn shuriken:`, error);
+      return;
+    }
 
     // Play whoosh sound that follows the projectile
     const whooshAudio = new Audio({
@@ -453,11 +467,14 @@ export class ArcadeEnhancementManager {
     const checkInterval = 100; // Check every 100ms
     let flightTime = 0;
 
+    console.log(`🎯 SHURIKEN: Starting tracking for projectile from ${playerId}`);
+
     const trackingInterval = setInterval(() => {
       flightTime += checkInterval;
 
       // Check if projectile still exists
       if (!shuriken.isSpawned || hasHit) {
+        console.log(`🎯 SHURIKEN: Stopping tracking - spawned: ${shuriken.isSpawned}, hasHit: ${hasHit}`);
         clearInterval(trackingInterval);
         whooshAudio.pause();
         return;
@@ -469,17 +486,20 @@ export class ArcadeEnhancementManager {
         .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
 
       const hitPlayer = allPlayers.find(player => {
-        // Skip self
-        if (player.player.username === playerId) return false;
+        // Skip self - check both username and any ID variations
+        if (player.player.username === playerId || player.player.id === playerId) return false;
         
-        // Calculate distance to player
-        const distance = Math.sqrt(
-          Math.pow(player.position.x - shurikenPos.x, 2) +
-          Math.pow(player.position.y - shurikenPos.y, 2) +
-          Math.pow(player.position.z - shurikenPos.z, 2)
-        );
+        // Only hit spawned, unfrozen players
+        if (!player.isSpawned || player.isPlayerFrozen) return false;
+        
+        // Calculate 3D distance to player with better collision detection
+        const dx = player.position.x - shurikenPos.x;
+        const dy = player.position.y - shurikenPos.y;
+        const dz = player.position.z - shurikenPos.z;
+        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        return distance <= 1.2; // Hit radius
+        // More generous hit radius for better gameplay
+        return distance <= 1.8; // Increased hit radius
       });
 
       if (hitPlayer) {
@@ -564,27 +584,28 @@ export class ArcadeEnhancementManager {
     console.log(`🌟 SHURIKEN IMPACT: Applied knockback and 2s stun to ${hitPlayer.player.username}`);
   }
 
-  // Calculate direction from quaternion rotation
+  // Calculate direction from quaternion rotation (fixed for Hytopia coordinate system)
   private calculateDirectionFromRotation(rotation: { x: number, y: number, z: number, w: number }): { x: number, z: number } {
     // Convert quaternion to forward direction vector
-    // For Hytopia, forward is typically the negative Z direction before rotation
+    // For Hytopia, we need to calculate the forward vector properly
     const { x, y, z, w } = rotation;
     
-    // Calculate forward vector from quaternion
-    const forwardX = 2 * (x * z + w * y);
-    const forwardZ = 2 * (y * z - w * x);
+    // Calculate forward vector from quaternion (Hytopia uses right-handed coordinate system)
+    // Forward direction is typically along the negative Z axis in local space
+    const forwardX = 2 * (x * z - w * y);
+    const forwardZ = 2 * (y * z + w * x);
     
     // Normalize the direction
     const magnitude = Math.sqrt(forwardX * forwardX + forwardZ * forwardZ);
     
-    if (magnitude > 0) {
+    if (magnitude > 0.001) { // Small epsilon to avoid division by zero
       return {
         x: forwardX / magnitude,
         z: forwardZ / magnitude
       };
     }
     
-    // Default forward direction if calculation fails
+    // Default forward direction if calculation fails (negative Z in Hytopia)
     return { x: 0, z: -1 };
   }
 
