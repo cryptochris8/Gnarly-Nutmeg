@@ -532,6 +532,64 @@ startServer((world) => {
             });
           }
         }
+        else if (data.type === "force-pass" && data.action === "pass-to-teammate") {
+          console.log(`🎯 SERVER: Received force-pass request from ${player.username}`);
+          
+          // Find the player's entity
+          const playerEntity = world.entityManager.getAllPlayerEntities().find(
+            (entity) => entity.player.username === player.username
+          );
+          
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Check if player has the ball
+            const attachedPlayer = sharedState.getAttachedPlayer();
+            const hasBall = attachedPlayer?.player?.username === player.username;
+            
+            if (hasBall) {
+              // Simulate a left mouse click to trigger the pass
+              const fakeInput = {
+                w: false, a: false, s: false, d: false, sp: false,
+                ml: true, // Left mouse click for pass
+                mr: false, q: false, sh: false, e: false, f: false,
+                "1": false
+              };
+              
+              // Get the player's camera orientation
+              const cameraOrientation = {
+                yaw: player.camera.rotation.yaw || 0,
+                pitch: player.camera.rotation.pitch || 0
+              };
+              
+              // Call the controller's input handler directly
+              if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                playerEntity.controller.tickWithPlayerInput(
+                  playerEntity,
+                  fakeInput,
+                  cameraOrientation,
+                  16 // 16ms delta time (roughly 60fps)
+                );
+                
+                console.log(`✅ SERVER: Force pass executed for ${player.username}`);
+                
+                // Send feedback to UI
+                player.ui.sendData({
+                  type: "action-feedback",
+                  feedbackType: "success",
+                  title: "Pass",
+                  message: "Pass executed!"
+                });
+              }
+            } else {
+              console.log(`❌ SERVER: ${player.username} doesn't have the ball`);
+              player.ui.sendData({
+                type: "action-feedback",
+                feedbackType: "warning",
+                title: "Pass Failed",
+                message: "You don't have the ball!"
+              });
+            }
+          }
+        }
         else if (data.type === "activate-powerup" && data.powerUpType) {
           // Handle power-up activation (Arcade Mode only)
           console.log(`🎮 SERVER: Player ${player.username} activated power-up: ${data.powerUpType}`);

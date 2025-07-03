@@ -2805,9 +2805,10 @@
 
 <!-- Control Buttons -->
 <div class="control-buttons">
-  <button class="control-btn" id="audio-toggle" onclick="toggleAudio()" title="Toggle Audio">🔊</button>
-  <button class="control-btn" id="stats-toggle" onclick="toggleStatsPanel()" title="Toggle Statistics">📊</button>
-  <button class="control-btn" id="powerup-toggle" onclick="togglePowerUpPanel()" title="Toggle Power-Ups (Arcade Mode)" style="display: none;">🎪</button>
+      <button class="control-btn" id="audio-toggle" onclick="toggleAudio()" title="Toggle Audio">🔊</button>
+    <button class="control-btn" id="stats-toggle" onclick="toggleStatsPanel()" title="Toggle Statistics">📊</button>
+    <button class="control-btn" id="powerup-toggle" onclick="togglePowerUpPanel()" title="Toggle Power-Ups (Arcade Mode)" style="display: none;">🎪</button>
+    <button class="control-btn" id="pass-button" onclick="forcePassToTeammate()" title="Pass to Teammate (Left Click)">⚽</button>
 </div>
 
 <!-- Statistics Panel -->
@@ -4222,6 +4223,17 @@
       playGoalCelebration(data.team);
       
       if (data.score) {
+        // Update main scoreboard immediately when goal is scored
+        const redScore = document.getElementById("red-score");
+        const blueScore = document.getElementById("blue-score");
+        
+        if (redScore && blueScore) {
+          redScore.textContent = data.score.red;
+          blueScore.textContent = data.score.blue;
+          console.log("✅ GOAL EVENT - Main scoreboard updated:", data.score.red, "vs", data.score.blue);
+        }
+        
+        // Also run the animation
         animateScoreChange("red", data.score.red);
         animateScoreChange("blue", data.score.blue);
       }
@@ -4291,6 +4303,12 @@
         powerUpType: data.powerUpType,
         message: data.message || `${getPowerupName(data.powerUpType)} activated!`
       });
+    }
+
+    // Handle action feedback from server
+    if (data.type === "action-feedback") {
+      console.log("Action feedback received:", data);
+      showActionFeedback(data.feedbackType, data.title, data.message);
     }
   });
 
@@ -5538,12 +5556,29 @@
     }, data.success ? 2000 : 3000);
   }
 
-  // Make power-up functions globally accessible
+  // Forced pass function
+  function forcePassToTeammate() {
+    console.log("🎯 Forced pass button clicked");
+    
+    // Send a left mouse click simulation to trigger the pass
+    hytopia.sendData({
+      type: "force-pass",
+      action: "pass-to-teammate"
+    });
+    
+    // Show feedback
+    showActionFeedback("info", "Pass", "Attempting pass to teammate...");
+    
+    playUISound("button-click");
+  }
+
+  // Make functions globally accessible
   window.activatePowerUp = activatePowerUp;
   window.activateRandomPowerUp = activateRandomPowerUp;
   window.showArcadeModeUI = showArcadeModeUI;
   window.hideArcadeModeUI = hideArcadeModeUI;
   window.showPowerupFeedback = showPowerupFeedback;
+  window.forcePassToTeammate = forcePassToTeammate;
 
 </script>
 
