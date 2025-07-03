@@ -167,35 +167,57 @@ export class ArcadeEnhancementManager {
 
   // Activate power-up for player (only in arcade mode)
   public activatePowerUp(playerId: string, powerUpType: EnhancementType): boolean {
-    // SAFETY CHECK: Only work in arcade mode
-    if (!isArcadeMode()) {
+    console.log(`🎮 ARCADE: Attempting to activate ${powerUpType} for player ${playerId}`);
+    console.log(`🎮 ARCADE: Current game mode check - isArcadeMode(): ${isArcadeMode()}`);
+    
+    try {
+      // SAFETY CHECK: Only work in arcade mode
+      if (!isArcadeMode()) {
+        console.log(`🎮 ARCADE: Not in arcade mode, power-up activation blocked`);
+        return false;
+      }
+
+      console.log(`🎮 ARCADE: In arcade mode, executing power-up ${powerUpType}`);
+
+      // Execute power-up effect based on type
+      switch (powerUpType) {
+        case 'freeze_blast':
+          console.log(`🎮 ARCADE: Executing freeze blast for ${playerId}`);
+          this.executeFreezeBlast(playerId);
+          break;
+        case 'shuriken_throw':
+          console.log(`🎮 ARCADE: Executing shuriken throw for ${playerId}`);
+          this.executeShurikenProjectile(playerId);
+          break;
+        case 'fireball':
+          console.log(`🎮 ARCADE: Executing fireball for ${playerId}`);
+          this.executeFireball(playerId);
+          break;
+        case 'mega_kick':
+          console.log(`🎮 ARCADE: Executing mega kick for ${playerId}`);
+          this.executeMegaKick(playerId);
+          break;
+        case 'shield':
+          console.log(`🎮 ARCADE: Executing shield for ${playerId}`);
+          this.executeShield(playerId);
+          break;
+        default:
+          console.log(`🎮 ARCADE: Executing temporary enhancement ${powerUpType} for ${playerId}`);
+          // For temporary enhancements like speed/power
+          this.addEnhancement(playerId, powerUpType, 10000);
+          break;
+      }
+
+      console.log(`🎮 ARCADE: Power-up ${powerUpType} activation completed for ${playerId}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ ARCADE ERROR: Failed to activate ${powerUpType} for ${playerId}:`, error);
+      if (error instanceof Error) {
+        console.error(`❌ ARCADE ERROR Details: ${error.message}`);
+        console.error(`❌ ARCADE ERROR Stack: ${error.stack}`);
+      }
       return false;
     }
-
-    // Execute power-up effect based on type
-    switch (powerUpType) {
-      case 'freeze_blast':
-        this.executeFreezeBlast(playerId);
-        break;
-      case 'shuriken_throw':
-        this.executeShurikenProjectile(playerId);
-        break;
-      case 'fireball':
-        this.executeFireball(playerId);
-        break;
-      case 'mega_kick':
-        this.executeMegaKick(playerId);
-        break;
-      case 'shield':
-        this.executeShield(playerId);
-        break;
-      default:
-        // For temporary enhancements like speed/power
-        this.addEnhancement(playerId, powerUpType, 10000);
-        break;
-    }
-
-    return true;
   }
 
   // Execute freeze blast power-up with area effect and visual feedback
@@ -365,15 +387,19 @@ export class ArcadeEnhancementManager {
   private executeShurikenProjectile(playerId: string): void {
     console.log(`🌟 SHURIKEN: ${playerId} launching shuriken projectile!`);
     
-    const playerEntity = this.findPlayerEntity(playerId);
-    if (!playerEntity) {
-      console.error(`❌ SHURIKEN ERROR: Player entity not found for shuriken: ${playerId}`);
-      // List all available players for debugging
-      const allPlayers = this.world.entityManager.getAllPlayerEntities()
-        .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
-      console.log(`Available players: ${allPlayers.map(p => p.player.username).join(', ')}`);
-      return;
-    }
+    try {
+      console.log(`🌟 SHURIKEN: World has ${this.world.entityManager.getAllPlayerEntities().length} total entities`);
+      
+      const playerEntity = this.findPlayerEntity(playerId);
+      if (!playerEntity) {
+        console.error(`❌ SHURIKEN ERROR: Player entity not found for shuriken: ${playerId}`);
+        // Enhanced debugging - list all available players with their IDs
+        const allPlayers = this.world.entityManager.getAllPlayerEntities()
+          .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
+        console.log(`Available players: ${allPlayers.map(p => `${p.player.username} (ID: ${p.player.id})`).join(', ')}`);
+        console.log(`Searching for player: ${playerId}`);
+        throw new Error(`Player entity not found: ${playerId}`);
+      }
 
     console.log(`✅ SHURIKEN: Found player entity for ${playerId} at position [${playerEntity.position.x.toFixed(2)}, ${playerEntity.position.y.toFixed(2)}, ${playerEntity.position.z.toFixed(2)}]`);
 
@@ -390,38 +416,39 @@ export class ArcadeEnhancementManager {
     // Create spectacular visual effect for shuriken activation
     this.createPowerUpEffect(playerEntity.position, 'shuriken_throw');
 
-    // Calculate throw direction from player's facing direction
+    // Calculate throw direction from player's facing direction with improved accuracy
     const rotation = playerEntity.rotation;
     const direction = this.calculateDirectionFromRotation(rotation);
+    console.log(`🎯 SHURIKEN: Calculated direction [${direction.x.toFixed(3)}, ${direction.z.toFixed(3)}] from rotation [${rotation.x.toFixed(3)}, ${rotation.y.toFixed(3)}, ${rotation.z.toFixed(3)}, ${rotation.w.toFixed(3)}]`);
     
-    // Create shuriken projectile entity
+    // Create shuriken projectile entity with proper model path
     const shuriken = new Entity({
       name: 'shuriken-projectile',
-      modelUri: 'models/projectiles/shuriken.gltf', // Using proper shuriken model
-      modelScale: 1.2,
+      modelUri: 'models/projectiles/shuriken.gltf', // Confirmed correct path
+      modelScale: 0.8, // Reduced scale for better visibility and collision
       rigidBodyOptions: {
         type: RigidBodyType.DYNAMIC,
         ccdEnabled: true, // Enable continuous collision detection for fast-moving projectiles
-        linearDamping: 0.1, // Slight air resistance
-        angularDamping: 0.05, // Minimal rotational damping for spinning effect
+        linearDamping: 0.05, // Reduced damping for better flight
+        angularDamping: 0.02, // Minimal rotational damping for spinning effect
         enabledRotations: { x: true, y: true, z: true }, // Allow full rotation for spinning
-        gravityScale: 0.3, // Reduced gravity for projectile flight
+        gravityScale: 0.2, // Reduced gravity for better projectile flight
       },
     });
 
-    // Spawn shuriken slightly in front of player
-    const spawnOffset = 1.5;
+    // Spawn shuriken slightly in front of player with better positioning
+    const spawnOffset = 2.0; // Increased offset to avoid immediate collision
     const shurikenPosition = {
       x: playerEntity.position.x + direction.x * spawnOffset,
-      y: playerEntity.position.y + 1.0, // Eye level
+      y: playerEntity.position.y + 1.2, // Slightly above eye level
       z: playerEntity.position.z + direction.z * spawnOffset
     };
 
-    // Apply launch velocity and spinning motion
-    const launchForce = 15.0;
+    // Apply launch velocity with improved physics
+    const launchForce = 18.0; // Increased force for better range
     const launchVelocity = {
       x: direction.x * launchForce,
-      y: 2.0, // Slight upward trajectory
+      y: 1.5, // Slight upward trajectory for better arc
       z: direction.z * launchForce
     };
 
@@ -434,13 +461,18 @@ export class ArcadeEnhancementManager {
       
       // Add spinning motion for visual effect
       shuriken.setAngularVelocity({
-        x: 0,
-        y: 20, // Fast spinning around Y axis
-        z: 0
+        x: 2,  // Slight X rotation for wobble
+        y: 25, // Fast spinning around Y axis
+        z: 1   // Slight Z rotation for realism
       });
-      console.log(`✅ SHURIKEN: Applied spinning motion`);
+      console.log(`✅ SHURIKEN: Applied enhanced spinning motion`);
     } catch (error) {
       console.error(`❌ SHURIKEN ERROR: Failed to spawn shuriken:`, error);
+      // Try to provide more specific error information
+      if (error instanceof Error) {
+        console.error(`❌ SHURIKEN ERROR Details: ${error.message}`);
+        console.error(`❌ SHURIKEN ERROR Stack: ${error.stack}`);
+      }
       return;
     }
 
@@ -458,13 +490,21 @@ export class ArcadeEnhancementManager {
     this.trackShurikenProjectile(shuriken, playerId, whooshAudio);
 
     console.log(`🌟 SHURIKEN LAUNCHED: Direction [${direction.x.toFixed(2)}, ${direction.z.toFixed(2)}], Force: ${launchForce}`);
+    } catch (error) {
+      console.error(`❌ SHURIKEN EXECUTION ERROR:`, error);
+      if (error instanceof Error) {
+        console.error(`❌ SHURIKEN ERROR Details: ${error.message}`);
+        console.error(`❌ SHURIKEN ERROR Stack: ${error.stack}`);
+      }
+      throw error; // Re-throw to be caught by activatePowerUp
+    }
   }
 
   // Track shuriken projectile for collision detection and effects
   private trackShurikenProjectile(shuriken: Entity, playerId: string, whooshAudio: Audio): void {
     let hasHit = false;
-    const maxFlightTime = 5000; // 5 seconds max flight time
-    const checkInterval = 100; // Check every 100ms
+    const maxFlightTime = 6000; // 6 seconds max flight time
+    const checkInterval = 50; // Check every 50ms for better precision
     let flightTime = 0;
 
     console.log(`🎯 SHURIKEN: Starting tracking for projectile from ${playerId}`);
@@ -482,27 +522,45 @@ export class ArcadeEnhancementManager {
 
       // Check for collision with players
       const shurikenPos = shuriken.position;
+      console.log(`🎯 SHURIKEN: Position [${shurikenPos.x.toFixed(2)}, ${shurikenPos.y.toFixed(2)}, ${shurikenPos.z.toFixed(2)}]`);
+      
       const allPlayers = this.world.entityManager.getAllPlayerEntities()
         .filter(entity => entity instanceof SoccerPlayerEntity) as SoccerPlayerEntity[];
 
       const hitPlayer = allPlayers.find(player => {
-        // Skip self - check both username and any ID variations
-        if (player.player.username === playerId || player.player.id === playerId) return false;
+        // Enhanced self-check - check multiple ID formats
+        const playerIds = [player.player.username, player.player.id, player.player.username.toLowerCase(), playerId.toLowerCase()];
+        if (playerIds.includes(playerId) || playerIds.includes(playerId.toLowerCase())) {
+          console.log(`🎯 SHURIKEN: Skipping self (${player.player.username})`);
+          return false;
+        }
         
-        // Only hit spawned, unfrozen players
-        if (!player.isSpawned || player.isPlayerFrozen) return false;
+        // Only hit spawned, active players
+        if (!player.isSpawned) {
+          console.log(`🎯 SHURIKEN: Skipping unspawned player (${player.player.username})`);
+          return false;
+        }
         
-        // Calculate 3D distance to player with better collision detection
+        // Skip frozen players
+        if (player.isPlayerFrozen) {
+          console.log(`🎯 SHURIKEN: Skipping frozen player (${player.player.username})`);
+          return false;
+        }
+        
+        // Calculate 3D distance to player with enhanced collision detection
         const dx = player.position.x - shurikenPos.x;
         const dy = player.position.y - shurikenPos.y;
         const dz = player.position.z - shurikenPos.z;
         const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
+        console.log(`🎯 SHURIKEN: Distance to ${player.player.username}: ${distance.toFixed(2)}`);
+
         // More generous hit radius for better gameplay
-        return distance <= 1.8; // Increased hit radius
+        return distance <= 2.0; // Increased hit radius further
       });
 
       if (hitPlayer) {
+        console.log(`🎯 SHURIKEN: HIT DETECTED on ${hitPlayer.player.username}!`);
         hasHit = true;
         this.applyShurikenHit(hitPlayer, shurikenPos);
         
@@ -521,8 +579,8 @@ export class ArcadeEnhancementManager {
       }
 
       // Check for out of bounds or max flight time
-      if (flightTime >= maxFlightTime || shurikenPos.y < -10) {
-        console.log(`🌟 SHURIKEN: Projectile expired or went out of bounds`);
+      if (flightTime >= maxFlightTime || shurikenPos.y < -5) {
+        console.log(`🌟 SHURIKEN: Projectile expired or went out of bounds (time: ${flightTime}ms, y: ${shurikenPos.y.toFixed(2)})`);
         hasHit = true;
         clearInterval(trackingInterval);
         whooshAudio.pause();
@@ -584,29 +642,39 @@ export class ArcadeEnhancementManager {
     console.log(`🌟 SHURIKEN IMPACT: Applied knockback and 2s stun to ${hitPlayer.player.username}`);
   }
 
-  // Calculate direction from quaternion rotation (fixed for Hytopia coordinate system)
+  // Calculate direction from quaternion rotation (improved for Hytopia coordinate system)
   private calculateDirectionFromRotation(rotation: { x: number, y: number, z: number, w: number }): { x: number, z: number } {
-    // Convert quaternion to forward direction vector
-    // For Hytopia, we need to calculate the forward vector properly
+    // Convert quaternion to forward direction vector for Hytopia
     const { x, y, z, w } = rotation;
     
-    // Calculate forward vector from quaternion (Hytopia uses right-handed coordinate system)
-    // Forward direction is typically along the negative Z axis in local space
-    const forwardX = 2 * (x * z - w * y);
-    const forwardZ = 2 * (y * z + w * x);
+    // Calculate the forward vector using proper quaternion to direction conversion
+    // In Hytopia, the forward direction corresponds to the negative Z-axis in local space
+    const forwardX = 2 * (x * z + w * y);
+    const forwardZ = 2 * (y * z - w * x);
     
-    // Normalize the direction
+    // Normalize the direction vector
     const magnitude = Math.sqrt(forwardX * forwardX + forwardZ * forwardZ);
     
-    if (magnitude > 0.001) { // Small epsilon to avoid division by zero
+    if (magnitude > 0.001) { // Avoid division by zero
+      const normalizedX = forwardX / magnitude;
+      const normalizedZ = forwardZ / magnitude;
+      
+      console.log(`🧭 DIRECTION: Quaternion [${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)}, ${w.toFixed(3)}] -> Direction [${normalizedX.toFixed(3)}, ${normalizedZ.toFixed(3)}]`);
+      
       return {
-        x: forwardX / magnitude,
-        z: forwardZ / magnitude
+        x: normalizedX,
+        z: normalizedZ
       };
     }
     
-    // Default forward direction if calculation fails (negative Z in Hytopia)
-    return { x: 0, z: -1 };
+    // Fallback: use Y rotation component for direction if magnitude is too small
+    const fallbackAngle = Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z));
+    const fallbackX = Math.sin(fallbackAngle);
+    const fallbackZ = -Math.cos(fallbackAngle); // Negative Z for forward in Hytopia
+    
+    console.log(`🧭 DIRECTION FALLBACK: Using Y-rotation angle ${fallbackAngle.toFixed(3)} -> Direction [${fallbackX.toFixed(3)}, ${fallbackZ.toFixed(3)}]`);
+    
+    return { x: fallbackX, z: fallbackZ };
   }
 
   // Calculate knockback direction from impact point to target
@@ -1138,17 +1206,30 @@ export class ArcadeEnhancementManager {
     return false;
   }
 
-  // Helper method to find player entity by ID
+  // Helper method to find player entity by ID with enhanced matching
   private findPlayerEntity(playerId: string): SoccerPlayerEntity | null {
     const playerEntities = this.world.entityManager.getAllPlayerEntities();
     
     for (const entity of playerEntities) {
-      if (entity instanceof SoccerPlayerEntity && entity.player.username === playerId) {
-        return entity;
+      if (entity instanceof SoccerPlayerEntity) {
+        // Try multiple matching strategies
+        if (entity.player.username === playerId || 
+            entity.player.id === playerId ||
+            entity.player.username.toLowerCase() === playerId.toLowerCase()) {
+          console.log(`✅ PLAYER FOUND: Matched ${entity.player.username} with search term ${playerId}`);
+          return entity;
+        }
       }
     }
     
     console.warn(`Player entity not found for ID: ${playerId}`);
+    // Enhanced debugging information
+    console.warn(`Available player entities:`);
+    for (const entity of playerEntities) {
+      if (entity instanceof SoccerPlayerEntity) {
+        console.warn(`  - Username: "${entity.player.username}", ID: "${entity.player.id}"`);
+      }
+    }
     return null;
   }
 
