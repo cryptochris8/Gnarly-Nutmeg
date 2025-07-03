@@ -173,3 +173,9 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Large files that shouldn't be committed to git
+*.zip
+
+# Specifically ignore large project files
+Hysports-Soccer-master.zip
