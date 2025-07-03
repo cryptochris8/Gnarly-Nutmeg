@@ -64,7 +64,7 @@
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
+    display: flex !important;
     align-items: center;
     gap: 20px;
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
@@ -74,6 +74,8 @@
     backdrop-filter: blur(10px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     z-index: 1000;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 
   .team-banner {
@@ -130,11 +132,12 @@
     transition: all 0.3s ease;
     min-height: 35px;
     display: flex !important;
-    align-items: center;
-    justify-content: center;
+    align-items: center !important;
+    justify-content: center !important;
     opacity: 1 !important;
     visibility: visible !important;
-    z-index: 10;
+    z-index: 10 !important;
+    pointer-events: none !important;
   }
 
   /* ===== ENHANCED TIMER DISPLAY ===== */
@@ -2251,21 +2254,38 @@
       0 0 25px rgba(255, 255, 255, 0.3),
       inset 0 3px 8px rgba(255, 255, 255, 0.4);
   }
+
+  /* Enhanced notification animations */
+  @keyframes slideInDown {
+    from { 
+      transform: translateX(-50%) translateY(-100%); 
+      opacity: 0; 
+    }
+    to { 
+      transform: translateX(-50%) translateY(0); 
+      opacity: 1; 
+    }
+  }
+
+  @keyframes slideOutUp {
+    from { 
+      transform: translateX(-50%) translateY(0); 
+      opacity: 1; 
+    }
+    to { 
+      transform: translateX(-50%) translateY(-100%); 
+      opacity: 0; 
+    }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 </style>
 
-<!-- SIMPLE BULLETPROOF SCOREBOARD -->
-<div id="simple-scoreboard" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 99999; background: black; padding: 20px; border: 3px solid white; font-family: Arial; font-size: 24px; color: white; text-align: center; min-width: 300px; display: none;">
-  <div style="margin-bottom: 10px; font-size: 18px; color: yellow;">LIVE SCORE</div>
-  <div style="display: flex; justify-content: space-between; align-items: center;">
-    <div style="color: #ff4444; font-weight: bold;">RED: <span id="simple-red-score" style="font-size: 32px; color: white;">0</span></div>
-    <div style="color: white; margin: 0 20px;">-</div>
-    <div style="color: #4444ff; font-weight: bold;">BLUE: <span id="simple-blue-score" style="font-size: 32px; color: white;">0</span></div>
-  </div>
-  <div style="margin-top: 10px; font-size: 14px; color: #cccccc;" id="simple-timer">Waiting for game...</div>
-</div>
-
-<!-- Enhanced Main UI Structure (Hidden for now) -->
-<div class="score-time-container" style="display: none;">
+<!-- MAIN SCOREBOARD SYSTEM -->
+<div id="main-scoreboard" class="score-time-container">
   <div class="team-banner red" id="red-banner">
     <div class="team-name">Red</div>
     <div class="team-score" id="red-score">0</div>
@@ -2532,17 +2552,42 @@
       </div>
     </div>
 
-    <div style="text-align: center; margin-top: 20px;">
-      <button onclick="closeGameOverScreen()" style="
-        background: #4CAF50;
+    <div style="text-align: center; margin-top: 30px;">
+      <div style="display: flex; gap: 15px; justify-content: center; align-items: center;">
+        <button onclick="viewStatsToggle()" style="
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
         color: white;
         border: none;
         padding: 12px 24px;
-        border-radius: 6px;
+          border-radius: 8px;
         font-size: 16px;
         cursor: pointer;
         font-weight: bold;
-      ">Return to Lobby</button>
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(99, 102, 241, 0.4)'"
+           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(99, 102, 241, 0.3)'">
+          📊 View Full Stats
+        </button>
+        <button onclick="returnToLobby()" style="
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          border: none;
+          padding: 15px 30px;
+          border-radius: 8px;
+          font-size: 18px;
+          cursor: pointer;
+          font-weight: bold;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.4)'"
+           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)'">
+          🏠 Back to Lobby
+        </button>
+      </div>
+      <div style="margin-top: 15px; color: #888; font-size: 14px;">
+        Game completed! Ready to start a new match?
+      </div>
     </div>
   </div>
 
@@ -2996,36 +3041,58 @@
   // ===== INITIALIZATION =====
   // Initialize score display
   function initializeScoreDisplay() {
-    // Initialize SIMPLE scoreboard (bulletproof)
-    const simpleRedScore = document.getElementById("simple-red-score");
-    const simpleBlueScore = document.getElementById("simple-blue-score");
-    const simpleTimer = document.getElementById("simple-timer");
+    console.log("🎯 Initializing main scoreboard...");
     
-    if (simpleRedScore && simpleBlueScore) {
-      simpleRedScore.textContent = "0";
-      simpleBlueScore.textContent = "0";
-      simpleTimer.textContent = "Waiting for game...";
-      console.log("SIMPLE SCOREBOARD initialized with values:", simpleRedScore.textContent, simpleBlueScore.textContent);
-    } else {
-      console.error("Could not find SIMPLE score elements!"); 
-    }
-    
-    // Also initialize original scoreboard (backup)
+    // Initialize main scoreboard
     const redScore = document.getElementById("red-score");
     const blueScore = document.getElementById("blue-score");
+    const phaseIndicator = document.getElementById("phase-indicator");
+    const timeLeft = document.getElementById("time-left");
+    const mainScoreboard = document.getElementById("main-scoreboard");
     
     if (redScore && blueScore) {
       redScore.textContent = "0";
       blueScore.textContent = "0";
-      redScore.style.display = "block";
-      blueScore.style.display = "block";
-      console.log("Original score display initialized with values:", redScore.textContent, blueScore.textContent);
+      
+      // Force visibility with important styles
+      redScore.style.cssText = `
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        color: #ffffff !important;
+        font-size: 28px !important;
+        font-weight: bold !important;
+        z-index: 10 !important;
+        pointer-events: none !important;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 255, 255, 0.5) !important;
+        transition: all 0.3s ease !important;
+        min-height: 35px !important;
+      `;
+      
+      blueScore.style.cssText = `
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        color: #ffffff !important;
+        font-size: 28px !important;
+        font-weight: bold !important;
+        z-index: 10 !important;
+        pointer-events: none !important;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 255, 255, 0.5) !important;
+        transition: all 0.3s ease !important;
+        min-height: 35px !important;
+      `;
+      
+      console.log("✅ Main scoreboard initialized with scores:", redScore.textContent, blueScore.textContent);
+    } else {
+      console.error("❌ Could not find main score elements!");
     }
     
-    // Also initialize other UI elements
-    const phaseIndicator = document.getElementById("phase-indicator");
-    const timeLeft = document.getElementById("time-left");
-    
+    // Initialize other UI elements
     if (phaseIndicator) {
       phaseIndicator.textContent = "LOBBY";
       phaseIndicator.className = "phase-indicator waiting";
@@ -3035,7 +3102,30 @@
       timeLeft.textContent = "Waiting for players...";
     }
     
-    console.log("UI initialization complete");
+    // Ensure main scoreboard is visible
+    if (mainScoreboard) {
+      mainScoreboard.style.cssText = `
+        position: fixed !important;
+        top: 20px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 20px !important;
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9)) !important;
+        border-radius: 15px !important;
+        padding: 15px 25px !important;
+        border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        backdrop-filter: blur(10px) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+        z-index: 1000 !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      `;
+      console.log("✅ Main scoreboard container forced visible");
+    }
+    
+    console.log("✅ Score display initialization complete");
   }
 
   // Add click event listeners immediately (DOM is already loaded since script is at bottom)
@@ -3183,44 +3273,59 @@
   
   // Add global test function for manual testing
   window.forceUpdateScores = function(red = 1, blue = 1) {
-    console.log(`Forcing score update: Red ${red}, Blue ${blue}`);
+    console.log(`🎯 Forcing score update: Red ${red}, Blue ${blue}`);
     
-    // Update SIMPLE scoreboard
-    const simpleRedScore = document.getElementById("simple-red-score");
-    const simpleBlueScore = document.getElementById("simple-blue-score");
-    
-    if (simpleRedScore && simpleBlueScore) {
-      simpleRedScore.textContent = red;
-      simpleBlueScore.textContent = blue;
-      simpleRedScore.style.color = "#ffff00"; // Make it yellow for visibility
-      simpleBlueScore.style.color = "#ffff00"; // Make it yellow for visibility
-      console.log("SIMPLE SCOREBOARD forcefully updated!");
-    }
-    
-    // Also update original scoreboard
+    // Update main scoreboard
     const redScore = document.getElementById("red-score");
     const blueScore = document.getElementById("blue-score");
+    const mainScoreboard = document.getElementById("main-scoreboard");
     
     if (redScore && blueScore) {
       redScore.textContent = red;
       blueScore.textContent = blue;
-      redScore.style.background = "rgba(255, 0, 0, 0.8)";
-      blueScore.style.background = "rgba(0, 0, 255, 0.8)";
-      redScore.style.color = "#ffffff";
-      blueScore.style.color = "#ffffff";
-      redScore.style.fontSize = "32px";
-      blueScore.style.fontSize = "32px";
-      redScore.style.fontWeight = "bold";
-      blueScore.style.fontWeight = "bold";
-      redScore.style.display = "flex";
-      blueScore.style.display = "flex";
-      redScore.style.alignItems = "center";
-      blueScore.style.alignItems = "center";
-      redScore.style.justifyContent = "center";
-      blueScore.style.justifyContent = "center";
-      console.log("Original scores forcefully updated!");
+      
+      // Force visibility and styling
+      redScore.style.cssText = `
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        color: #ffffff !important;
+        font-size: 32px !important;
+        font-weight: bold !important;
+        z-index: 10 !important;
+        background: rgba(255, 0, 0, 0.3) !important;
+        border-radius: 5px !important;
+        min-height: 35px !important;
+      `;
+      
+      blueScore.style.cssText = `
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        color: #ffffff !important;
+        font-size: 32px !important;
+        font-weight: bold !important;
+        z-index: 10 !important;
+        background: rgba(0, 0, 255, 0.3) !important;
+        border-radius: 5px !important;
+        min-height: 35px !important;
+      `;
+      
+      console.log("✅ MAIN SCOREBOARD forcefully updated!");
     } else {
-      console.error("Could not find original score elements!");
+      console.error("❌ Could not find main score elements!");
+    }
+    
+    // Ensure scoreboard container is visible
+    if (mainScoreboard) {
+      mainScoreboard.style.display = "flex";
+      mainScoreboard.style.visibility = "visible";
+      mainScoreboard.style.opacity = "1";
+      console.log("✅ Main scoreboard container forced visible");
     }
   };
   
@@ -3232,6 +3337,12 @@
     });
   }, 1000);
 
+  // Test scoreboard visibility after initialization
+  setTimeout(() => {
+    console.log("🧪 Testing scoreboard visibility...");
+    window.forceUpdateScores(0, 0); // Reset to 0-0 but ensure visibility
+  }, 2000);
+
   // ===== DATA HANDLER =====
   hytopia.onData((data) => {
     console.log("Received data:", data.type, data);
@@ -3242,49 +3353,46 @@
     }
     
     if (data.type === "game-state") {
-      console.log("Processing game-state data:", data);
+      console.log("🎯 Processing game-state data:", data);
       
-      // Show scoreboard when game starts (starting, playing, or overtime states)
-      const simpleScoreboard = document.getElementById("simple-scoreboard");
-      if (simpleScoreboard && data.status && (data.status === "starting" || data.status === "playing" || data.status === "overtime")) {
-        simpleScoreboard.style.display = "block";
-        console.log("Scoreboard shown - game status:", data.status);
-      } else if (simpleScoreboard && data.status === "waiting") {
-        simpleScoreboard.style.display = "none";
-        console.log("Scoreboard hidden - game status:", data.status);
-      }
-      
-      // Update SIMPLE scoreboard (bulletproof approach)
+      // Update main scoreboard
       const newRedScore = data.score ? data.score.red : 0;
       const newBlueScore = data.score ? data.score.blue : 0;
       
-      // Update simple scoreboard
-      const simpleRedScore = document.getElementById("simple-red-score");
-      const simpleBlueScore = document.getElementById("simple-blue-score");
-      const simpleTimer = document.getElementById("simple-timer");
+      // Update main scoreboard elements
+      const redScore = document.getElementById("red-score");
+      const blueScore = document.getElementById("blue-score");
+      const mainScoreboard = document.getElementById("main-scoreboard");
       
-      if (simpleRedScore && simpleBlueScore) {
-        simpleRedScore.textContent = newRedScore;
-        simpleBlueScore.textContent = newBlueScore;
-        console.log("SIMPLE SCOREBOARD UPDATED:", newRedScore, newBlueScore);
+      if (redScore && blueScore) {
+        redScore.textContent = newRedScore;
+        blueScore.textContent = newBlueScore;
+        console.log("✅ MAIN SCOREBOARD UPDATED:", newRedScore, "vs", newBlueScore);
+        
+        // Ensure visibility is maintained
+        redScore.style.display = "flex";
+        blueScore.style.display = "flex";
+        redScore.style.opacity = "1";
+        blueScore.style.opacity = "1";
+        redScore.style.visibility = "visible";
+        blueScore.style.visibility = "visible";
+      } else {
+        console.error("❌ Could not find main scoreboard elements for update!");
       }
       
-      // Update timer
-      if (simpleTimer && data.timeRemaining) {
-        const minutes = Math.floor(data.timeRemaining / 60);
-        const seconds = data.timeRemaining % 60;
-        simpleTimer.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')} | Status: ${data.status || 'playing'}`;
+      // Show/hide scoreboard based on game status
+      if (mainScoreboard) {
+        if (data.status && (data.status === "starting" || data.status === "playing" || data.status === "overtime" || data.status === "goal-scored")) {
+          mainScoreboard.style.display = "flex";
+          mainScoreboard.style.opacity = "1";
+          mainScoreboard.style.visibility = "visible";
+          console.log("✅ Scoreboard shown - game status:", data.status);
+        } else if (data.status === "waiting") {
+          // Keep scoreboard visible but show lobby state
+          mainScoreboard.style.display = "flex";
+          console.log("✅ Scoreboard visible in lobby - game status:", data.status);
+        }
       }
-      
-      // Also update original scoreboard (for backup)
-      const originalRedScore = document.getElementById("red-score");
-      const originalBlueScore = document.getElementById("blue-score");
-      if (originalRedScore && originalBlueScore) {
-        originalRedScore.textContent = newRedScore;
-        originalBlueScore.textContent = newBlueScore;
-      }
-      
-      console.log("Updated scores:", newRedScore, newBlueScore);
       
       // Update timer with enhanced display
       updateMatchTimer(data);
@@ -3294,6 +3402,8 @@
         currentGameStats = data.stats;
         updateStatisticsPanel();
       }
+      
+      console.log("✅ Game state update complete");
     }
 
     if (data.type === "team-counts") {
@@ -3346,6 +3456,7 @@
     }
 
     if (data.type === "game-over") {
+      console.log("🎯 GAME OVER EVENT RECEIVED:", data);
       showEnhancedGameOver(data);
     }
 
@@ -3355,6 +3466,11 @@
 
     if (data.type === "game-reset") {
       handleGameReset(data);
+    }
+
+    if (data.type === "game-starting") {
+      // Handle new game start with respawn notification
+      handleGameStarting(data);
     }
 
     // Handle powerup feedback from F key activation
@@ -3508,11 +3624,24 @@
 
   // ===== ENHANCED GAME OVER FUNCTIONS =====
   function showEnhancedGameOver(data) {
+    console.log("🎯 showEnhancedGameOver called with data:", data);
+    
     const panel = document.getElementById("instructionsPanel");
-    const gameOverContent = document.getElementById("game-over-content");
+    // Get all game-over-content divs and use the complete one (usually the last one)
+    const gameOverElements = document.querySelectorAll("#game-over-content");
+    const gameOverContent = gameOverElements[gameOverElements.length - 1]; // Use the last (complete) instance
     const howToPlayContainer = document.querySelector(".how-to-play-container");
     const teamSelection = document.querySelector(".team-selection");
     const gameModeSelection = document.getElementById("gameModeSelection");
+    
+    console.log("🎯 Found elements:", {
+      panel: !!panel,
+      gameOverContent: !!gameOverContent,
+      gameOverElementsCount: gameOverElements.length,
+      howToPlayContainer: !!howToPlayContainer,
+      teamSelection: !!teamSelection,
+      gameModeSelection: !!gameModeSelection
+    });
     
     playUISound("game-over");
     
@@ -3520,14 +3649,33 @@
     if (howToPlayContainer) howToPlayContainer.style.display = "none";
     if (teamSelection) teamSelection.style.display = "none";
     if (gameModeSelection) gameModeSelection.style.display = "none";
+    
+    if (!gameOverContent) {
+      console.error("❌ game-over-content element not found!");
+      return;
+    }
+    
     gameOverContent.style.display = "block";
+    console.log("🎯 Set game-over-content display to block");
     
     // Update header information
-    document.getElementById("final-red-score").textContent = data.redScore;
-    document.getElementById("final-blue-score").textContent = data.blueScore;
+    const finalRedScore = document.getElementById("final-red-score");
+    const finalBlueScore = document.getElementById("final-blue-score");
+    const winnerAnnouncement = document.getElementById("winner-announcement");
+    
+    console.log("🎯 Score elements found:", {
+      finalRedScore: !!finalRedScore,
+      finalBlueScore: !!finalBlueScore,
+      winnerAnnouncement: !!winnerAnnouncement
+    });
+    
+    if (finalRedScore) finalRedScore.textContent = data.redScore;
+    if (finalBlueScore) finalBlueScore.textContent = data.blueScore;
+    
+    console.log("🎯 Updated scores:", data.redScore, "vs", data.blueScore);
     
     // Update winner announcement
-    const winnerAnnouncement = document.getElementById("winner-announcement");
+    if (winnerAnnouncement) {
     if (data.winner === 'tie') {
       winnerAnnouncement.textContent = "Match Tied!";
       winnerAnnouncement.style.color = "#FFD700";
@@ -3537,6 +3685,8 @@
     } else if (data.winner === 'blue') {
       winnerAnnouncement.textContent = "Blue Team Wins!";
       winnerAnnouncement.style.color = "#4444ff";
+      }
+      console.log("🎯 Winner announcement set:", winnerAnnouncement.textContent);
     }
     
     // Update match info
@@ -3547,12 +3697,19 @@
     matchInfo.textContent = `Match Duration: ${duration}:${seconds.toString().padStart(2, '0')}${overtimeText}`;
     
     // Update team statistics
+    console.log("🎯 Updating team stats:", data.teamStats);
     updateTeamStats(data.teamStats);
     
     // Update player statistics
+    console.log("🎯 Updating player stats:", data.playerStats);
     updatePlayerStats(data.playerStats);
     
+    if (panel) {
     panel.classList.remove("hidden");
+      console.log("🎯 Removed hidden class from instructions panel");
+    } else {
+      console.error("❌ Instructions panel not found!");
+    }
   }
 
   function showRegulationTimeStats(data) {
@@ -3610,21 +3767,53 @@
   }
 
   function updateTeamStats(teamStats) {
+    console.log("🎯 updateTeamStats called with:", teamStats);
+    
     // Update red team stats
-    document.getElementById("red-team-goals").textContent = teamStats.red.goals;
-    document.getElementById("red-team-shots").textContent = teamStats.red.shots;
-    document.getElementById("red-team-passes").textContent = teamStats.red.passes;
-    document.getElementById("red-team-tackles").textContent = teamStats.red.tackles;
-    document.getElementById("red-team-saves").textContent = teamStats.red.saves;
-    document.getElementById("red-team-distance").textContent = Math.round(teamStats.red.distanceTraveled) + "m";
+    const redElements = {
+      goals: document.getElementById("red-team-goals"),
+      shots: document.getElementById("red-team-shots"),
+      passes: document.getElementById("red-team-passes"),
+      tackles: document.getElementById("red-team-tackles"),
+      saves: document.getElementById("red-team-saves"),
+      distance: document.getElementById("red-team-distance")
+    };
+    
+    console.log("🎯 Red team elements found:", Object.keys(redElements).reduce((acc, key) => {
+      acc[key] = !!redElements[key];
+      return acc;
+    }, {}));
+    
+    if (redElements.goals) redElements.goals.textContent = teamStats.red.goals;
+    if (redElements.shots) redElements.shots.textContent = teamStats.red.shots;
+    if (redElements.passes) redElements.passes.textContent = teamStats.red.passes;
+    if (redElements.tackles) redElements.tackles.textContent = teamStats.red.tackles;
+    if (redElements.saves) redElements.saves.textContent = teamStats.red.saves;
+    if (redElements.distance) redElements.distance.textContent = Math.round(teamStats.red.distanceTraveled) + "m";
     
     // Update blue team stats
-    document.getElementById("blue-team-goals").textContent = teamStats.blue.goals;
-    document.getElementById("blue-team-shots").textContent = teamStats.blue.shots;
-    document.getElementById("blue-team-passes").textContent = teamStats.blue.passes;
-    document.getElementById("blue-team-tackles").textContent = teamStats.blue.tackles;
-    document.getElementById("blue-team-saves").textContent = teamStats.blue.saves;
-    document.getElementById("blue-team-distance").textContent = Math.round(teamStats.blue.distanceTraveled) + "m";
+    const blueElements = {
+      goals: document.getElementById("blue-team-goals"),
+      shots: document.getElementById("blue-team-shots"),
+      passes: document.getElementById("blue-team-passes"),
+      tackles: document.getElementById("blue-team-tackles"),
+      saves: document.getElementById("blue-team-saves"),
+      distance: document.getElementById("blue-team-distance")
+    };
+    
+    console.log("🎯 Blue team elements found:", Object.keys(blueElements).reduce((acc, key) => {
+      acc[key] = !!blueElements[key];
+      return acc;
+    }, {}));
+    
+    if (blueElements.goals) blueElements.goals.textContent = teamStats.blue.goals;
+    if (blueElements.shots) blueElements.shots.textContent = teamStats.blue.shots;
+    if (blueElements.passes) blueElements.passes.textContent = teamStats.blue.passes;
+    if (blueElements.tackles) blueElements.tackles.textContent = teamStats.blue.tackles;
+    if (blueElements.saves) blueElements.saves.textContent = teamStats.blue.saves;
+    if (blueElements.distance) blueElements.distance.textContent = Math.round(teamStats.blue.distanceTraveled) + "m";
+    
+    console.log("🎯 Team stats updated successfully");
   }
 
   function updatePlayerStats(playerStats) {
@@ -3693,7 +3882,9 @@
 
   function closeGameOverScreen() {
     const panel = document.getElementById("instructionsPanel");
-    const gameOverContent = document.getElementById("game-over-content");
+    // Use the complete instance of game-over-content
+    const gameOverElements = document.querySelectorAll("#game-over-content");
+    const gameOverContent = gameOverElements[gameOverElements.length - 1];
     const howToPlayContainer = document.querySelector(".how-to-play-container");
     const teamSelection = document.querySelector(".team-selection");
     const gameModeSelection = document.getElementById("gameModeSelection");
@@ -3715,8 +3906,83 @@
     playUISound("button-click");
   }
 
-  // Make function globally accessible
+  /**
+   * Enhanced game over screen functions for better user experience
+   */
+  function viewStatsToggle() {
+    // Toggle between team stats and player stats view
+    const teamStatsContainer = document.querySelector('.team-stats-container');
+    const playerStatsContainer = document.querySelector('.player-stats-container');
+    
+    if (teamStatsContainer && playerStatsContainer) {
+      const isTeamStatsVisible = teamStatsContainer.style.display !== 'none';
+      
+      if (isTeamStatsVisible) {
+        // Currently showing team stats, switch to player stats
+        teamStatsContainer.style.display = 'none';
+        playerStatsContainer.style.display = 'block';
+        
+        // Update button text
+        event.target.innerHTML = '📈 View Team Stats';
+      } else {
+        // Currently showing player stats, switch to team stats
+        teamStatsContainer.style.display = 'block';
+        playerStatsContainer.style.display = 'none';
+        
+        // Update button text
+        event.target.innerHTML = '📊 View Player Stats';
+      }
+      
+      playUISound("button-click");
+    }
+  }
+
+  function returnToLobby() {
+    console.log("🏠 Player requested return to lobby");
+    
+    // Send manual reset request to server
+    hytopia.sendData({
+      type: "manual-reset-game"
+    });
+    
+    // Show loading message while reset is processed
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'reset-loading-overlay';
+    loadingOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-family: "Trebuchet MS", Arial, sans-serif;
+    `;
+    
+    loadingOverlay.innerHTML = `
+      <div style="text-align: center; background: rgba(20, 20, 20, 0.95); padding: 40px; border-radius: 20px; border: 3px solid #10b981;">
+        <div style="font-size: 32px; margin-bottom: 20px;">🏠</div>
+        <h2 style="color: #10b981; margin-bottom: 20px; font-size: 24px;">Returning to Lobby...</h2>
+        <div style="color: #ccc; margin-bottom: 20px;">Preparing new game environment</div>
+        <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid #10b981; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
+      </div>
+    `;
+    
+    document.body.appendChild(loadingOverlay);
+    
+    // The loading overlay will be removed when the "game-reset" event is received
+    
+    playUISound("button-click");
+  }
+
+  // Make functions globally accessible
   window.closeGameOverScreen = closeGameOverScreen;
+  window.viewStatsToggle = viewStatsToggle;
+  window.returnToLobby = returnToLobby;
 
   // ===== ENSURE ALL ONCLICK FUNCTIONS ARE AVAILABLE =====
   // Make all functions globally accessible to prevent "function not defined" errors
@@ -3791,9 +4057,17 @@
   function handleGameReset(data) {
     console.log("Game reset received:", data.message);
     
+    // Remove loading overlay if it exists
+    const loadingOverlay = document.getElementById('reset-loading-overlay');
+    if (loadingOverlay) {
+      document.body.removeChild(loadingOverlay);
+    }
+    
     // Reset UI state to lobby
     const panel = document.getElementById("instructionsPanel");
-    const gameOverContent = document.getElementById("game-over-content");
+    // Use the complete instance of game-over-content
+    const gameOverElements = document.querySelectorAll("#game-over-content");
+    const gameOverContent = gameOverElements[gameOverElements.length - 1];
     const howToPlayContainer = document.querySelector(".how-to-play-container");
     const teamSelection = document.querySelector(".team-selection");
     const gameModeSelection = document.getElementById("gameModeSelection");
@@ -3817,36 +4091,103 @@
     if (gameModeSelection) gameModeSelection.style.display = "block";
     if (teamSelection) teamSelection.style.display = "none"; // Hide until mode is selected again
     
-    // Reset scoreboard
+    // Reset main scoreboard
+    const mainScoreboard = document.getElementById("main-scoreboard");
+    if (mainScoreboard) {
+      mainScoreboard.style.display = "flex";
+    }
     initializeScoreDisplay();
     
-    // Show notification message
-    if (data.message) {
+    // Show success notification with better styling
+    showSuccessNotification(data.message || "Game reset successfully! Ready for a new match.");
+    
+    playUISound("button-click");
+  }
+
+  function showSuccessNotification(message) {
       const notification = document.createElement('div');
       notification.style.cssText = `
         position: fixed;
         top: 20px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(255, 193, 7, 0.9);
-        color: black;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
         padding: 15px 25px;
         border-radius: 8px;
         font-weight: bold;
         z-index: 10000;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-      `;
-      notification.textContent = data.message;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      animation: slideInDown 0.5s ease-out;
+    `;
+    
+    notification.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 18px;">✅</span>
+        <span>${message}</span>
+      </div>
+    `;
+    
       document.body.appendChild(notification);
       
+    setTimeout(() => {
+      notification.style.animation = 'slideOutUp 0.5s ease-in';
       setTimeout(() => {
         if (notification.parentNode) {
           document.body.removeChild(notification);
         }
-      }, 4000);
+      }, 500);
+    }, 3000);
     }
     
-    playUISound("button-click");
+  function handleGameStarting(data) {
+    console.log("New game starting - handling respawn");
+    
+    // Show respawn notification for players who were in the previous game
+    const respawnNotification = document.createElement('div');
+    respawnNotification.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white;
+      padding: 30px 40px;
+      border-radius: 15px;
+      font-weight: bold;
+      z-index: 10001;
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      text-align: center;
+      animation: slideInDown 0.7s ease-out;
+    `;
+    
+    respawnNotification.innerHTML = `
+      <div style="font-size: 48px; margin-bottom: 15px;">⚽</div>
+      <h2 style="margin: 0 0 15px 0; font-size: 24px;">New Match Starting!</h2>
+      <div style="font-size: 16px; color: rgba(255, 255, 255, 0.9); margin-bottom: 20px;">
+        You've been respawned and repositioned
+      </div>
+      <div style="font-size: 14px; color: rgba(255, 255, 255, 0.7);">
+        Get ready for kickoff!
+      </div>
+    `;
+    
+    document.body.appendChild(respawnNotification);
+    
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+      respawnNotification.style.animation = 'slideOutUp 0.5s ease-in';
+      setTimeout(() => {
+        if (respawnNotification.parentNode) {
+          document.body.removeChild(respawnNotification);
+        }
+      }, 500);
+    }, 4000);
+    
+    // Play UI sound for game start
+    playUISound("game-start");
   }
 
   // ===== ARCADE MODE POWER-UP SYSTEM FUNCTIONS =====

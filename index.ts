@@ -57,6 +57,8 @@ import {
 } from "./state/gameModes";
 import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
 import { FIFACrowdManager } from "./utils/fifaCrowdManager";
+import PerformanceProfiler from "./utils/performanceProfiler";
+import PerformanceOptimizer from "./utils/performanceOptimizations";
 
 startServer((world) => {
     // Load the soccer map
@@ -126,6 +128,18 @@ startServer((world) => {
     // Initialize FIFA crowd atmosphere system (only active in FIFA mode)
     const fifaCrowdManager = new FIFACrowdManager(world);
     
+    // Initialize performance profiler system
+    const performanceProfiler = new PerformanceProfiler(world, {
+      enabled: false, // Start disabled, can be enabled via chat commands
+      sampleInterval: 1000, // Sample every second
+      maxSamples: 120, // Keep 2 minutes of data
+      logInterval: 15000, // Log every 15 seconds
+      trackMemory: true
+    });
+    
+    // Initialize performance optimizer system
+    const performanceOptimizer = new PerformanceOptimizer('BALANCED');
+    
     // Initialize game
     let aiPlayers: AIPlayerEntity[] = [];
     const game = new SoccerGame(world, soccerBall, aiPlayers);
@@ -135,6 +149,9 @@ startServer((world) => {
     
     // Connect FIFA crowd manager to game
     game.setFIFACrowdManager(fifaCrowdManager);
+    
+    // Attach performance profiler to world for direct access from entities
+    (world as any)._performanceProfiler = performanceProfiler;
 
     // Function to spawn AI players for 6v6 setup
     // Takes the human player's chosen team
@@ -625,6 +642,47 @@ startServer((world) => {
             }
           } else {
             console.log(`❌ PASS REQUEST DENIED: No AI teammate has the ball or wrong team`);
+          }
+        }
+        else if (data.type === "manual-reset-game") {
+          // Handle "Back to Lobby" button from game over screen
+          console.log(`🔄 Player ${player.username} requested manual game reset from game over screen`);
+          
+          // Only allow reset if game is finished
+          if (game.getState().status === "finished") {
+            console.log("✅ Game is finished, proceeding with manual reset");
+            
+            // Reset music back to opening music
+            console.log("Resetting music back to opening music");
+            getGameplayMusic().pause();
+            mainMusic.play(world);
+            
+            // Stop FIFA crowd atmosphere
+            if (fifaCrowdManager && fifaCrowdManager.stop) {
+              fifaCrowdManager.stop();
+            }
+            
+            // Perform the actual game reset
+            game.manualResetGame();
+            
+            // Clear AI players list
+            aiPlayers.forEach(ai => {
+              if (ai.isSpawned) {
+                ai.deactivate();
+                sharedState.removeAIFromTeam(ai, ai.team);
+                ai.despawn();
+              }
+            });
+            aiPlayers = [];
+            game.updateAIPlayersList([]);
+            
+            console.log("✅ Manual game reset complete - players can now select teams");
+          } else {
+            console.log(`❌ Manual reset denied - game status is: ${game.getState().status}`);
+            player.ui.sendData({
+              type: "error",
+              message: "Game reset only available when game is finished"
+            });
           }
         }
       });
@@ -1480,5 +1538,119 @@ startServer((world) => {
         player,
         `/domelighting - Maximum brightness for glass dome`
       );
+    });
+
+    // Performance Profiler Commands
+    world.chatManager.registerCommand("/profiler", (player, args) => {
+      const action = args[0]?.toLowerCase();
+      
+      switch (action) {
+        case "start":
+          performanceProfiler.start();
+          world.chatManager.sendPlayerMessage(
+            player,
+            "🚀 Performance profiler started. Use '/profiler report' to view stats."
+          );
+          break;
+          
+        case "stop":
+          performanceProfiler.stop();
+          world.chatManager.sendPlayerMessage(
+            player,
+            "⏹️ Performance profiler stopped."
+          );
+          break;
+          
+        case "report":
+          const report = performanceProfiler.getDetailedReport();
+          world.chatManager.sendPlayerMessage(
+            player,
+            `📊 === PERFORMANCE REPORT ===`
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            `🤖 Active AI Players: ${report.activeAICount}`
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            `🎮 Total Entities: ${report.activeEntityCount}`
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            `⏱️ Avg AI Decision: ${report.averageStats.avgAIDecisionTime.toFixed(2)}ms`
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            `🔄 Avg Physics: ${report.averageStats.avgPhysicsTime.toFixed(2)}ms`
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            `🎯 Avg Entity Tick: ${report.averageStats.avgEntityTickTime.toFixed(2)}ms`
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            `⚽ Avg Ball Physics: ${report.averageStats.avgBallPhysicsTime.toFixed(2)}ms`
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            `🖼️ Avg Frame Time: ${report.averageStats.avgFrameTime.toFixed(2)}ms`
+          );
+          
+          if (report.recommendations.length > 0) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              "💡 RECOMMENDATIONS:"
+            );
+            report.recommendations.forEach(rec => {
+              world.chatManager.sendPlayerMessage(player, `   ${rec}`);
+            });
+          }
+          break;
+          
+        case "debug":
+          const debugEnabled = args[1]?.toLowerCase() === "on";
+          performanceProfiler.toggleDebugRendering(debugEnabled);
+          world.chatManager.sendPlayerMessage(
+            player,
+            `🔍 Debug rendering ${debugEnabled ? 'enabled' : 'disabled'}`
+          );
+          break;
+          
+        case "raycast":
+          const raycastEnabled = args[1]?.toLowerCase() === "on";
+          performanceProfiler.toggleRaycastDebugging(raycastEnabled);
+          world.chatManager.sendPlayerMessage(
+            player,
+            `🎯 Raycast debugging ${raycastEnabled ? 'enabled' : 'disabled'}`
+          );
+          break;
+          
+        default:
+          world.chatManager.sendPlayerMessage(
+            player,
+            "=== PERFORMANCE PROFILER COMMANDS ==="
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            "/profiler start - Start performance monitoring"
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            "/profiler stop - Stop performance monitoring"
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            "/profiler report - View current performance stats"
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            "/profiler debug on/off - Toggle debug rendering"
+          );
+          world.chatManager.sendPlayerMessage(
+            player,
+            "/profiler raycast on/off - Toggle raycast debugging"
+          );
+          break;
+      }
     });
   });

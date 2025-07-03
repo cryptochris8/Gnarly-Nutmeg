@@ -327,6 +327,12 @@ export class SoccerGame {
   private beginMatch() {
     console.log("Beginning match");
     
+    // Send game starting notification to UI for respawn handling
+    this.sendDataToAllPlayers({
+      type: "game-starting",
+      message: "New match starting - players respawned"
+    });
+    
     // First reset ball position - check and ensure proper spawn
     console.log("Ball position before reset:", this.soccerBall.isSpawned ? 
       `x=${this.soccerBall.position.x}, y=${this.soccerBall.position.y}, z=${this.soccerBall.position.z}` : 
@@ -646,6 +652,18 @@ export class SoccerGame {
   private endGame() {
     console.log("Ending game");
 
+    // Store whether this was an overtime game before changing status
+    const wasOvertime = this.state.status === "overtime";
+
+    // Stop the game loop immediately to prevent further time updates
+    if (this.gameLoopInterval) {
+      clearInterval(this.gameLoopInterval);
+      this.gameLoopInterval = null;
+    }
+
+    // Set game status to finished
+    this.state.status = "finished";
+
     // Collect comprehensive player stats
     const playerStats = this.world.entityManager
       .getAllPlayerEntities()
@@ -678,10 +696,6 @@ export class SoccerGame {
       }
     };
 
-    // this.abilityPickups.forEach((ability) => {
-    //   ability.destroy();
-    // });
-
     // Determine winner
     let winner = 'tie';
     if (this.state.score.red > this.state.score.blue) {
@@ -689,6 +703,25 @@ export class SoccerGame {
     } else if (this.state.score.blue > this.state.score.red) {
       winner = 'blue';
     }
+
+    // Freeze all players at game end
+    this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+      if (entity instanceof SoccerPlayerEntity) {
+        entity.freeze();
+      }
+    });
+
+    // Send game over data to UI (DO NOT reset game automatically)
+    this.sendDataToAllPlayers({
+      type: "game-over",
+      redScore: this.state.score.red,
+      blueScore: this.state.score.blue,
+      playerStats,
+      teamStats,
+      winner,
+      matchDuration: MATCH_DURATION - this.state.timeRemaining,
+      wasOvertime
+    });
 
     // Use type assertions for custom event name and payload
     this.world.emit("game-over" as any, {
@@ -698,14 +731,23 @@ export class SoccerGame {
       teamStats,
       winner,
       matchDuration: MATCH_DURATION - this.state.timeRemaining,
-      wasOvertime: this.state.status === "overtime"
+      wasOvertime
     } as any);
 
     this.world.chatManager.sendBroadcastMessage(
       `Game over! Final Score: Red ${this.state.score.red} - ${this.state.score.blue} Blue`
     );
 
-    // Reset the game state immediately after emitting game-over
+    console.log("Game ended. Waiting for manual reset via 'Back to Lobby' button.");
+    // DO NOT automatically reset the game - wait for manual trigger
+  }
+
+  /**
+   * Manually reset the game - called from UI "Back to Lobby" button
+   * This is the proper way to reset after a game ends
+   */
+  public manualResetGame(): void {
+    console.log("🔄 MANUAL GAME RESET - Player requested return to lobby");
     this.resetGame();
   }
 
@@ -733,6 +775,9 @@ export class SoccerGame {
     this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
       if (entity instanceof SoccerPlayerEntity) {
         entity.resetStats();
+        
+        // Unfreeze players for new game
+        entity.unfreeze();
         
         // Send UI update only if player is still connected
         try {

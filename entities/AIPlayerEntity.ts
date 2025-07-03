@@ -259,7 +259,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   private decisionInterval: number = 500; // milliseconds between AI decisions
   public isKickoffActive: boolean = true; // Changed to public for out-of-bounds reset
   // Track last position for animation state detection
-  private lastPosition: Vector3Like | null = null;
+  private lastAIPosition: Vector3Like | null = null;
   // Animation state tracking
   private currentAnimState: 'idle' | 'walk' | 'run' | null = null;
   // Store mass for physics calculations
@@ -380,7 +380,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
 
     // Initialize state
     this.isKickoffActive = true; // Start with kickoff active to respect positioning
-    this.lastPosition = this.position;
+    this.lastAIPosition = this.position;
     this.currentAnimState = 'idle';
     this._agentSetRotationThisTick = false;
 
@@ -417,7 +417,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     // Reset all state variables
     this.isKickoffActive = false;
-    this.lastPosition = null;
+    this.lastAIPosition = null;
     this.currentAnimState = null;
     this._agentSetRotationThisTick = false;
     
@@ -433,6 +433,9 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
    * based on the global AI system setting
    */
   private makeDecision() {
+    // Performance profiling: Start timing AI decision
+    const decisionStartTime = performance.now();
+    
     const ball = sharedState.getSoccerBall();
     // Add check: ensure AI is spawned before making decisions
     if (!this.isSpawned) {
@@ -628,6 +631,16 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     if (!success) {
       console.log(`AI ${this.player.username} (${this.aiRole}) decision making failed, returning to formation`);
       this.targetPosition = this.getRoleBasedPosition();
+    }
+    
+    // Performance profiling: Record AI decision timing
+    const decisionEndTime = performance.now();
+    const decisionDuration = decisionEndTime - decisionStartTime;
+    
+    // Get performance profiler from world if available
+    const profiler = (this.world as any)._performanceProfiler;
+    if (profiler) {
+      profiler.recordAIDecision(decisionDuration);
     }
     
     // ROTATION STABILITY: Reset agent rotation flag at the END of decision making
@@ -1958,6 +1971,9 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
    * @param deltaTimeMs - Time elapsed since the last tick in milliseconds
    */
   private handleTick(deltaTimeMs: number) {
+    // Performance profiling: Start timing entity tick
+    const tickStartTime = performance.now();
+    
     // Do nothing if frozen or not properly set up
     if (this.isPlayerFrozen || !this.isSpawned || !this.targetPosition || !this.controller) {
       return;
@@ -2011,14 +2027,14 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
       z: typeof rawPosition.z === 'number' ? rawPosition.z : 0 
     };
 
-    if (!this.lastPosition) {
-      this.lastPosition = { ...currentPosition }; // Initialize last position with clone
+    if (!this.lastAIPosition) {
+      this.lastAIPosition = { ...currentPosition }; // Initialize last position with clone
       return; // Skip first tick for velocity calculation
     }
 
     // Calculate distance moved since last tick (for animation speed detection)
-    const deltaX = currentPosition.x - this.lastPosition.x;
-    const deltaZ = currentPosition.z - this.lastPosition.z;
+    const deltaX = currentPosition.x - this.lastAIPosition.x;
+    const deltaZ = currentPosition.z - this.lastAIPosition.z;
     const distanceMoved = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
     // Use deltaTimeMs if > 0, otherwise default to a small value to avoid division by zero
     const timeDeltaSeconds = deltaTimeMs > 0 ? deltaTimeMs / 1000 : 0.016; 
@@ -2042,7 +2058,17 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     }
 
     // Update last position for next tick's speed calculation
-    this.lastPosition = { ...currentPosition }; // Clone position before storing
+    this.lastAIPosition = { ...currentPosition }; // Clone position before storing
+    
+    // Performance profiling: Record entity tick timing
+    const tickEndTime = performance.now();
+    const tickDuration = tickEndTime - tickStartTime;
+    
+    // Get performance profiler from world if available
+    const profiler = (this.world as any)._performanceProfiler;
+    if (profiler) {
+      profiler.recordEntityTick(tickDuration);
+    }
   }
   
   /**

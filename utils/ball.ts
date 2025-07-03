@@ -80,6 +80,9 @@ export default function createSoccerBall(world: World) {
   }, 1000); // 1 second delay is sufficient
 
   soccerBall.on(EntityEvent.TICK, ({ entity, tickDeltaMs }) => {
+    // Performance profiling: Start timing ball physics
+    const ballPhysicsStartTime = performance.now();
+    
     // Check if ball has moved from spawn
     if (!sharedState.getBallHasMoved()) {
       const currentPos = { ...entity.position }; // Clone position
@@ -342,6 +345,16 @@ export default function createSoccerBall(world: World) {
         // Player is stationary or moving slowly, stop ball rotation
         entity.setAngularVelocity({ x: 0, y: 0, z: 0 });
       }
+    }
+    
+    // Performance profiling: Record ball physics timing
+    const ballPhysicsEndTime = performance.now();
+    const ballPhysicsDuration = ballPhysicsEndTime - ballPhysicsStartTime;
+    
+    // Get performance profiler from world if available
+    const profiler = (world as any)._performanceProfiler;
+    if (profiler) {
+      profiler.recordBallPhysics(ballPhysicsDuration);
     }
   });
 
