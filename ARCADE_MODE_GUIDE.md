@@ -15,7 +15,7 @@ Arcade Mode transforms the traditional soccer experience into an action-packed, 
 - **Crowd Atmosphere**: Immersive stadium experience with dynamic crowd reactions
 
 ### 🎮 Arcade Mode (Enhanced)
-- **Power-up System**: 8 unique abilities to dominate the field
+- **Power-up System**: 6 unique abilities to dominate the field
 - **Enhanced Physics**: Faster movement, stronger kicks, more dynamic gameplay
 - **Special Effects**: Visual and audio enhancements for epic moments
 - **Chaos Factor**: Unpredictable gameplay with strategic power-up usage
@@ -53,11 +53,7 @@ Arcade Mode transforms the traditional soccer experience into an action-packed, 
 - **Strategy**: Perfect for breaking through defensive lines or protecting your goal
 - **Sound Cue**: Ice freezing sound effect
 
-#### 🥷 **Shuriken Throw**
-- **Effect**: Launches a stunning projectile in your facing direction
-- **Duration**: Instant projectile that stuns on hit
-- **Strategy**: Target key opponents or disrupt enemy plays from distance
-- **Range**: Long-range precision weapon
+
 
 #### 🔥 **Fireball**
 - **Effect**: Explosive projectile with knockback damage
@@ -111,13 +107,7 @@ Arcade Mode transforms the traditional soccer experience into an action-packed, 
 - **Visual feedback**: Ice effects appear around frozen players
 - **Pro tip**: Position yourself near enemy clusters before pressing F
 
-#### 🥷 **Shuriken Throw** - *Fully Automatic*
-- **What happens**: Instantly launches a spinning projectile straight ahead
-- **Your role**: Face your target, then press F
-- **Direction**: Throws exactly where you're looking when F is pressed
-- **Auto-targeting**: Automatically stuns any player it hits (1.2 unit radius)
-- **Flight path**: Flies in slight arc with realistic physics for 5 seconds max
-- **Pro tip**: Turn to face your target before pressing F - direction is locked on activation!
+
 
 #### 🔥 **Fireball** - *Fully Automatic*
 - **What happens**: Launches explosive projectile that detonates on impact
@@ -182,7 +172,7 @@ Arcade Mode transforms the traditional soccer experience into an action-packed, 
 | Power-Up | Activation Type | Additional Input? | Duration | Best Used For |
 |----------|----------------|-------------------|-----------|---------------|
 | 🧊 **Freeze Blast** | Instant Effect | ❌ **None** | 4 sec freeze | Breaking through defense |
-| 🥷 **Shuriken** | Instant Projectile | ❌ **None** | Instant | Long-range disruption |
+
 | 🔥 **Fireball** | Instant Projectile | ❌ **None** | Until impact | Area clearance |
 | ⚡ **Speed Boost** | Passive Enhancement | ❌ **None** | 10 seconds | Counter-attacks |
 | 🎯 **Precision** | Passive Enhancement | ❌ **None** | 10 seconds | Important shots |
@@ -191,7 +181,7 @@ Arcade Mode transforms the traditional soccer experience into an action-packed, 
 | 🛡️ **Shield** | Auto-Defense | ❌ **None** | 30 sec OR 1 block | Ball carrying |
 
 ### 🎮 **Key Takeaway for New Players**
-**7 out of 8 power-ups work completely automatically!** Only **Mega Kick** requires you to actually kick the ball. Everything else either activates instantly or enhances your normal gameplay without any extra input required.
+**5 out of 6 power-ups work completely automatically!** Only **Mega Kick** requires you to actually kick the ball. Everything else either activates instantly or enhances your normal gameplay without any extra input required.
 
 ---
 
@@ -203,7 +193,7 @@ Arcade Mode transforms the traditional soccer experience into an action-packed, 
 1. **Power-up Timing**: Save **Mega Kick** for scoring opportunities
 2. **Space Creation**: Use **Freeze Blast** to clear defensive clusters
 3. **Long-range Attacks**: Combine **Speed Boost** + **Mega Kick** for surprise goals
-4. **Projectile Harassment**: Use **Shuriken** and **Fireball** to disrupt enemy formations
+4. **Projectile Attacks**: Use **Fireball** to disrupt enemy formations and clear areas
 
 #### **Defensive Strategies**
 1. **Goal Protection**: **Freeze Blast** incoming attackers
@@ -292,7 +282,7 @@ Arcade Mode transforms the traditional soccer experience into an action-packed, 
 - **Use Shield** when carrying the ball through enemy territory
 - **Freeze Blast** works best in crowded situations
 - **Speed Boost** is perfect for counter-attacks
-- **Projectiles** are most effective against stationary targets
+- **Fireball** is most effective against grouped enemies
 
 ---
 
