@@ -1318,7 +1318,7 @@ export default class PlayerEntityController extends BaseEntityController {
       console.log("🎮 Found arcade manager, activating powerup directly");
       
       // Get available power-ups
-      const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'shuriken_throw', 'fireball', 'mega_kick', 'shield'];
+      const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield'];
       const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
       
       // Try direct activation first
@@ -1347,7 +1347,7 @@ export default class PlayerEntityController extends BaseEntityController {
     // This will be handled in the main server loop where the arcade manager is available
     
     // Get available power-ups
-    const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'shuriken_throw', 'fireball', 'mega_kick', 'shield'];
+    const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield'];
     const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
     
     // Send power-up activation request to the server through UI messaging

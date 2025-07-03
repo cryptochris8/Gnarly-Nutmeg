@@ -3,7 +3,7 @@ import SoccerPlayerEntity from "./SoccerPlayerEntity";
 import { isArcadeMode } from "../state/gameModes";
 
 export enum ProjectileType {
-  SHURIKEN = "shuriken",
+
   FIREBALL = "fireball",
   ENERGY_ORB = "energy_orb"
 }
@@ -18,14 +18,6 @@ interface ProjectileConfig {
 }
 
 const PROJECTILE_CONFIGS: Record<ProjectileType, ProjectileConfig> = {
-  [ProjectileType.SHURIKEN]: {
-    modelUri: "models/projectiles/shuriken.gltf",
-    speed: 15,
-    damage: 1,
-    effectRadius: 2,
-    soundUri: "audio/sfx/player/bow-01.mp3",
-    stunDuration: 2000 // 2 seconds
-  },
   [ProjectileType.FIREBALL]: {
     modelUri: "models/projectiles/fireball.gltf", 
     speed: 12,
@@ -197,9 +189,6 @@ export class ProjectileEntity extends Entity {
     
     // Apply effect based on projectile type
     switch (this.projectileType) {
-      case ProjectileType.SHURIKEN:
-        this.applyShurikenEffect(target);
-        break;
       case ProjectileType.FIREBALL:
         this.applyFireballEffect(target);
         break;
@@ -212,21 +201,7 @@ export class ProjectileEntity extends Entity {
     this.explode();
   }
 
-  private applyShurikenEffect(target: SoccerPlayerEntity): void {
-    // Stun the target using the correct method
-    target.stunPlayer();
-    
-    // Play hit sound
-    if (this.world) {
-      new Audio({
-        uri: "audio/sfx/damage/fall-small.mp3",
-        loop: false,
-        volume: 0.6
-      }).play(this.world);
-    }
-    
-    console.log(`🥷 Shuriken stunned ${target.player.username} for ${this.config.stunDuration}ms`);
-  }
+
 
   private applyFireballEffect(target: SoccerPlayerEntity): void {
     // Stun and apply knockback

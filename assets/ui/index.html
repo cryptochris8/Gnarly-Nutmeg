@@ -2339,11 +2339,10 @@
     </div>
     <div style="font-size: 11px; color: #ffcccc; line-height: 1.4;">
       🧊 <strong>Freeze Blast</strong> - Freezes nearby opponents<br>
-      ⚡ <strong>Speed Boost</strong> - Doubles movement speed<br>
-      🥷 <strong>Shuriken Throw</strong> - Stuns opponents<br>
-      🔥 <strong>Fireball</strong> - Explosive projectile<br>
-      ⚽ <strong>Mega Kick</strong> - 3x ball power<br>
-      🛡️ <strong>Shield</strong> - Blocks one attack
+              ⚡ <strong>Speed Boost</strong> - Doubles movement speed<br>
+        🔥 <strong>Fireball</strong> - Explosive area damage<br>
+      ⚽ <strong>Mega Kick</strong> - Triple shot power<br>
+      🛡️ <strong>Shield</strong> - Temporary protection
     </div>
     <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
       Press <span class="powerup-key">F</span> to activate power-up
@@ -2375,21 +2374,15 @@
       <div class="powerup-cooldown-overlay" id="freeze-blast-cooldown"></div>
     </div>
     
-    <div class="powerup-button" id="shuriken-btn" onclick="activatePowerUp('shuriken_throw')" title="Shuriken Throw - Stuns opponents">
-      <div class="powerup-key-hint">2</div>
-      <div class="powerup-icon">🌟</div>
-      <div class="powerup-cooldown-overlay" id="shuriken-cooldown"></div>
-    </div>
+
     
-    <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')" title="Fireball - Explosive projectile">
-      <div class="powerup-key-hint">3</div>
-      <div class="powerup-icon">🔥</div>
+    <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')" title="Fireball - Explosive area damage">
+      🔥
       <div class="powerup-cooldown-overlay" id="fireball-cooldown"></div>
     </div>
     
-    <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')" title="Mega Kick - 3x ball power">
-      <div class="powerup-key-hint">4</div>
-      <div class="powerup-icon">⚽</div>
+    <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')" title="Mega Kick - Triple shot power">
+      ⚡
       <div class="powerup-cooldown-overlay" id="mega-kick-cooldown"></div>
     </div>
 
@@ -2397,6 +2390,11 @@
       <div class="powerup-key-hint">F</div>
       <div class="powerup-icon">🎲</div>
       <div class="powerup-cooldown-overlay" id="random-powerup-cooldown"></div>
+    </div>
+
+    <div class="powerup-button" id="shield-btn" onclick="activatePowerUp('shield')" title="Shield - Temporary protection">
+      🛡️
+      <div class="powerup-cooldown-overlay" id="shield-cooldown"></div>
     </div>
   </div>
 
@@ -2849,10 +2847,10 @@
       const powerUpInfo = {
         'freeze_blast': { name: '🧊 Freeze Blast', desc: 'Freezes nearby opponents for 4 seconds' },
         'speed_boost': { name: '⚡ Speed Boost', desc: 'Doubles movement speed for 8 seconds' },
-        'shuriken_throw': { name: '🥷 Shuriken Throw', desc: 'Throws a stunning shuriken at opponents' },
+        
         'fireball': { name: '🔥 Fireball', desc: 'Launches an explosive fireball' },
         'mega_kick': { name: '⚽ Mega Kick', desc: 'Next ball kick has 3x power and speed' },
-        'shield': { name: '🛡️ Shield', desc: 'Blocks one tackle or projectile attack' },
+        'shield': { name: '🛡️ Shield', desc: 'Blocks one attack' },
         'speed': { name: '⚡ Speed Enhancement', desc: 'Increased movement speed' },
         'power': { name: '💪 Power Enhancement', desc: 'Increased shot power' },
         'precision': { name: '🎯 Precision Enhancement', desc: 'Improved accuracy' }
@@ -3856,7 +3854,7 @@
   // Power-up cooldowns (in milliseconds)
   const POWERUP_COOLDOWNS = {
     'freeze_blast': 10000,    // 10 seconds
-    'shuriken_throw': 8000,   // 8 seconds  
+      
     'fireball': 12000,        // 12 seconds
     'mega_kick': 15000,       // 15 seconds
     'random_powerup': 3000    // 3 seconds for F key
@@ -3865,7 +3863,7 @@
   // Track cooldown states
   const powerupCooldownStates = {
     'freeze_blast': { onCooldown: false, endTime: 0 },
-    'shuriken_throw': { onCooldown: false, endTime: 0 },
+    
     'fireball': { onCooldown: false, endTime: 0 },
     'mega_kick': { onCooldown: false, endTime: 0 },
     'random_powerup': { onCooldown: false, endTime: 0 }
@@ -3948,7 +3946,7 @@
 
     const powerUpEmojis = {
       'freeze_blast': '🧊 FREEZE!',
-      'shuriken_throw': '🌟 SHURIKEN!',
+      
       'fireball': '🔥 FIREBALL!',
       'mega_kick': '⚽ MEGA KICK!',
       'random_powerup': '🎲 RANDOM!'
@@ -4155,7 +4153,7 @@
           break;
         case '2':
           event.preventDefault();
-          activatePowerUp('shuriken_throw');
+          
           break;
         case '3':
           event.preventDefault();
@@ -4169,6 +4167,10 @@
         case 'F':
           event.preventDefault();
           activateRandomPowerUp();
+          break;
+        case 'KeyU':
+          event.preventDefault();
+          activatePowerUp('shield');
           break;
       }
     });
@@ -4239,10 +4241,11 @@
   function getPowerupButtonId(powerUpType) {
     const buttonMap = {
       'freeze_blast': 'freeze-blast-btn',
-      'shuriken_throw': 'shuriken-btn',
+      
       'fireball': 'fireball-btn',
       'mega_kick': 'mega-kick-btn',
-      'random_powerup': 'random-powerup-btn'
+      'random_powerup': 'random-powerup-btn',
+      'shield': 'shield-btn'
     };
     return buttonMap[powerUpType] || 'random-powerup-btn';
   }
@@ -4251,10 +4254,11 @@
   function getPowerupName(powerUpType) {
     const nameMap = {
       'freeze_blast': 'Freeze Blast',
-      'shuriken_throw': 'Shuriken Throw',
+      
       'fireball': 'Fireball',
       'mega_kick': 'Mega Kick',
-      'random_powerup': 'Random Power-up'
+      'random_powerup': 'Random Power-up',
+      'shield': 'Shield'
     };
     return nameMap[powerUpType] || 'Unknown Power-up';
   }
@@ -4316,10 +4320,11 @@
   function getPowerupIcon(powerUpType) {
     const iconMap = {
       'freeze_blast': '🧊',
-      'shuriken_throw': '🌟',
+      
       'fireball': '🔥',
       'mega_kick': '⚽',
-      'random_powerup': '🎲'
+      'random_powerup': '🎲',
+      'shield': '🛡️'
     };
     return iconMap[powerUpType] || '⚡';
   }
