@@ -25,11 +25,26 @@ class SharedState {
 
     public setAttachedPlayer(player: PlayerEntity | null) {
         if(player == null) {
+            // Clear ball possession for previous player
+            if (this.attachedPlayer && 'setBallPossession' in this.attachedPlayer) {
+                (this.attachedPlayer as any).setBallPossession(false);
+            }
+            
             this.lastPlayerWithBall = this.attachedPlayer;
             this.attachedPlayer = null;
             
             // this.soccerBall?.setParent(undefined);
         } else {
+            // Set ball possession for new player
+            if ('setBallPossession' in player) {
+                (player as any).setBallPossession(true);
+            }
+            
+            // Clear possession for previous player if different
+            if (this.attachedPlayer && this.attachedPlayer !== player && 'setBallPossession' in this.attachedPlayer) {
+                (this.attachedPlayer as any).setBallPossession(false);
+            }
+            
             this.attachedPlayer = player;
             if(this.lastPlayerWithBall == null) {
                 this.lastPlayerWithBall = player;

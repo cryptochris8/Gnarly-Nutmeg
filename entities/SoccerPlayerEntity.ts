@@ -50,6 +50,14 @@ export default class SoccerPlayerEntity extends PlayerEntity {
   private speedAmplifier: number = 0;
   public abilityHolder: AbilityHolder;
   public role: SoccerAIRole; // Added role property
+  
+  // Enhanced player status tracking
+  private stamina: number = 100;
+  private maxStamina: number = 100;
+  private staminaRegenRate: number = 0.5; // Per second
+  private staminaDrainRate: number = 1.0; // Per second when running
+  private lastStaminaUpdate: number = Date.now();
+  private hasBallPossession: boolean = false;
 
   public constructor(player: Player, team: "red" | "blue", role: SoccerAIRole) {
     super({
@@ -335,19 +343,26 @@ export default class SoccerPlayerEntity extends PlayerEntity {
 
   public addGoal() {
     this.goalsScored++;
+    this.sendActionFeedback("success", "GOAL!", `Amazing goal scored! Total: ${this.goalsScored}`);
   }
 
   // Enhanced statistics methods
   public addTackle() {
     this.tacklesMade++;
+    this.drainStamina(5); // Tackling drains stamina
+    this.sendActionFeedback("success", "Tackle!", "Successful tackle made");
   }
 
   public addPass() {
     this.passesMade++;
+    this.drainStamina(2); // Passing drains less stamina
+    this.sendActionFeedback("info", "Pass", "Ball passed successfully");
   }
 
   public addShot() {
     this.shotsTaken++;
+    this.drainStamina(8); // Shooting drains more stamina
+    this.sendActionFeedback("warning", "Shot!", "Ball shot towards goal");
   }
 
   public addSave() {
@@ -388,6 +403,98 @@ export default class SoccerPlayerEntity extends PlayerEntity {
     this.savesMade = 0;
     this.distanceTraveled = 0;
     this.lastPosition = null;
+    this.stamina = 100;
+    this.lastStaminaUpdate = Date.now();
+  }
+
+  // ===== ENHANCED PLAYER STATUS METHODS =====
+  
+  public updateStamina() {
+    const now = Date.now();
+    const deltaTime = (now - this.lastStaminaUpdate) / 1000; // Convert to seconds
+    this.lastStaminaUpdate = now;
+
+    // Check if player is running (has velocity)
+    const velocity = this.linearVelocity;
+    const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+    const isRunning = speed > 2.0; // Threshold for running
+
+    if (isRunning && !this.isStunned && !this.isPlayerFrozen) {
+      // Drain stamina when running
+      this.stamina = Math.max(0, this.stamina - (this.staminaDrainRate * deltaTime));
+    } else {
+      // Regenerate stamina when not running
+      this.stamina = Math.min(this.maxStamina, this.stamina + (this.staminaRegenRate * deltaTime));
+    }
+
+    // Send stamina update to UI
+    this.sendEnhancedUIUpdate();
+  }
+
+  public getStamina(): number {
+    return this.stamina;
+  }
+
+  public getStaminaPercentage(): number {
+    return (this.stamina / this.maxStamina) * 100;
+  }
+
+  public drainStamina(amount: number) {
+    this.stamina = Math.max(0, this.stamina - amount);
+    this.sendEnhancedUIUpdate();
+  }
+
+  public setBallPossession(hasBall: boolean) {
+    this.hasBallPossession = hasBall;
+    this.sendEnhancedUIUpdate();
+  }
+
+  public getBallPossession(): boolean {
+    return this.hasBallPossession;
+  }
+
+  // Send enhanced UI data to the player's client
+  public sendEnhancedUIUpdate() {
+    try {
+      const player = this.player;
+      if (player && player.ui && typeof player.ui.sendData === 'function') {
+        const enhancedData = {
+          type: "game-state",
+          playerRole: this.role,
+          stamina: this.getStaminaPercentage(),
+          ballPossession: this.hasBallPossession,
+          playerStats: {
+            shots: this.shotsTaken,
+            passes: this.passesMade,
+            tackles: this.tacklesMade,
+            distance: Math.round(this.distanceTraveled)
+          }
+        };
+
+        player.ui.sendData(enhancedData);
+      }
+    } catch (error) {
+      // Silently handle errors for AI players
+    }
+  }
+
+  // Send action feedback to player's UI
+  public sendActionFeedback(type: "success" | "info" | "warning" | "error", title: string, message: string) {
+    try {
+      const player = this.player;
+      if (player && player.ui && typeof player.ui.sendData === 'function') {
+        player.ui.sendData({
+          type: "game-state",
+          actionFeedback: {
+            type,
+            title,
+            message
+          }
+        });
+      }
+    } catch (error) {
+      // Silently handle errors for AI players
+    }
   }
 
   public freeze() {

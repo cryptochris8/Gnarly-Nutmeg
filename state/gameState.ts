@@ -417,10 +417,11 @@ export class SoccerGame {
       console.log(`Overtime: ${this.state.timeRemaining} seconds remaining`);
     }
 
-    // Update player movement statistics
+    // Update player movement statistics and stamina
     this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
       if (entity instanceof SoccerPlayerEntity) {
         entity.updateDistanceTraveled();
+        entity.updateStamina(); // Update stamina system
       }
     });
 

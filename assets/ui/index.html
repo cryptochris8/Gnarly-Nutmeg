@@ -2282,6 +2282,440 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+
+  /* ===== ENHANCED PLAYER STATUS HUD STYLES ===== */
+  .player-status-hud {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    min-width: 280px;
+    z-index: 1000;
+    transition: all 0.3s ease;
+  }
+
+  .role-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .role-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+  }
+
+  .role-icon.goalkeeper {
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+  }
+
+  .role-icon.defender {
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+  }
+
+  .role-icon.midfielder {
+    background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+    box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
+  }
+
+  .role-icon.striker {
+    background: linear-gradient(135deg, #F44336, #D32F2F);
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+  }
+
+  .role-info {
+    flex: 1;
+  }
+
+  .role-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 2px;
+  }
+
+  .role-description {
+    font-size: 12px;
+    color: #cccccc;
+    opacity: 0.9;
+  }
+
+  .stamina-container {
+    margin-bottom: 15px;
+  }
+
+  .stamina-label {
+    font-size: 12px;
+    color: #cccccc;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+
+  .stamina-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .stamina-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.3s ease, background 0.3s ease;
+    border-radius: 5px;
+    width: 100%;
+  }
+
+  .stamina-fill.low {
+    background: linear-gradient(90deg, #FF5722, #FF9800);
+  }
+
+  .stamina-fill.critical {
+    background: linear-gradient(90deg, #F44336, #FF5722);
+    animation: pulse 1s infinite;
+  }
+
+  .stamina-percentage {
+    font-size: 11px;
+    color: #ffffff;
+    text-align: right;
+    margin-top: 3px;
+    font-weight: bold;
+  }
+
+  .ball-possession-indicator {
+    background: linear-gradient(135deg, #FFD700, #FFA000);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid #FFEB3B;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+    animation: possession-pulse 1.5s infinite;
+  }
+
+  @keyframes possession-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.9; }
+  }
+
+  .possession-icon {
+    font-size: 16px;
+  }
+
+  .possession-text {
+    font-size: 12px;
+    font-weight: bold;
+    color: #000000;
+  }
+
+  /* ===== ACTION FEEDBACK SYSTEM ===== */
+  .action-feedback-container {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    z-index: 2000;
+    pointer-events: none;
+    max-width: 300px;
+  }
+
+  .action-feedback {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-left: 4px solid;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .action-feedback.show {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  .action-feedback.success {
+    border-left-color: #4CAF50;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+  }
+
+  .action-feedback.info {
+    border-left-color: #2196F3;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1));
+  }
+
+  .action-feedback.warning {
+    border-left-color: #FF9800;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1));
+  }
+
+  .action-feedback.error {
+    border-left-color: #F44336;
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.2), rgba(244, 67, 54, 0.1));
+  }
+
+  .feedback-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .feedback-content {
+    flex: 1;
+  }
+
+  .feedback-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 2px;
+  }
+
+  .feedback-message {
+    font-size: 12px;
+    color: #cccccc;
+    line-height: 1.3;
+  }
+
+  /* ===== PERFORMANCE INDICATORS ===== */
+  .performance-indicators {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    gap: 12px;
+    z-index: 1000;
+  }
+
+  .performance-stat {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 10px;
+    padding: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    min-width: 60px;
+    transition: all 0.3s ease;
+  }
+
+  .performance-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .stat-icon {
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 2px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: #cccccc;
+    text-transform: uppercase;
+    font-weight: bold;
+  }
+
+  /* ===== TEAM FORMATION DISPLAY ===== */
+  .team-formation-display {
+    position: fixed;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    min-width: 200px;
+    z-index: 999;
+    transition: all 0.3s ease;
+  }
+
+  .formation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .formation-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+  }
+
+  .formation-toggle {
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+  }
+
+  .formation-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .formation-field {
+    position: relative;
+    width: 160px;
+    height: 240px;
+    background: linear-gradient(135deg, #2E7D32, #388E3C);
+    border-radius: 8px;
+    border: 2px solid #4CAF50;
+    display: grid;
+    grid-template-areas: 
+      "gk gk"
+      "lb rb"
+      "cm1 cm2"
+      "st st";
+    grid-template-rows: 1fr 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .field-player {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    color: #000000;
+    width: 35px;
+    height: 35px;
+    margin: auto;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .field-player:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .field-player.active {
+    background: #FFD700;
+    border-color: #FFA000;
+    animation: player-highlight 2s infinite;
+  }
+
+  @keyframes player-highlight {
+    0%, 100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+    50% { box-shadow: 0 4px 15px rgba(255, 215, 0, 0.6); }
+  }
+
+  #player-gk { grid-area: gk; }
+  #player-lb { grid-area: lb; }
+  #player-rb { grid-area: rb; }
+  #player-cm1 { grid-area: cm1; }
+  #player-cm2 { grid-area: cm2; }
+  #player-st { grid-area: st; }
+
+  /* ===== MOBILE RESPONSIVENESS FOR NEW ELEMENTS ===== */
+  @media (max-width: 768px) {
+    .player-status-hud {
+      bottom: 10px;
+      left: 10px;
+      min-width: 240px;
+      padding: 15px;
+    }
+
+    .performance-indicators {
+      bottom: 10px;
+      right: 10px;
+      gap: 8px;
+    }
+
+    .performance-stat {
+      min-width: 50px;
+      padding: 8px;
+    }
+
+    .team-formation-display {
+      left: 10px;
+      min-width: 180px;
+      padding: 15px;
+    }
+
+    .formation-field {
+      width: 140px;
+      height: 200px;
+    }
+
+    .field-player {
+      width: 30px;
+      height: 30px;
+      font-size: 10px;
+    }
+
+    .action-feedback-container {
+      right: 10px;
+      max-width: 250px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .player-status-hud {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      border-radius: 15px 15px 0 0;
+      min-width: auto;
+    }
+
+    .performance-indicators {
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .team-formation-display {
+      display: none; /* Hide on very small screens */
+    }
+  }
 </style>
 
 <!-- MAIN SCOREBOARD SYSTEM -->
@@ -2297,6 +2731,75 @@
   <div class="team-banner blue" id="blue-banner">
     <div class="team-name">Blue</div>
     <div class="team-score" id="blue-score">0</div>
+  </div>
+</div>
+
+<!-- ENHANCED PLAYER ROLE & STATUS DISPLAY -->
+<div id="player-status-hud" class="player-status-hud" style="display: none;">
+  <div class="role-indicator" id="role-indicator">
+    <div class="role-icon" id="role-icon">⚽</div>
+    <div class="role-info">
+      <div class="role-name" id="role-name">Player</div>
+      <div class="role-description" id="role-description">Ready to play</div>
+    </div>
+  </div>
+  
+  <div class="stamina-container">
+    <div class="stamina-label">Stamina</div>
+    <div class="stamina-bar">
+      <div class="stamina-fill" id="stamina-fill"></div>
+    </div>
+    <div class="stamina-percentage" id="stamina-percentage">100%</div>
+  </div>
+  
+  <div class="ball-possession-indicator" id="ball-possession" style="display: none;">
+    <div class="possession-icon">⚽</div>
+    <div class="possession-text">Ball Possession</div>
+  </div>
+</div>
+
+<!-- ENHANCED ACTION FEEDBACK SYSTEM -->
+<div id="action-feedback-container" class="action-feedback-container">
+  <!-- Action notifications will be dynamically added here -->
+</div>
+
+<!-- PLAYER PERFORMANCE INDICATORS -->
+<div id="performance-indicators" class="performance-indicators" style="display: none;">
+  <div class="performance-stat">
+    <div class="stat-icon">⚽</div>
+    <div class="stat-value" id="shots-stat">0</div>
+    <div class="stat-label">Shots</div>
+  </div>
+  <div class="performance-stat">
+    <div class="stat-icon">🎯</div>
+    <div class="stat-value" id="passes-stat">0</div>
+    <div class="stat-label">Passes</div>
+  </div>
+  <div class="performance-stat">
+    <div class="stat-icon">🛡️</div>
+    <div class="stat-value" id="tackles-stat">0</div>
+    <div class="stat-label">Tackles</div>
+  </div>
+  <div class="performance-stat">
+    <div class="stat-icon">🏃</div>
+    <div class="stat-value" id="distance-stat">0m</div>
+    <div class="stat-label">Distance</div>
+  </div>
+</div>
+
+<!-- ENHANCED TEAM POSITIONING DISPLAY -->
+<div id="team-formation-display" class="team-formation-display" style="display: none;">
+  <div class="formation-header">
+    <div class="formation-title">Team Formation</div>
+    <div class="formation-toggle" onclick="toggleFormationDisplay()">📋</div>
+  </div>
+  <div class="formation-field">
+    <div class="field-player" id="player-gk">GK</div>
+    <div class="field-player" id="player-lb">LB</div>
+    <div class="field-player" id="player-rb">RB</div>
+    <div class="field-player" id="player-cm1">CM</div>
+    <div class="field-player" id="player-cm2">CM</div>
+    <div class="field-player" id="player-st">ST</div>
   </div>
 </div>
 
@@ -3343,6 +3846,304 @@
     window.forceUpdateScores(0, 0); // Reset to 0-0 but ensure visibility
   }, 2000);
 
+  // ===== ENHANCED PLAYER STATUS & FEEDBACK SYSTEM =====
+  
+  // Player status tracking
+  let playerStatus = {
+    role: "player",
+    stamina: 100,
+    hasBall: false,
+    stats: {
+      shots: 0,
+      passes: 0,
+      tackles: 0,
+      distance: 0
+    }
+  };
+
+  // Role configurations
+  const roleConfigs = {
+    goalkeeper: {
+      name: "Goalkeeper",
+      description: "Protect the goal",
+      icon: "🥅",
+      className: "goalkeeper"
+    },
+    "left-back": {
+      name: "Left Back",
+      description: "Defend left side",
+      icon: "🛡️",
+      className: "defender"
+    },
+    "right-back": {
+      name: "Right Back", 
+      description: "Defend right side",
+      icon: "🛡️",
+      className: "defender"
+    },
+    "central-midfielder-1": {
+      name: "Central Mid",
+      description: "Control the field",
+      icon: "⚡",
+      className: "midfielder"
+    },
+    "central-midfielder-2": {
+      name: "Central Mid",
+      description: "Support attack",
+      icon: "⚡",
+      className: "midfielder"
+    },
+    striker: {
+      name: "Striker",
+      description: "Score goals",
+      icon: "⚽",
+      className: "striker"
+    }
+  };
+
+  // Initialize enhanced UI systems
+  function initializeEnhancedUI() {
+    console.log("🎮 Initializing enhanced UI systems...");
+    
+    // Show player status HUD
+    const playerHUD = document.getElementById("player-status-hud");
+    if (playerHUD) {
+      playerHUD.style.display = "block";
+      updatePlayerRole("player");
+    }
+
+    // Show performance indicators
+    const perfIndicators = document.getElementById("performance-indicators");
+    if (perfIndicators) {
+      perfIndicators.style.display = "flex";
+    }
+
+    // Initialize stamina
+    updateStamina(100);
+    
+    console.log("✅ Enhanced UI systems initialized");
+  }
+
+  // Update player role display
+  function updatePlayerRole(role) {
+    const config = roleConfigs[role] || {
+      name: "Player",
+      description: "Ready to play",
+      icon: "⚽",
+      className: "player"
+    };
+
+    const roleIcon = document.getElementById("role-icon");
+    const roleName = document.getElementById("role-name");
+    const roleDescription = document.getElementById("role-description");
+
+    if (roleIcon && roleName && roleDescription) {
+      roleIcon.textContent = config.icon;
+      roleIcon.className = `role-icon ${config.className}`;
+      roleName.textContent = config.name;
+      roleDescription.textContent = config.description;
+    }
+
+    playerStatus.role = role;
+    console.log(`🎭 Player role updated to: ${config.name}`);
+  }
+
+  // Update stamina display
+  function updateStamina(percentage) {
+    const staminaFill = document.getElementById("stamina-fill");
+    const staminaPercentage = document.getElementById("stamina-percentage");
+
+    if (staminaFill && staminaPercentage) {
+      staminaFill.style.width = `${percentage}%`;
+      staminaPercentage.textContent = `${Math.round(percentage)}%`;
+
+      // Update stamina bar color based on level
+      staminaFill.className = "stamina-fill";
+      if (percentage < 30) {
+        staminaFill.classList.add("critical");
+      } else if (percentage < 60) {
+        staminaFill.classList.add("low");
+      }
+    }
+
+    playerStatus.stamina = percentage;
+  }
+
+  // Show/hide ball possession indicator
+  function updateBallPossession(hasBall) {
+    const possessionIndicator = document.getElementById("ball-possession");
+    
+    if (possessionIndicator) {
+      possessionIndicator.style.display = hasBall ? "flex" : "none";
+    }
+
+    playerStatus.hasBall = hasBall;
+  }
+
+  // Update performance statistics
+  function updatePlayerStats(statType, value) {
+    const statElement = document.getElementById(`${statType}-stat`);
+    
+    if (statElement) {
+      if (statType === "distance") {
+        statElement.textContent = `${Math.round(value)}m`;
+      } else {
+        statElement.textContent = value;
+      }
+    }
+
+    playerStatus.stats[statType] = value;
+  }
+
+  // Show action feedback
+  function showActionFeedback(type, title, message, duration = 3000) {
+    const container = document.getElementById("action-feedback-container");
+    if (!container) return;
+
+    const feedback = document.createElement("div");
+    feedback.className = `action-feedback ${type}`;
+    
+    const icons = {
+      success: "✅",
+      info: "ℹ️", 
+      warning: "⚠️",
+      error: "❌"
+    };
+
+    feedback.innerHTML = `
+      <div class="feedback-icon">${icons[type] || "ℹ️"}</div>
+      <div class="feedback-content">
+        <div class="feedback-title">${title}</div>
+        <div class="feedback-message">${message}</div>
+      </div>
+    `;
+
+    container.appendChild(feedback);
+
+    // Trigger animation
+    setTimeout(() => feedback.classList.add("show"), 10);
+
+    // Remove after duration
+    setTimeout(() => {
+      feedback.classList.remove("show");
+      setTimeout(() => {
+        if (feedback.parentNode) {
+          feedback.parentNode.removeChild(feedback);
+        }
+      }, 300);
+    }, duration);
+  }
+
+  // Toggle formation display
+  function toggleFormationDisplay() {
+    const formationDisplay = document.getElementById("team-formation-display");
+    if (formationDisplay) {
+      const isVisible = formationDisplay.style.display !== "none";
+      formationDisplay.style.display = isVisible ? "none" : "block";
+    }
+  }
+
+  // Highlight active player in formation
+  function highlightPlayerInFormation(role) {
+    // Remove all active classes
+    document.querySelectorAll(".field-player").forEach(player => {
+      player.classList.remove("active");
+    });
+
+    // Map roles to formation elements
+    const roleMapping = {
+      goalkeeper: "player-gk",
+      "left-back": "player-lb",
+      "right-back": "player-rb", 
+      "central-midfielder-1": "player-cm1",
+      "central-midfielder-2": "player-cm2",
+      striker: "player-st"
+    };
+
+    const playerId = roleMapping[role];
+    if (playerId) {
+      const playerElement = document.getElementById(playerId);
+      if (playerElement) {
+        playerElement.classList.add("active");
+      }
+    }
+  }
+
+  // Enhanced game state handler for new UI features
+  function handleEnhancedGameState(data) {
+    // Update player role if provided
+    if (data.playerRole) {
+      updatePlayerRole(data.playerRole);
+      highlightPlayerInFormation(data.playerRole);
+    }
+
+    // Update stamina if provided
+    if (data.stamina !== undefined) {
+      updateStamina(data.stamina);
+    }
+
+    // Update ball possession
+    if (data.ballPossession !== undefined) {
+      updateBallPossession(data.ballPossession);
+    }
+
+    // Update player stats
+    if (data.playerStats) {
+      Object.keys(data.playerStats).forEach(stat => {
+        updatePlayerStats(stat, data.playerStats[stat]);
+      });
+    }
+
+    // Show action feedback if provided
+    if (data.actionFeedback) {
+      const { type, title, message } = data.actionFeedback;
+      showActionFeedback(type, title, message);
+    }
+
+    // Show formation display during game
+    if (data.status === "playing" || data.status === "starting") {
+      const formationDisplay = document.getElementById("team-formation-display");
+      if (formationDisplay && formationDisplay.style.display === "none") {
+        formationDisplay.style.display = "block";
+      }
+    }
+  }
+
+  // Initialize enhanced UI on load
+  setTimeout(() => {
+    initializeEnhancedUI();
+    
+    // Test the new features
+    setTimeout(() => {
+      console.log("🧪 Testing enhanced UI features...");
+      showActionFeedback("success", "Welcome!", "Enhanced UI system loaded successfully");
+      updatePlayerRole("striker");
+      updateStamina(85);
+      updatePlayerStats("shots", 3);
+      updatePlayerStats("passes", 12);
+      updatePlayerStats("tackles", 2);
+      updatePlayerStats("distance", 1250);
+      
+      // Test ball possession after a delay
+      setTimeout(() => {
+        updateBallPossession(true);
+        showActionFeedback("info", "Ball Possession", "You now have control of the ball!");
+      }, 2000);
+      
+      // Test stamina drain
+      setTimeout(() => {
+        updateStamina(45);
+        showActionFeedback("warning", "Low Stamina", "Your stamina is getting low!");
+      }, 4000);
+      
+      // Test role change
+      setTimeout(() => {
+        updatePlayerRole("goalkeeper");
+        showActionFeedback("info", "Role Change", "You are now the goalkeeper!");
+      }, 6000);
+    }, 1000);
+  }, 500);
+
   // ===== DATA HANDLER =====
   hytopia.onData((data) => {
     console.log("Received data:", data.type, data);
@@ -3402,6 +4203,9 @@
         currentGameStats = data.stats;
         updateStatisticsPanel();
       }
+
+      // Handle enhanced UI features
+      handleEnhancedGameState(data);
       
       console.log("✅ Game state update complete");
     }
