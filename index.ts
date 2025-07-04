@@ -62,21 +62,24 @@ import PerformanceProfiler from "./utils/performanceProfiler";
 import PerformanceOptimizer from "./utils/performanceOptimizations";
 
 startServer((world) => {
-    // Phase 1: Load soccer map immediately at server startup for better memory distribution
-    console.log("Phase 1: Loading soccer map at server startup for optimized memory usage");
+    // MEMORY OPTIMIZATION: Map loading moved to after game mode selection
+    console.log("🎮 Server starting - UI ready for game mode selection...");
+    console.log("⚡ Memory optimized: Map and ball will load after FIFA/Arcade selection");
     
-    // Load the soccer map immediately
-    world.loadMap(worldMap);
-    console.log("✅ Soccer map loaded at server startup");
+    // Initialize variables for delayed loading
+    let isGameWorldLoaded = false;
+    let mapLoadingInProgress = false;
     
-    // Set up enhanced lighting for the stadium
-    world.setDirectionalLightIntensity(0.6);
-    world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 });
-    world.setDirectionalLightColor({ r: 255, g: 248, b: 235 });
-    world.setAmbientLightIntensity(1.2);
-    world.setAmbientLightColor({ r: 250, g: 250, b: 255 });
+    // Helper function to ensure game is initialized
+    const ensureGameInitialized = (): SoccerGame => {
+      if (!game) {
+        console.error("Game not initialized - this should not happen after mode selection");
+        throw new Error("Game not initialized");
+      }
+      return game;
+    };
     
-    console.log("✅ Enhanced stadium lighting configured");
+    console.log("✅ Lightweight server startup complete!");
 
     // Store the main background music instance
     const mainMusic = new Audio({
@@ -105,10 +108,8 @@ startServer((world) => {
       return isFIFAMode() ? fifaGameplayMusic : arcadeGameplayMusic;
     };
 
-    // Create soccer ball immediately since map is loaded
-    console.log("Creating soccer ball at server startup");
-    let soccerBall: any = createSoccerBall(world);
-    console.log("✅ Soccer ball created and spawned at startup");
+    // MEMORY OPTIMIZATION: Ball creation moved to after game mode selection
+    let soccerBall: any = null;
     
     // Initialize arcade enhancement system (only active in arcade mode)
     const arcadeManager = new ArcadeEnhancementManager(world);
@@ -131,15 +132,12 @@ startServer((world) => {
     // Initialize performance optimizer system
     const performanceOptimizer = new PerformanceOptimizer('BALANCED');
     
-    // Initialize game with soccer ball (loaded at startup)
+    // Initialize game with delayed ball loading
     let aiPlayers: AIPlayerEntity[] = [];
-    const game = new SoccerGame(world, soccerBall, aiPlayers);
+    let game: SoccerGame | null = null;
     
-    // Connect arcade manager to game
-    game.setArcadeManager(arcadeManager);
-    
-    // Connect FIFA crowd manager to game
-    game.setFIFACrowdManager(fifaCrowdManager);
+    // MEMORY OPTIMIZATION: Game connections moved to after map loading
+    // These will be connected when the game is initialized after mode selection
     
     // Attach performance profiler to world for direct access from entities
     (world as any)._performanceProfiler = performanceProfiler;
@@ -220,11 +218,11 @@ startServer((world) => {
             
             console.log(`Loading AI player: ${aiID}`);
             
-            // Register in game state if not already there
-            if (game.getTeamOfPlayer(aiID) === null) {
-              game.joinGame(aiID, `AI ${role}`);
-              game.joinTeam(aiID, team);
-            }
+                    // Register in game state if not already there
+        if (game && game.getTeamOfPlayer(aiID) === null) {
+          game.joinGame(aiID, `AI ${role}`);
+          game.joinTeam(aiID, team);
+        }
             
             // Create AI entity
             const aiPlayer = new AIPlayerEntity(world, team, role);
@@ -261,6 +259,12 @@ startServer((world) => {
         };
 
         try {
+          // Add null check for game
+          if (!game) {
+            console.error("Game not initialized - cannot spawn AI players");
+            return;
+          }
+          
           // Calculate total players to load
           const playersOnMyTeam = game.getPlayerCountOnTeam(playerTeam);
           const maxPlayers = game.getMaxPlayersPerTeam();
@@ -302,7 +306,8 @@ startServer((world) => {
           console.log(`✅ AI teammates for team ${playerTeam} loaded progressively`);
           
           // Update the aiPlayersList in the game instance
-          game.updateAIPlayersList(aiPlayers);
+          const currentGame = ensureGameInitialized();
+          currentGame.updateAIPlayersList(aiPlayers);
           console.log(`✅ All ${aiPlayers.length} AI players loaded successfully with stepwise loading`);
           
           // Send completion message
@@ -424,16 +429,24 @@ startServer((world) => {
         });
         aiPlayers = []; // Clear local list
 
-        game.resetGame(); // Reset the game state to waiting
+        // Reset game state if game is initialized
+        if (game) {
+          game.resetGame(); // Reset the game state to waiting
+        }
 
         // Reload UI for all players after game reset
         world.entityManager.getAllPlayerEntities().forEach((playerEntity) => {
           const player = playerEntity.player;
           player.ui.load("ui/index.html");
+          
+          // CRITICAL: Unlock pointer for UI interactions after reset (Hytopia-compliant approach)
+          player.ui.lockPointer(false);
+          console.log(`🎯 Pointer unlocked for ${player.username} after game reset - UI interactions enabled`);
+          
           player.ui.sendData({
             type: "team-counts",
-            red: game.getPlayerCountOnTeam("red"),
-            blue: game.getPlayerCountOnTeam("blue"),
+            red: game ? game.getPlayerCountOnTeam("red") : 0,
+            blue: game ? game.getPlayerCountOnTeam("blue") : 0,
             maxPlayers: 6,
             singlePlayerMode: true,
           });
@@ -450,7 +463,7 @@ startServer((world) => {
       // Check if this player is a developer and should auto-enable observer mode
       if (observerMode.isDeveloper(player.username)) {
         // Only auto-enable observer if no game is in progress
-        if (!game.inProgress()) {
+        if (!game || !game.inProgress()) {
           world.chatManager.sendPlayerMessage(
             player,
             "Developer detected. Use /observer to enable observer mode or /aitraining to start AI training match."
@@ -460,9 +473,13 @@ startServer((world) => {
       
       // Load UI first before any game state checks
       player.ui.load("ui/index.html");
+      
+      // CRITICAL: Unlock pointer for UI interactions (Hytopia-compliant approach)
+      player.ui.lockPointer(false);
+      console.log(`🎯 Pointer unlocked for ${player.username} - UI interactions enabled`);
 
       // Check game state
-      if (game.inProgress()) {
+      if (game && game.inProgress()) {
         return world.chatManager.sendPlayerMessage(
           player,
           "Game is already in progress, you can fly around and spectate!"
@@ -475,8 +492,8 @@ startServer((world) => {
             // Send initial UI data
       player.ui.sendData({
         type: "team-counts",
-        red: game.getPlayerCountOnTeam("red"),
-        blue: game.getPlayerCountOnTeam("blue"),
+        red: game ? game.getPlayerCountOnTeam("red") : 0,
+        blue: game ? game.getPlayerCountOnTeam("blue") : 0,
         maxPlayers: 6,
         singlePlayerMode: true,
       });
@@ -497,6 +514,42 @@ startServer((world) => {
           } else if (data.mode === "arcade") {
             setGameMode(GameMode.ARCADE);
             console.log("Game mode set to Arcade Mode");
+          }
+          
+          // MEMORY OPTIMIZATION: Load map and initialize game after mode selection
+          if (!isGameWorldLoaded && !mapLoadingInProgress) {
+            console.log("🏟️ Loading soccer stadium after mode selection...");
+            mapLoadingInProgress = true;
+            
+            // Load the soccer map
+            world.loadMap(worldMap);
+            console.log("✅ Soccer map loaded");
+            
+            // Set up enhanced lighting for the stadium
+            world.setDirectionalLightIntensity(0.6);
+            world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 });
+            world.setDirectionalLightColor({ r: 255, g: 248, b: 235 });
+            world.setAmbientLightIntensity(1.2);
+            world.setAmbientLightColor({ r: 250, g: 250, b: 255 });
+            console.log("✅ Enhanced stadium lighting configured");
+            
+            // Create soccer ball after map is loaded
+            console.log("⚽ Creating soccer ball...");
+            soccerBall = createSoccerBall(world);
+            console.log("✅ Soccer ball created and spawned");
+            
+            // Initialize game with soccer ball
+            game = new SoccerGame(world, soccerBall, aiPlayers);
+            
+            // Connect arcade manager to game
+            game.setArcadeManager(arcadeManager);
+            
+            // Connect FIFA crowd manager to game
+            game.setFIFACrowdManager(fifaCrowdManager);
+            
+            isGameWorldLoaded = true;
+            mapLoadingInProgress = false;
+            console.log("✅ Game world initialized after mode selection");
           }
           
           // Send confirmation back to UI
@@ -529,6 +582,11 @@ startServer((world) => {
           }
           
           // Join team and try to start game when team is selected
+          if (!game) {
+            console.error("Game not initialized - cannot join team");
+            return;
+          }
+          
           if (game.getTeamOfPlayer(player.username) !== null) {
             console.log("Player already on a team");
             return;
@@ -655,6 +713,10 @@ startServer((world) => {
                     console.log("Player unfrozen - game active!");
                   }
                   
+                  // CRITICAL: Lock pointer for gameplay (Hytopia-compliant approach)
+                  player.ui.lockPointer(true);
+                  console.log(`🎮 Pointer locked for ${player.username} - Game controls enabled`);
+                  
                   // Clear loading UI
                   player.ui.sendData({
                     type: "loading-complete"
@@ -677,8 +739,141 @@ startServer((world) => {
               });
             }
           } // End singlePlayerMode check
+          
+          // Multiplayer mode - handle differently for 1v1 matches
+          else if (data.multiplayerMode) {
+            console.log(`Multiplayer mode: Player ${player.username} joined team ${data.team}`);
+            
+            // Check how many human players are currently in the game
+            const humanPlayers = PlayerManager.instance.getConnectedPlayers();
+            console.log(`Current human players in game: ${humanPlayers.length}`);
+            
+            if (humanPlayers.length === 1) {
+              // First player - wait for second player
+              console.log("First player in multiplayer lobby - waiting for second player");
+              player.ui.sendData({
+                type: "multiplayer-waiting",
+                message: "Waiting for second player to join...",
+                playerCount: 1,
+                requiredPlayers: 2
+              });
+            } else if (humanPlayers.length === 2) {
+              // Second player joined - start multiplayer game
+              console.log("Second player joined - starting multiplayer 1v1 match");
+              
+              // Assign players to different teams automatically
+              const firstPlayer = humanPlayers.find(p => p.username !== player.username);
+              const secondPlayer = player;
+              
+              // Assign teams: first player gets opposite team of what second player chose
+              const firstPlayerTeam = data.team === 'red' ? 'blue' : 'red';
+              const secondPlayerTeam = data.team;
+              
+              console.log(`Team assignment: ${firstPlayer?.username} -> ${firstPlayerTeam}, ${secondPlayer.username} -> ${secondPlayerTeam}`);
+              
+              // Notify both players about team assignments
+              firstPlayer?.ui.sendData({
+                type: "team-assigned",
+                team: firstPlayerTeam,
+                message: `You have been assigned to the ${firstPlayerTeam} team`
+              });
+              
+              secondPlayer.ui.sendData({
+                type: "team-assigned", 
+                team: secondPlayerTeam,
+                message: `You have been assigned to the ${secondPlayerTeam} team`
+              });
+              
+              // Start loading for multiplayer game
+              [firstPlayer, secondPlayer].forEach((p) => {
+                if (p) {
+                  p.ui.sendData({
+                    type: "loading-progress",
+                    current: 50,
+                    total: 100,
+                    message: "Setting up multiplayer match...",
+                    percentage: 50
+                  });
+                }
+              });
+              
+              // Spawn AI players for both teams (4 AI per team since 1 human per team)
+              console.log("Spawning AI players for multiplayer 1v1 match");
+              await spawnAIPlayers('red'); // This will spawn for both teams
+              
+              // Update loading progress
+              [firstPlayer, secondPlayer].forEach((p) => {
+                if (p) {
+                  p.ui.sendData({
+                    type: "loading-progress",
+                    current: 90,
+                    total: 100,
+                    message: "Starting multiplayer match...",
+                    percentage: 90
+                  });
+                }
+              });
+              
+              // Start the multiplayer game
+              const gameStarted = game.startGame();
+              if (gameStarted) {
+                console.log("✅ Multiplayer 1v1 game started successfully!");
+                
+                // Notify both players
+                [firstPlayer, secondPlayer].forEach((p) => {
+                  if (p) {
+                    p.ui.sendData({
+                      type: "loading-progress",
+                      current: 100,
+                      total: 100,
+                      message: "Match ready!",
+                      percentage: 100
+                    });
+                    
+                    // Clear loading UI after delay
+                    setTimeout(() => {
+                      p.ui.sendData({
+                        type: "loading-complete"
+                      });
+                    }, 500);
+                  }
+                });
+                
+                // Unfreeze both players
+                setTimeout(() => {
+                  const allPlayerEntities = world.entityManager.getAllPlayerEntities();
+                  allPlayerEntities.forEach(entity => {
+                    if (entity instanceof SoccerPlayerEntity && typeof entity.unfreeze === 'function') {
+                      entity.unfreeze();
+                      console.log(`Player ${entity.player.username} unfrozen - multiplayer game active!`);
+                    }
+                  });
+                }, 1000);
+                
+              } else {
+                console.error("Failed to start multiplayer game");
+                [firstPlayer, secondPlayer].forEach((p) => {
+                  if (p) {
+                    p.ui.sendData({ 
+                      type: "loading-error", 
+                      message: "Failed to start multiplayer game. Please try again." 
+                    });
+                  }
+                });
+              }
+            }
+          } // End multiplayerMode check
 
         } // End team-selected check
+        else if (data.type === "join-multiplayer-lobby") {
+          console.log(`Player ${player.username} wants to join multiplayer lobby`);
+          // For now, we'll handle this in the team-selected handler
+          // In a more complex implementation, this could manage a separate lobby system
+          player.ui.sendData({
+            type: "multiplayer-lobby-joined",
+            message: "Joined multiplayer lobby. Select your preferred team to continue."
+          });
+        }
         else if (data.type === "coin-toss-choice" && data.choice) {
           // Handle coin toss choice
           console.log(`Player ${player.username} chose ${data.choice} for coin toss`);
@@ -875,6 +1070,10 @@ startServer((world) => {
             
             // Perform the actual game reset
             game.manualResetGame();
+            
+            // CRITICAL: Unlock pointer for UI interactions after manual reset (Hytopia-compliant approach)
+            player.ui.lockPointer(false);
+            console.log(`🎯 Pointer unlocked for ${player.username} after manual reset - UI interactions enabled`);
             
             // Clear AI players list
             aiPlayers.forEach(ai => {
