@@ -1361,6 +1361,26 @@ startServer((world) => {
             });
           }
         }
+        else if (data.type === "start-second-half") {
+          // Handle manual start of second half from halftime button
+          console.log(`🚀 Player ${player.username} requested to start second half`);
+          
+          // Only allow if game is in halftime
+          if (game && game.getState().isHalftime) {
+            console.log("✅ Game is in halftime, starting second half");
+            
+            // Call the game's startSecondHalf method
+            game.startSecondHalf();
+            
+            console.log("✅ Second half started successfully");
+          } else {
+            console.log(`❌ Start second half denied - game status is: ${game ? game.getState().status : "null"}, halftime: ${game ? game.getState().isHalftime : "null"}`);
+            player.ui.sendData({
+              type: "error",
+              message: "Second half can only be started during halftime"
+            });
+          }
+        }
       });
 
       // Attempt to start multiplayer game (only for human players, not AI)

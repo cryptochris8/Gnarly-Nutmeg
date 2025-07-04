@@ -4006,10 +4006,8 @@
         phaseIndicator.className = "phase-indicator playing";
         break;
       case "halftime":
-        // Display halftime countdown
-        const halftimeMinutes = Math.floor(data.halftimeTimeRemaining / 60);
-        const halftimeSeconds = data.halftimeTimeRemaining % 60;
-        timeLeft.textContent = `${halftimeMinutes}:${halftimeSeconds.toString().padStart(2, '0')}`;
+        // Display halftime - manual system (no countdown)
+        timeLeft.textContent = "HALFTIME";
         phaseIndicator.textContent = "HALFTIME";
         phaseIndicator.className = "phase-indicator halftime";
         break;
@@ -5730,7 +5728,7 @@
       `).join('')}
     `;
     
-    // Add countdown timer
+    // Add manual start button section
     const countdownSection = document.createElement('div');
     countdownSection.style.cssText = `
       margin-top: 30px;
@@ -5741,15 +5739,30 @@
     `;
     
     countdownSection.innerHTML = `
-      <div style="font-size: 18px; color: #FFD700; margin-bottom: 10px;">
+      <div style="font-size: 18px; color: #FFD700; margin-bottom: 15px;">
         ⏱️ Halftime Break
       </div>
-      <div id="halftime-countdown" style="font-size: 24px; font-weight: bold; color: white;">
-        2:00
+      <div style="font-size: 16px; color: #87CEEB; margin-bottom: 20px;">
+        Review the stats and click when ready to continue
       </div>
-      <div style="font-size: 14px; color: #87CEEB; margin-top: 5px;">
-        Second half starting soon...
-      </div>
+      <button id="start-second-half-btn" style="
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        font-family: 'Inter', sans-serif;
+      " 
+      onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(34, 197, 94, 0.4)';"
+      onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(34, 197, 94, 0.3)';"
+      onclick="startSecondHalf()">
+        🚀 Start Second Half
+      </button>
     `;
     
     // Assemble the overlay
@@ -5763,32 +5776,20 @@
     halftimeOverlay.appendChild(statsContent);
     document.body.appendChild(halftimeOverlay);
     
-    // Start countdown timer
-    startHalftimeCountdown();
+    // Listen for halftime end (triggered by button click)
+    listenForHalftimeEnd();
     
     // Play halftime sound
     playUISound("game-start");
   }
 
-  // Start halftime countdown timer
-  function startHalftimeCountdown() {
-    const countdownElement = document.getElementById('halftime-countdown');
-    if (!countdownElement) return;
-    
-    // Listen for halftime countdown updates from server
-    const originalOnMessage = hytopia.onMessage;
-    let halftimeMessageHandler;
-    
-    halftimeMessageHandler = (data) => {
-      if (data.type === "game-state" && data.isHalftime && data.halftimeTimeRemaining !== undefined) {
-        const minutes = Math.floor(data.halftimeTimeRemaining / 60);
-        const seconds = data.halftimeTimeRemaining % 60;
-        countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        
-        // Remove overlay when halftime ends
-        if (data.halftimeTimeRemaining <= 0 || !data.isHalftime) {
-          removeHalftimeStatsOverlay();
-        }
+  // Listen for halftime end (manual system)
+  function listenForHalftimeEnd() {
+    // Listen for game state updates to detect when halftime ends
+    const halftimeMessageHandler = (data) => {
+      if (data.type === "game-state" && !data.isHalftime && data.status === "playing") {
+        // Halftime has ended, remove the overlay
+        removeHalftimeStatsOverlay();
       }
     };
     
@@ -5796,6 +5797,30 @@
     if (typeof hytopia !== 'undefined' && hytopia.onMessage) {
       hytopia.onMessage(halftimeMessageHandler);
     }
+  }
+
+  // Function to start second half (called by button click)
+  function startSecondHalf() {
+    console.log("🚀 Starting second half...");
+    
+    // Disable the button to prevent multiple clicks
+    const button = document.getElementById('start-second-half-btn');
+    if (button) {
+      button.disabled = true;
+      button.style.opacity = '0.5';
+      button.style.cursor = 'not-allowed';
+      button.textContent = 'Starting...';
+    }
+    
+    // Send event to server to start second half
+    if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+      hytopia.sendData({
+        type: 'start-second-half'
+      });
+    }
+    
+    // Play button click sound
+    playUISound("button-click");
   }
 
   // Remove halftime stats overlay
@@ -5816,6 +5841,7 @@
   window.viewStatsToggle = viewStatsToggle;
   window.returnToLobby = returnToLobby;
   window.showHalftimeStats = showHalftimeStats;
+  window.startSecondHalf = startSecondHalf;
 
   // ===== ENSURE ALL ONCLICK FUNCTIONS ARE AVAILABLE =====
   // Make all functions globally accessible to prevent "function not defined" errors

@@ -458,25 +458,9 @@ export class SoccerGame {
     // Update shared state with current game state
     sharedState.setGameState(this.state);
 
-    // Handle halftime countdown
+    // MANUAL HALFTIME SYSTEM - No automatic countdown during halftime
+    // During halftime, do nothing - wait for manual button click
     if (this.state.isHalftime) {
-      if (this.state.halftimeTimeRemaining <= 0) {
-        this.endHalftime();
-        return;
-      }
-      this.state.halftimeTimeRemaining--;
-      
-      // Send halftime state to UI
-      this.sendDataToAllPlayers({
-        type: "game-state",
-        timeRemaining: this.state.timeRemaining,
-        halfTimeRemaining: this.state.halfTimeRemaining,
-        currentHalf: this.state.currentHalf,
-        halftimeTimeRemaining: this.state.halftimeTimeRemaining,
-        isHalftime: this.state.isHalftime,
-        score: this.state.score,
-        status: this.state.status,
-      });
       return;
     }
 
@@ -617,9 +601,9 @@ export class SoccerGame {
   }
 
   private startHalftime() {
-    console.log("🏟️ Starting halftime break");
+    console.log("🏟️ Starting halftime break - MANUAL MODE");
     this.state.isHalftime = true;
-    this.state.halftimeTimeRemaining = HALFTIME_DURATION;
+    this.state.halftimeTimeRemaining = 0; // No automatic countdown
     this.state.status = "halftime";
 
     // Announce halftime
@@ -627,7 +611,7 @@ export class SoccerGame {
       `Halftime! Score: Red ${this.state.score.red} - Blue ${this.state.score.blue}`
     );
 
-    // Send halftime state to UI
+    // Send halftime state to UI with manual flag
     this.sendDataToAllPlayers({
       type: "game-state",
       timeRemaining: this.state.timeRemaining,
@@ -637,14 +621,36 @@ export class SoccerGame {
       isHalftime: this.state.isHalftime,
       score: this.state.score,
       status: this.state.status,
+      manualHalftime: true, // Flag to indicate manual halftime system
     });
 
-    // Restart game loop for halftime countdown
-    setTimeout(() => {
-      this.gameLoopInterval = setInterval(() => {
-        this.gameLoop();
-      }, 1000);
-    }, 2000); // 2 second delay to show half stats
+    // Send halftime stats display to UI
+    this.sendDataToAllPlayers({
+      type: "halftime-stats",
+      message: "Halftime Stats - Click 'Start Second Half' to continue",
+      canStartSecondHalf: true
+    });
+
+    // DON'T restart the game loop - wait for manual button click
+    console.log("🏟️ Halftime started - waiting for manual 'Start Second Half' button click");
+  }
+
+  // Public method to manually start the second half (called from UI button click)
+  public startSecondHalf(): void {
+    if (!this.state.isHalftime) {
+      console.log("⚠️ Cannot start second half - not in halftime!");
+      return;
+    }
+
+    console.log("🏟️ Manual second half start requested");
+    
+    // Call the existing endHalftime method to handle the transition
+    this.endHalftime();
+    
+    // Restart the game loop for the second half
+    this.gameLoopInterval = setInterval(() => {
+      this.gameLoop();
+    }, 1000);
   }
 
   private endHalftime() {
