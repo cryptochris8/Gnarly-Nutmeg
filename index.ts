@@ -727,41 +727,9 @@ startServer((world) => {
             console.log("Game mode set to Arcade Mode");
           }
           
-          // MEMORY OPTIMIZATION: Load map and initialize game after mode selection
-          if (!isGameWorldLoaded && !mapLoadingInProgress) {
-            console.log("🏟️ Loading soccer stadium after mode selection...");
-            mapLoadingInProgress = true;
-            
-            // Load the soccer map
-            world.loadMap(worldMap);
-            console.log("✅ Soccer map loaded");
-            
-            // Set up enhanced lighting for the stadium
-            world.setDirectionalLightIntensity(0.6);
-            world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 });
-            world.setDirectionalLightColor({ r: 255, g: 248, b: 235 });
-            world.setAmbientLightIntensity(1.2);
-            world.setAmbientLightColor({ r: 250, g: 250, b: 255 });
-            console.log("✅ Enhanced stadium lighting configured");
-            
-            // Create soccer ball after map is loaded
-            console.log("⚽ Creating soccer ball...");
-            soccerBall = createSoccerBall(world);
-            console.log("✅ Soccer ball created and spawned");
-            
-            // Initialize game with soccer ball
-            game = new SoccerGame(world, soccerBall, aiPlayers);
-            
-            // Connect arcade manager to game
-            game.setArcadeManager(arcadeManager);
-            
-            // Connect FIFA crowd manager to game
-            game.setFIFACrowdManager(fifaCrowdManager);
-            
-            isGameWorldLoaded = true;
-            mapLoadingInProgress = false;
-            console.log("✅ Game world initialized after mode selection");
-          }
+          // MEMORY OPTIMIZATION PHASE 3: Remove map loading from game mode selection
+          // Map loading moved to team selection for better memory distribution
+          console.log("🎮 Game mode selected - map will load when team is selected");
           
           // Send confirmation back to UI
           player.ui.sendData({
@@ -814,9 +782,81 @@ startServer((world) => {
             // Game mode switching removed - large stadium only
           }
           
+          // MEMORY OPTIMIZATION PHASE 3: Load map and initialize game at team selection
+          if (!isGameWorldLoaded && !mapLoadingInProgress) {
+            console.log("🏟️ Loading soccer stadium at team selection...");
+            mapLoadingInProgress = true;
+            
+            // Send loading message to UI
+            player.ui.sendData({
+              type: "loading-progress",
+              current: 20,
+              total: 100,
+              message: "Loading soccer stadium...",
+              percentage: 20
+            });
+            
+            // Load the soccer map
+            world.loadMap(worldMap);
+            console.log("✅ Soccer map loaded");
+            
+            // Send progress update
+            player.ui.sendData({
+              type: "loading-progress",
+              current: 50,
+              total: 100,
+              message: "Setting up stadium lighting...",
+              percentage: 50
+            });
+            
+            // Set up enhanced lighting for the stadium
+            world.setDirectionalLightIntensity(0.6);
+            world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 });
+            world.setDirectionalLightColor({ r: 255, g: 248, b: 235 });
+            world.setAmbientLightIntensity(1.2);
+            world.setAmbientLightColor({ r: 250, g: 250, b: 255 });
+            console.log("✅ Enhanced stadium lighting configured");
+            
+            // Send progress update
+            player.ui.sendData({
+              type: "loading-progress",
+              current: 70,
+              total: 100,
+              message: "Creating soccer ball...",
+              percentage: 70
+            });
+            
+            // Create soccer ball after map is loaded
+            console.log("⚽ Creating soccer ball...");
+            soccerBall = createSoccerBall(world);
+            console.log("✅ Soccer ball created and spawned");
+            
+            // Initialize game with soccer ball
+            game = new SoccerGame(world, soccerBall, aiPlayers);
+            
+            // Connect arcade manager to game
+            game.setArcadeManager(arcadeManager);
+            
+            // Connect FIFA crowd manager to game
+            game.setFIFACrowdManager(fifaCrowdManager);
+            
+            isGameWorldLoaded = true;
+            mapLoadingInProgress = false;
+            console.log("✅ Game world initialized at team selection");
+            
+            // Send completion message
+            player.ui.sendData({
+              type: "loading-progress",
+              current: 100,
+              total: 100,
+              message: "Stadium ready!",
+              percentage: 100
+            });
+          }
+          
           // Join team and try to start game when team is selected
           if (!game) {
-            console.error("Game not initialized - cannot join team");
+            console.error("Game not initialized - this should not happen after map loading");
             return;
           }
           
@@ -1776,6 +1816,10 @@ startServer((world) => {
 
     // Add command to check end-game rules and timing
     world.chatManager.registerCommand("/endgame", (player, args) => {
+      if (!game) {
+        world.chatManager.sendPlayerMessage(player, "Game not initialized yet. Please select a team first.");
+        return;
+      }
       const state = game.getState();
       const scoreDiff = Math.abs(state.score.red - state.score.blue);
       const finalTwoMinutes = state.timeRemaining <= 120;
