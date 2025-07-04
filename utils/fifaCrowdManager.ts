@@ -34,13 +34,32 @@ export class FIFACrowdManager {
       mixedReaction: "audio/sfx/crowd/reactions/Sonic Bat - Soccer Stadium - Crowd Cheering Short Whistles Light Booing .wav"
     },
     announcer: {
-      gameStart: "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Game Start.wav",
-      goal: "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - What a Goal Excited.wav",
-      save: "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Reaction Beautiful Save.wav",
-      crowdWild: "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Crowd Goes Wild.wav",
-      beauty: "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - What a Beauty.wav",
-      close: "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - So Close Frustrated .wav",
-      redCard: "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Red Card.wav"
+      gameStart: [
+        "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Game Start.wav"
+      ],
+      goals: [
+        "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - What a Goal Excited.wav",
+        "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - What a Beauty.wav",
+        "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Crowd Goes Wild.wav",
+        "audio/sfx/crowd/announcer/Apple Hill Studios - Sports Announcer - Play By Play What A Shot .wav"
+      ],
+      saves: [
+        "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Reaction Beautiful Save.wav"
+      ],
+      nearMiss: [
+        "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - So Close Frustrated .wav",
+        "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Reaction Near Miss.wav"
+      ],
+      momentum: [
+        "audio/sfx/crowd/announcer/Apple Hill Studios - Sports Announcer - Play By Play Hes On Fire Now.wav",
+        "audio/sfx/crowd/announcer/Apple Hill Studios - Sports Announcer - Play By Play Hes On A Roll .wav"
+      ],
+      gameEnd: [
+        "audio/sfx/crowd/announcer/Apple Hill Studios - Sports Announcer - Play By Play Its All Over .wav"
+      ],
+      redCard: [
+        "audio/sfx/crowd/announcer/Notable Voices - Soccer Commentator - Red Card.wav"
+      ]
     }
   };
 
@@ -165,11 +184,7 @@ export class FIFACrowdManager {
 
     // Delay announcer commentary slightly
     setTimeout(() => {
-      const announcerClips = [
-        this.crowdSounds.announcer.goal,
-        this.crowdSounds.announcer.beauty,
-        this.crowdSounds.announcer.crowdWild
-      ];
+      const announcerClips = this.crowdSounds.announcer.goals;
       
       const randomAnnouncer = this.getRandomSound(announcerClips);
       const announcerAudio = new Audio({
@@ -202,20 +217,115 @@ export class FIFACrowdManager {
     // Sometimes add announcer commentary
     if (Math.random() < 0.6) { // 60% chance
       setTimeout(() => {
-        const announcerClips = [
-          this.crowdSounds.announcer.close,
-          this.crowdSounds.announcer.save
-        ];
-        
-        const randomAnnouncer = this.getRandomSound(announcerClips);
+        const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.nearMiss);
         const announcerAudio = new Audio({
           uri: randomAnnouncer,
           loop: false,
           volume: 0.5,
         });
         announcerAudio.play(this.world);
+        
+        console.log(`📻 Playing near miss announcer: ${randomAnnouncer.split('/').pop()}`);
       }, 800);
     }
+  }
+
+  /**
+   * Play save reaction with announcer commentary
+   */
+  public playSaveReaction(): void {
+    if (!this.isActive || !isFIFAMode()) return;
+
+    console.log("🥅 Playing FIFA save reaction");
+    
+    // Play applause for good save
+    const applauseAudio = new Audio({
+      uri: this.crowdSounds.reactions.applause,
+      loop: false,
+      volume: 0.3,
+    });
+    applauseAudio.play(this.world);
+
+    // Add save commentary
+    setTimeout(() => {
+      const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.saves);
+      const announcerAudio = new Audio({
+        uri: randomAnnouncer,
+        loop: false,
+        volume: 0.5,
+      });
+      announcerAudio.play(this.world);
+      
+      console.log(`📻 Playing save announcer: ${randomAnnouncer.split('/').pop()}`);
+    }, 1200);
+  }
+
+  /**
+   * Play momentum building commentary (for streaks, great plays, etc.)
+   */
+  public playMomentumAnnouncement(): void {
+    if (!this.isActive || !isFIFAMode()) return;
+
+    console.log("🔥 Playing FIFA momentum announcement");
+    
+    const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.momentum);
+    const announcerAudio = new Audio({
+      uri: randomAnnouncer,
+      loop: false,
+      volume: 0.6,
+    });
+    announcerAudio.play(this.world);
+    
+    console.log(`📻 Playing momentum announcer: ${randomAnnouncer.split('/').pop()}`);
+  }
+
+  /**
+   * Play red card announcement
+   */
+  public playRedCardAnnouncement(): void {
+    if (!this.isActive || !isFIFAMode()) return;
+
+    console.log("🔴 Playing FIFA red card announcement");
+    
+    // Play foul reaction first
+    const foulAudio = new Audio({
+      uri: this.crowdSounds.reactions.foulReaction,
+      loop: false,
+      volume: 0.4,
+    });
+    foulAudio.play(this.world);
+
+    // Then play red card announcement
+    setTimeout(() => {
+      const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.redCard);
+      const announcerAudio = new Audio({
+        uri: randomAnnouncer,
+        loop: false,
+        volume: 0.7,
+      });
+      announcerAudio.play(this.world);
+      
+      console.log(`📻 Playing red card announcer: ${randomAnnouncer.split('/').pop()}`);
+    }, 1500);
+  }
+
+  /**
+   * Play game end announcement
+   */
+  public playGameEndAnnouncement(): void {
+    if (!this.isActive || !isFIFAMode()) return;
+
+    console.log("🏁 Playing FIFA game end announcement");
+    
+    const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.gameEnd);
+    const announcerAudio = new Audio({
+      uri: randomAnnouncer,
+      loop: false,
+      volume: 0.7,
+    });
+    announcerAudio.play(this.world);
+    
+    console.log(`📻 Playing game end announcer: ${randomAnnouncer.split('/').pop()}`);
   }
 
   /**
@@ -242,12 +352,15 @@ export class FIFACrowdManager {
 
     console.log("🏁 Playing FIFA game start announcement");
     
+    const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.gameStart);
     const gameStartAudio = new Audio({
-      uri: this.crowdSounds.announcer.gameStart,
+      uri: randomAnnouncer,
       loop: false,
       volume: 0.7,
     });
     gameStartAudio.play(this.world);
+    
+    console.log(`📻 Playing game start announcer: ${randomAnnouncer.split('/').pop()}`);
   }
 
   /**

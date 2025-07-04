@@ -95,6 +95,18 @@ export class SoccerGame {
   private aiPlayersList: AIPlayerEntity[] = [];
   private arcadeManager: ArcadeEnhancementManager | null = null;
   private fifaCrowdManager: any | null = null; // FIFA crowd manager for stadium atmosphere
+  
+  // Momentum tracking for announcer commentary
+  private teamMomentum: {
+    red: { consecutiveGoals: number; lastGoalTime: number };
+    blue: { consecutiveGoals: number; lastGoalTime: number };
+  } = {
+    red: { consecutiveGoals: 0, lastGoalTime: 0 },
+    blue: { consecutiveGoals: 0, lastGoalTime: 0 }
+  };
+  
+  // Player momentum tracking
+  private playerMomentum: Map<string, { consecutiveGoals: number; lastGoalTime: number }> = new Map();
 
   constructor(world: World, entity: Entity, aiPlayers: AIPlayerEntity[]) {
     this.state = {
@@ -549,6 +561,12 @@ export class SoccerGame {
     this.state.kickoffTeam = concedingTeam;
     console.log(`Goal scored by ${team}. Kickoff to ${concedingTeam}.`);
 
+    // Update momentum tracking
+    const currentTime = Date.now();
+    this.teamMomentum[team].consecutiveGoals++;
+    this.teamMomentum[team].lastGoalTime = currentTime;
+    this.teamMomentum[concedingTeam].consecutiveGoals = 0; // Reset opponent's momentum
+
     const lastPlayerWithBall = sharedState.getLastPlayerWithBall();
     if (
       lastPlayerWithBall &&
@@ -562,10 +580,39 @@ export class SoccerGame {
         type: "update-goals",
         goals: lastPlayerWithBall.getGoalsScored(),
       });
+      
+      // Update player momentum tracking
+      const playerId = lastPlayerWithBall.player.username;
+      if (!this.playerMomentum.has(playerId)) {
+        this.playerMomentum.set(playerId, { consecutiveGoals: 0, lastGoalTime: 0 });
+      }
+      const playerMomentumData = this.playerMomentum.get(playerId)!;
+      playerMomentumData.consecutiveGoals++;
+      playerMomentumData.lastGoalTime = currentTime;
+      
+      // Check for individual player momentum (hat-trick, etc.)
+      if (playerMomentumData.consecutiveGoals >= 3) {
+        console.log(`🔥 ${playerId} has scored ${playerMomentumData.consecutiveGoals} consecutive goals!`);
+        if (this.fifaCrowdManager && this.fifaCrowdManager.playMomentumAnnouncement) {
+          setTimeout(() => {
+            this.fifaCrowdManager.playMomentumAnnouncement();
+          }, 2500); // Delay so it plays after goal announcement
+        }
+      }
     } else {
       this.world.chatManager.sendBroadcastMessage(
         `Goal scored for the ${team} team!`
       );
+    }
+    
+    // Check for team momentum (multiple goals in short time)
+    if (this.teamMomentum[team].consecutiveGoals >= 2) {
+      console.log(`🔥 ${team} team is on fire with ${this.teamMomentum[team].consecutiveGoals} consecutive goals!`);
+      if (this.fifaCrowdManager && this.fifaCrowdManager.playMomentumAnnouncement) {
+        setTimeout(() => {
+          this.fifaCrowdManager.playMomentumAnnouncement();
+        }, 3000); // Delay so it plays after goal announcement
+      }
     }
     
     this.world.chatManager.sendBroadcastMessage(
@@ -690,6 +737,11 @@ export class SoccerGame {
 
     // Set game status to finished
     this.state.status = "finished";
+    
+    // Play FIFA game end announcement if in FIFA mode and crowd manager is available
+    if (this.fifaCrowdManager && this.fifaCrowdManager.playGameEndAnnouncement) {
+      this.fifaCrowdManager.playGameEndAnnouncement();
+    }
 
     // Collect comprehensive player stats
     const allEntities = this.world.entityManager.getAllPlayerEntities();
@@ -806,6 +858,14 @@ export class SoccerGame {
       clearInterval(this.gameLoopInterval);
       this.gameLoopInterval = null;
     }
+    
+    // Reset momentum tracking
+    this.teamMomentum = {
+      red: { consecutiveGoals: 0, lastGoalTime: 0 },
+      blue: { consecutiveGoals: 0, lastGoalTime: 0 }
+    };
+    this.playerMomentum.clear();
+    console.log("🔄 Reset momentum tracking for new game");
 
     // Deactivate all AI players first to clear their intervals
     this.aiPlayersList.forEach(ai => {

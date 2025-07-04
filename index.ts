@@ -907,7 +907,7 @@ startServer((world) => {
       if (args.length < 2) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Usage: /crowd <start|stop|goal|foul|miss|applause|status>"
+          "Usage: /crowd <start|stop|goal|foul|miss|applause|momentum|gameend|redcard|save|status>"
         );
         return;
       }
@@ -932,6 +932,18 @@ startServer((world) => {
       } else if (action === "applause") {
         fifaCrowdManager.playApplause();
         world.chatManager.sendPlayerMessage(player, "👏 Playing applause");
+      } else if (action === "momentum") {
+        fifaCrowdManager.playMomentumAnnouncement();
+        world.chatManager.sendPlayerMessage(player, "🔥 Playing momentum announcement (He's on fire!)");
+      } else if (action === "gameend") {
+        fifaCrowdManager.playGameEndAnnouncement();
+        world.chatManager.sendPlayerMessage(player, "🏁 Playing game end announcement");
+      } else if (action === "redcard") {
+        fifaCrowdManager.playRedCardAnnouncement();
+        world.chatManager.sendPlayerMessage(player, "🔴 Playing red card announcement");
+      } else if (action === "save") {
+        fifaCrowdManager.playSaveReaction();
+        world.chatManager.sendPlayerMessage(player, "🥅 Playing save reaction");
       } else if (action === "status") {
         const isActive = fifaCrowdManager.isActivated();
         const currentMode = getCurrentGameMode();
@@ -942,10 +954,11 @@ startServer((world) => {
         world.chatManager.sendPlayerMessage(player, `Crowd Manager: ${isActive ? "🏟️ Active" : "🔇 Inactive"}`);
         world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game.inProgress() ? "✅ Yes" : "❌ No"}`);
         world.chatManager.sendPlayerMessage(player, `Should Be Active: ${shouldBeActive ? "✅ Yes" : "❌ No"}`);
+        world.chatManager.sendPlayerMessage(player, `Available Commands: goal, momentum, gameend, redcard, save, miss, foul`);
       } else {
         world.chatManager.sendPlayerMessage(
           player,
-          "Invalid action. Use: start, stop, goal, foul, miss, applause, status"
+          "Invalid action. Use: start, stop, goal, foul, miss, applause, momentum, gameend, redcard, save, status"
         );
       }
     });
