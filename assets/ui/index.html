@@ -4141,23 +4141,25 @@
     if (data.type === "game-state") {
       console.log("🎯 Processing game-state data:", data);
       
-      // Update ONLY the main scoreboard (single system)
-      const newRedScore = data.score ? data.score.red : 0;
-      const newBlueScore = data.score ? data.score.blue : 0;
-      
       // Update main scoreboard elements
       const redScore = document.getElementById("red-score");
       const blueScore = document.getElementById("blue-score");
       const mainScoreboard = document.getElementById("main-scoreboard");
       
-      if (redScore && blueScore) {
-        console.log(`📊 BEFORE UPDATE - Red: ${redScore.textContent}, Blue: ${blueScore.textContent}`);
-        redScore.textContent = newRedScore;
-        blueScore.textContent = newBlueScore;
-        console.log(`📊 AFTER UPDATE - Red: ${redScore.textContent}, Blue: ${blueScore.textContent}`);
-        console.log("✅ MAIN SCOREBOARD UPDATED:", newRedScore, "vs", newBlueScore);
+      // ONLY update the score if score data is actually provided
+      if (data.score && typeof data.score === 'object' && redScore && blueScore) {
+        // Don't update scores if we're in goal-scored status - the goal-scored event handles it
+        if (data.status !== "goal-scored") {
+          console.log(`📊 BEFORE UPDATE - Red: ${redScore.textContent}, Blue: ${blueScore.textContent}`);
+          redScore.textContent = data.score.red;
+          blueScore.textContent = data.score.blue;
+          console.log(`📊 AFTER UPDATE - Red: ${redScore.textContent}, Blue: ${blueScore.textContent}`);
+          console.log("✅ MAIN SCOREBOARD UPDATED:", data.score.red, "vs", data.score.blue);
+        } else {
+          console.log("⏸️ SKIPPING score update - in goal-scored status, letting goal-scored event handle it");
+        }
       } else {
-        console.error("❌ Could not find main scoreboard elements for update!");
+        console.log("🔄 Game-state update without score data - keeping current score");
       }
       
       // Show/hide scoreboard based on game status
@@ -4196,26 +4198,27 @@
       document.getElementById("blue-team-count").textContent = `Players: ${data.blue}/${data.maxPlayers}`;
     }
 
-    if (data.type === "goal" || data.type === "goal-scored") {
-      showEnhancedGoal(data.team);
-      playGoalCelebration(data.team);
-      
-      if (data.score) {
-        // Update main scoreboard immediately when goal is scored
-        const redScore = document.getElementById("red-score");
-        const blueScore = document.getElementById("blue-score");
-        
-        if (redScore && blueScore) {
-          redScore.textContent = data.score.red;
-          blueScore.textContent = data.score.blue;
-          console.log("✅ GOAL EVENT - Main scoreboard updated:", data.score.red, "vs", data.score.blue);
-        }
-        
-        // Also run the animation
-        animateScoreChange("red", data.score.red);
-        animateScoreChange("blue", data.score.blue);
-      }
-    }
+    // Remove this duplicate handler - we have a specific goal-scored handler below
+    // if (data.type === "goal" || data.type === "goal-scored") {
+    //   showEnhancedGoal(data.team);
+    //   playGoalCelebration(data.team);
+    //   
+    //   if (data.score) {
+    //     // Update main scoreboard immediately when goal is scored
+    //     const redScore = document.getElementById("red-score");
+    //     const blueScore = document.getElementById("blue-score");
+    //     
+    //     if (redScore && blueScore) {
+    //       redScore.textContent = data.score.red;
+    //       blueScore.textContent = data.score.blue;
+    //       console.log("✅ GOAL EVENT - Main scoreboard updated:", data.score.red, "vs", data.score.blue);
+    //     }
+    //     
+    //     // Also run the animation
+    //     animateScoreChange("red", data.score.red);
+    //     animateScoreChange("blue", data.score.blue);
+    //   }
+    // }
 
     if (data.type === "countdown") {
       showCountdown(data.count);
@@ -4287,12 +4290,17 @@
         setTimeout(() => {
           scoringTeam.style.animation = "";
         }, 1000);
+        
+        // Run animated score change for both teams
+        animateScoreChange("red", data.score.red);
+        animateScoreChange("blue", data.score.blue);
       } else {
         console.error("❌ Could not find scoreboard elements or score data for goal update!");
       }
       
-      // Show enhanced goal celebration
+      // Show enhanced goal celebration and play sound
       showEnhancedGoal(data.team);
+      playGoalCelebration(data.team);
     }
 
     // Handle powerup feedback from F key activation
@@ -4645,6 +4653,12 @@
   }
 
   function updatePlayerStats(playerStats) {
+    // Ensure playerStats is an array before trying to filter
+    if (!Array.isArray(playerStats)) {
+      console.log("⚠️ updatePlayerStats called with non-array data:", typeof playerStats, playerStats);
+      return;
+    }
+    
     const redPlayers = playerStats.filter(p => p.team === 'red');
     const bluePlayers = playerStats.filter(p => p.team === 'blue');
     
