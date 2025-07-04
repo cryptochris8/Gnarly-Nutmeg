@@ -58,7 +58,7 @@
     border: 2px solid !important; /* Keep borders for these buttons */
   }
 
-  /* ===== PHASE 1: ENHANCED SCORE DISPLAY ===== */
+  /* ===== MAIN SCOREBOARD SYSTEM ===== */
   .score-time-container {
     position: fixed;
     top: 20px;
@@ -876,6 +876,22 @@
   @keyframes celebration {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.2); }
+  }
+
+  @keyframes scoreUpdate {
+    0% { 
+      transform: scale(1); 
+      background: rgba(255, 215, 0, 0.3);
+    }
+    50% { 
+      transform: scale(1.2); 
+      background: rgba(255, 215, 0, 0.8);
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+    }
+    100% { 
+      transform: scale(1); 
+      background: transparent;
+    }
   }
 
   @keyframes goalCelebration {
@@ -3779,7 +3795,7 @@
   window.forceUpdateScores = function(red = 1, blue = 1) {
     console.log(`🎯 Forcing score update: Red ${red}, Blue ${blue}`);
     
-    // Update main scoreboard
+    // Update ONLY the main scoreboard (single system)
     const redScore = document.getElementById("red-score");
     const blueScore = document.getElementById("blue-score");
     const mainScoreboard = document.getElementById("main-scoreboard");
@@ -3787,39 +3803,7 @@
     if (redScore && blueScore) {
       redScore.textContent = red;
       blueScore.textContent = blue;
-      
-      // Force visibility and styling
-      redScore.style.cssText = `
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        color: #ffffff !important;
-        font-size: 32px !important;
-        font-weight: bold !important;
-        z-index: 10 !important;
-        background: rgba(255, 0, 0, 0.3) !important;
-        border-radius: 5px !important;
-        min-height: 35px !important;
-      `;
-      
-      blueScore.style.cssText = `
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        color: #ffffff !important;
-        font-size: 32px !important;
-        font-weight: bold !important;
-        z-index: 10 !important;
-        background: rgba(0, 0, 255, 0.3) !important;
-        border-radius: 5px !important;
-        min-height: 35px !important;
-      `;
-      
-      console.log("✅ MAIN SCOREBOARD forcefully updated!");
+      console.log("✅ MAIN SCOREBOARD updated to:", red, "vs", blue);
     } else {
       console.error("❌ Could not find main score elements!");
     }
@@ -4157,7 +4141,7 @@
     if (data.type === "game-state") {
       console.log("🎯 Processing game-state data:", data);
       
-      // Update main scoreboard
+      // Update ONLY the main scoreboard (single system)
       const newRedScore = data.score ? data.score.red : 0;
       const newBlueScore = data.score ? data.score.blue : 0;
       
@@ -4167,17 +4151,11 @@
       const mainScoreboard = document.getElementById("main-scoreboard");
       
       if (redScore && blueScore) {
+        console.log(`📊 BEFORE UPDATE - Red: ${redScore.textContent}, Blue: ${blueScore.textContent}`);
         redScore.textContent = newRedScore;
         blueScore.textContent = newBlueScore;
+        console.log(`📊 AFTER UPDATE - Red: ${redScore.textContent}, Blue: ${blueScore.textContent}`);
         console.log("✅ MAIN SCOREBOARD UPDATED:", newRedScore, "vs", newBlueScore);
-        
-        // Ensure visibility is maintained
-        redScore.style.display = "flex";
-        blueScore.style.display = "flex";
-        redScore.style.opacity = "1";
-        blueScore.style.opacity = "1";
-        redScore.style.visibility = "visible";
-        blueScore.style.visibility = "visible";
       } else {
         console.error("❌ Could not find main scoreboard elements for update!");
       }
@@ -4287,6 +4265,34 @@
     if (data.type === "game-starting") {
       // Handle new game start with respawn notification
       handleGameStarting(data);
+    }
+
+    if (data.type === "goal-scored") {
+      console.log("🥅 GOAL SCORED! Team:", data.team, "Score:", data.score);
+      
+      // Update main scoreboard immediately when goal is scored
+      const redScore = document.getElementById("red-score");
+      const blueScore = document.getElementById("blue-score");
+      
+      if (redScore && blueScore && data.score) {
+        console.log(`🥅 BEFORE GOAL UPDATE - Red: ${redScore.textContent}, Blue: ${blueScore.textContent}`);
+        redScore.textContent = data.score.red;
+        blueScore.textContent = data.score.blue;
+        console.log(`🥅 AFTER GOAL UPDATE - Red: ${redScore.textContent}, Blue: ${blueScore.textContent}`);
+        console.log("✅ GOAL EVENT - Main scoreboard updated:", data.score.red, "vs", data.score.blue);
+        
+        // Add goal celebration animation
+        const scoringTeam = data.team === "red" ? redScore : blueScore;
+        scoringTeam.style.animation = "scoreUpdate 1s ease-out";
+        setTimeout(() => {
+          scoringTeam.style.animation = "";
+        }, 1000);
+      } else {
+        console.error("❌ Could not find scoreboard elements or score data for goal update!");
+      }
+      
+      // Show enhanced goal celebration
+      showEnhancedGoal(data.team);
     }
 
     // Handle powerup feedback from F key activation

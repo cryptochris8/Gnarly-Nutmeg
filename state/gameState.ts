@@ -425,13 +425,15 @@ export class SoccerGame {
       }
     });
 
-    // Send game state to UI
-    this.sendDataToAllPlayers({
-      type: "game-state",
-      timeRemaining: this.state.timeRemaining,
-      score: this.state.score,
-      status: this.state.status,
-    });
+    // Send game state to UI - but skip during goal-scored to prevent score conflicts
+    if (this.state.status !== "goal-scored") {
+      this.sendDataToAllPlayers({
+        type: "game-state",
+        timeRemaining: this.state.timeRemaining,
+        score: this.state.score,
+        status: this.state.status,
+      });
+    }
   }
 
   private handleTimeUp() {
@@ -632,6 +634,7 @@ export class SoccerGame {
 
   public scoreGoal(team: "red" | "blue") {
     this.state.score[team]++;
+    console.log(`⚽ Goal scored! New score: Red ${this.state.score.red} - Blue ${this.state.score.blue}`);
 
     // Send updated score immediately
     this.sendDataToAllPlayers({
