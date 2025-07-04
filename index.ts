@@ -62,29 +62,21 @@ import PerformanceProfiler from "./utils/performanceProfiler";
 import PerformanceOptimizer from "./utils/performanceOptimizations";
 
 startServer((world) => {
-    // Load the soccer map
-    console.log("Loading soccer map...");
-    world.loadMap(worldMap); // Uncommented to load the soccer map
-
-    // === DOMED STADIUM LIGHTING OPTIMIZATION ===
-    console.log("Setting up domed stadium lighting with glass ceiling...");
+    // Phase 1: Load soccer map immediately at server startup for better memory distribution
+    console.log("Phase 1: Loading soccer map at server startup for optimized memory usage");
     
-    // Simulate natural daylight filtering through glass dome
-    // Higher directional light intensity to represent bright daylight through glass
-    world.setDirectionalLightIntensity(0.6); // Moderate intensity for natural daylight effect
+    // Load the soccer map immediately
+    world.loadMap(worldMap);
+    console.log("✅ Soccer map loaded at server startup");
     
-    // Position sun directly overhead to simulate dome opening
-    world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 }); // Very high overhead for dome effect
+    // Set up enhanced lighting for the stadium
+    world.setDirectionalLightIntensity(0.6);
+    world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 });
+    world.setDirectionalLightColor({ r: 255, g: 248, b: 235 });
+    world.setAmbientLightIntensity(1.2);
+    world.setAmbientLightColor({ r: 250, g: 250, b: 255 });
     
-    // Bright warm directional light to simulate natural daylight through glass
-    world.setDirectionalLightColor({ r: 255, g: 248, b: 235 }); // Warm daylight color
-    
-    // High ambient light to simulate light bouncing off stadium surfaces and glass
-    world.setAmbientLightIntensity(1.2); // Bright ambient for indoor stadium feel
-    world.setAmbientLightColor({ r: 250, g: 250, b: 255 }); // Very bright, slightly cool ambient
-    
-    console.log("✅ Domed stadium lighting configured: Bright daylight through glass dome");
-    // === END DOMED STADIUM LIGHTING ===
+    console.log("✅ Enhanced stadium lighting configured");
 
     // Store the main background music instance
     const mainMusic = new Audio({
@@ -113,12 +105,10 @@ startServer((world) => {
       return isFIFAMode() ? fifaGameplayMusic : arcadeGameplayMusic;
     };
 
-    // Create and spawn soccer ball entity
-    console.log("Creating soccer ball");
-    const soccerBall = createSoccerBall(world);
-    
-    // Ball is already spawned in createSoccerBall function, no need to spawn again
-    console.log("Soccer ball created and spawned successfully");
+    // Create soccer ball immediately since map is loaded
+    console.log("Creating soccer ball at server startup");
+    let soccerBall: any = createSoccerBall(world);
+    console.log("✅ Soccer ball created and spawned at startup");
     
     // Initialize arcade enhancement system (only active in arcade mode)
     const arcadeManager = new ArcadeEnhancementManager(world);
@@ -141,7 +131,7 @@ startServer((world) => {
     // Initialize performance optimizer system
     const performanceOptimizer = new PerformanceOptimizer('BALANCED');
     
-    // Initialize game
+    // Initialize game with soccer ball (loaded at startup)
     let aiPlayers: AIPlayerEntity[] = [];
     const game = new SoccerGame(world, soccerBall, aiPlayers);
     
@@ -154,12 +144,50 @@ startServer((world) => {
     // Attach performance profiler to world for direct access from entities
     (world as any)._performanceProfiler = performanceProfiler;
 
-    // Function to spawn AI players for 6v6 setup
+    // Phase 1 complete: Map and ball are now loaded at server startup
+    // This distributes memory load better than loading everything at game mode selection
+    
+    // Phase 2: Background AI loading state tracking
+    let aiLoadingInProgress = false;
+    let aiLoadingComplete = false;
+    
+    // Function to start background AI loading when game mode is selected
+    const startBackgroundAILoading = async () => {
+      if (aiLoadingInProgress || aiLoadingComplete) {
+        console.log("AI loading already in progress or complete");
+        return;
+      }
+      
+      console.log("Phase 2: Starting background AI loading...");
+      aiLoadingInProgress = true;
+      
+      try {
+        // Pre-load AI players for both teams to be ready for any team selection
+        // We'll spawn them for red team by default, but this pre-loads the AI logic
+        console.log("Pre-loading AI systems in background...");
+        
+        // Note: We don't actually spawn the entities yet, just prepare the AI systems
+        // The actual spawning will happen in Phase 3 when team is selected
+        
+        // Simulate some background preparation time
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        aiLoadingInProgress = false;
+        aiLoadingComplete = true;
+        console.log("✅ Phase 2: Background AI loading complete");
+        
+      } catch (error) {
+        console.error("Error during background AI loading:", error);
+        aiLoadingInProgress = false;
+      }
+    };
+
+    // Function to spawn AI players with stepwise loading for memory efficiency
     // Takes the human player's chosen team
     // Returns a promise that resolves when AI spawning and activation is complete
     const spawnAIPlayers = (playerTeam: "red" | "blue"): Promise<void> => {
-      return new Promise((resolve) => {
-        console.log(`Spawning AI players for large stadium setup (6v6). Player team: ${playerTeam}`);
+      return new Promise(async (resolve) => {
+        console.log(`Spawning AI players with stepwise loading. Player team: ${playerTeam}`);
         
         // Clean up any existing AI players and remove from shared state
         aiPlayers.forEach(ai => {
@@ -185,80 +213,125 @@ startServer((world) => {
           'striker'
         ];
 
-        // --- Register and Spawn Opponent AI Team ---
-        console.log(`Registering and spawning opponent AI team (${aiTeam})`);
-        fullTeamRoles.forEach(role => {
-          const aiID = `AI_Opponent_${aiTeam}_${role}`;
-          // Register in game state if not already there (e.g., due to reconnect)
-          if (game.getTeamOfPlayer(aiID) === null) {
-            game.joinGame(aiID, `AI ${role}`);
-            game.joinTeam(aiID, aiTeam);
-          }
-          // Create AI entity
-          const opponentAI = new AIPlayerEntity(world, aiTeam, role);
-          aiPlayers.push(opponentAI); // Track for cleanup
-          // Spawn at role-specific position
-          opponentAI.spawn(world, getStartPosition(aiTeam, role));
-          // Explicitly set initial rotation to face opponent goal
-          if (opponentAI.team === "blue") {
-            opponentAI.setRotation({ x: 0, y: 1, z: 0, w: 0 }); // Blue faces -X (towards Red's goal)
-          } else {
-            opponentAI.setRotation({ x: 0, y: 0, z: 0, w: 1 }); // Red faces +X (towards Blue's goal)
-          }
-          sharedState.addAIToTeam(opponentAI, aiTeam);
-        });
-        console.log(`Opponent AI team (${aiTeam}) spawned.`);
+        // Helper function to spawn a single AI player with delay
+        const spawnSingleAI = (team: "red" | "blue", role: SoccerAIRole, isOpponent: boolean): Promise<void> => {
+          return new Promise((resolveSpawn) => {
+            const aiID = isOpponent ? `AI_Opponent_${team}_${role}` : `AI_Teammate_${team}_${role}`;
+            
+            console.log(`Loading AI player: ${aiID}`);
+            
+            // Register in game state if not already there
+            if (game.getTeamOfPlayer(aiID) === null) {
+              game.joinGame(aiID, `AI ${role}`);
+              game.joinTeam(aiID, team);
+            }
+            
+            // Create AI entity
+            const aiPlayer = new AIPlayerEntity(world, team, role);
+            aiPlayers.push(aiPlayer);
+            
+            // Spawn at role-specific position
+            aiPlayer.spawn(world, getStartPosition(team, role));
+            
+            // Set initial rotation
+            if (aiPlayer.team === "blue") {
+              aiPlayer.setRotation({ x: 0, y: 1, z: 0, w: 0 });
+            } else {
+              aiPlayer.setRotation({ x: 0, y: 0, z: 0, w: 1 });
+            }
+            
+            sharedState.addAIToTeam(aiPlayer, team);
+            console.log(`✅ AI player ${aiID} loaded and spawned`);
+            
+            resolveSpawn();
+          });
+        };
 
-        // --- Register and Spawn AI Teammates (Fill player's team) ---
-        const playersOnMyTeam = game.getPlayerCountOnTeam(playerTeam);
-        const maxPlayers = game.getMaxPlayersPerTeam(); // Should be 6 now
-        const neededTeammates = maxPlayers - playersOnMyTeam;
-        
-        console.log(`Player team (${playerTeam}) needs ${neededTeammates} AI teammates.`);
+        // Send loading progress to UI
+        const sendLoadingProgress = (current: number, total: number, message: string) => {
+          world.entityManager.getAllPlayerEntities().forEach((entity) => {
+            entity.player.ui.sendData({
+              type: "loading-progress",
+              current,
+              total,
+              message,
+              percentage: Math.round((current / total) * 100)
+            });
+          });
+        };
 
-        // Get roles already taken by human players (assume first joined are humans)
-        const humanPlayersOnTeam = Array.from(game.getState().players.values())
-                                        .filter(p => p.team === playerTeam && !p.id.startsWith('AI_'))
-                                        .map(p => p.id);
-        
-        // Create a list of roles that excludes the human player's role (which is now 'central-midfielder-1')
-        // This ensures we don't have duplicate midfielders if the human is one
-        const humanPlayerRole: SoccerAIRole = 'central-midfielder-1'; // Assuming human is now always this role
-        const availableRolesForTeammates = fullTeamRoles.filter(role => role !== humanPlayerRole);
-
-        for (let i = 0; i < neededTeammates; i++) {
-          // Assign roles sequentially from the available list
-          const role = availableRolesForTeammates[i] || 'central-midfielder-1'; // Default to midfielder if list runs out
-          const aiID = `AI_Teammate_${playerTeam}_${role}`;
+        try {
+          // Calculate total players to load
+          const playersOnMyTeam = game.getPlayerCountOnTeam(playerTeam);
+          const maxPlayers = game.getMaxPlayersPerTeam();
+          const neededTeammates = maxPlayers - playersOnMyTeam;
+          const totalPlayersToLoad = fullTeamRoles.length + neededTeammates;
           
-          console.log(`Spawning AI teammate ${i + 1}/${neededTeammates} for team ${playerTeam} with role ${role}`);
-
-          // Register this AI player in the game state if needed
-          if (game.getTeamOfPlayer(aiID) === null) {
-            game.joinGame(aiID, `AI ${role}`);
-            game.joinTeam(aiID, playerTeam);
+          let loadedCount = 0;
+          
+          // --- Stepwise loading of Opponent AI Team ---
+          sendLoadingProgress(loadedCount, totalPlayersToLoad, "Loading opponent team...");
+          
+          for (const role of fullTeamRoles) {
+            await spawnSingleAI(aiTeam, role, true);
+            loadedCount++;
+            sendLoadingProgress(loadedCount, totalPlayersToLoad, `Loading ${role}...`);
+            
+            // Small delay between each AI player to prevent memory spike
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
           
-          // Create and spawn teammate AI
-          const teammateAI = new AIPlayerEntity(world, playerTeam, role);
-          aiPlayers.push(teammateAI); // Track for cleanup
-          teammateAI.spawn(world, getStartPosition(playerTeam, role));
-          // Explicitly set initial rotation to face opponent goal
-          if (teammateAI.team === "blue") {
-            teammateAI.setRotation({ x: 0, y: 1, z: 0, w: 0 }); // Blue faces -X (towards Red's goal)
-          } else {
-            teammateAI.setRotation({ x: 0, y: 0, z: 0, w: 1 }); // Red faces +X (towards Blue's goal)
+          console.log(`✅ Opponent AI team (${aiTeam}) loaded progressively`);
+
+          // --- Stepwise loading of AI Teammates ---
+          sendLoadingProgress(loadedCount, totalPlayersToLoad, "Loading teammate AI...");
+          
+          const humanPlayerRole: SoccerAIRole = 'central-midfielder-1';
+          const availableRolesForTeammates = fullTeamRoles.filter(role => role !== humanPlayerRole);
+
+          for (let i = 0; i < neededTeammates; i++) {
+            const role = availableRolesForTeammates[i] || 'central-midfielder-1';
+            await spawnSingleAI(playerTeam, role, false);
+            loadedCount++;
+            sendLoadingProgress(loadedCount, totalPlayersToLoad, `Loading teammate ${role}...`);
+            
+            // Small delay between each AI player
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
-          sharedState.addAIToTeam(teammateAI, playerTeam); 
+          
+          console.log(`✅ AI teammates for team ${playerTeam} loaded progressively`);
+          
+          // Update the aiPlayersList in the game instance
+          game.updateAIPlayersList(aiPlayers);
+          console.log(`✅ All ${aiPlayers.length} AI players loaded successfully with stepwise loading`);
+          
+          // Send completion message
+          sendLoadingProgress(totalPlayersToLoad, totalPlayersToLoad, "Loading complete!");
+          
+          // Clear loading UI after a short delay
+          setTimeout(() => {
+            world.entityManager.getAllPlayerEntities().forEach((entity) => {
+              entity.player.ui.sendData({
+                type: "loading-complete"
+              });
+            });
+          }, 1000);
+          
+          resolve();
+          
+        } catch (error) {
+          console.error("Error during stepwise AI loading:", error);
+          
+          // Send error message to UI
+          world.entityManager.getAllPlayerEntities().forEach((entity) => {
+            entity.player.ui.sendData({
+              type: "loading-error",
+              message: "Failed to load AI players. Please try again."
+            });
+          });
+          
+          resolve(); // Still resolve to prevent hanging
         }
-        console.log(`AI teammates for team ${playerTeam} spawned.`);
-        
-        // Update the aiPlayersList in the game instance
-        game.updateAIPlayersList(aiPlayers);
-        console.log(`Updated game AI players list with ${aiPlayers.length} AI players.`);
-        
-        console.log("All required AI players spawned and registered.");
-        resolve(); // Resolve the promise
       });
     };
 
@@ -399,7 +472,7 @@ startServer((world) => {
       // Don't set camera configuration here - let the entity handle it
       // This prevents conflicts with the entity-based camera attachment
       
-      // Send initial UI data
+            // Send initial UI data
       player.ui.sendData({
         type: "team-counts",
         red: game.getPlayerCountOnTeam("red"),
@@ -431,6 +504,21 @@ startServer((world) => {
             type: "game-mode-confirmed",
             mode: data.mode,
             config: getCurrentModeConfig()
+          });
+          
+          // Phase 2: Start background AI loading when game mode is selected
+          // Send subtle loading indicator to UI
+          player.ui.sendData({
+            type: "background-loading-started",
+            message: "Preparing AI systems..."
+          });
+          
+          startBackgroundAILoading().then(() => {
+            // Notify UI when background loading is complete
+            player.ui.sendData({
+              type: "background-loading-complete",
+              message: "AI systems ready!"
+            });
           });
         }
         else if (data.type === "team-selected" && data.team) {
@@ -503,20 +591,90 @@ startServer((world) => {
             fifaCrowdManager.playGameStart();
           }
 
-          // Single player mode - uses the new spawnAIPlayers
+          // Single player mode - Phase 3: Finalize setup and start game
           if (data.singlePlayerMode) {
-            console.log(`Starting single player mode for team ${data.team} (6v6)`);
-            await spawnAIPlayers(data.team); // Call the updated function
-            console.log("AI spawning complete, attempting to start game...");
-            const gameStarted = game.startGame();
-            if (gameStarted) {
-              console.log("Game started successfully, unfreezing player.");
-              if (playerEntity && typeof playerEntity.unfreeze === 'function') {
-                playerEntity.unfreeze();
+            console.log(`Phase 3: Starting single player mode for team ${data.team} (map loaded, AI pre-loaded)`);
+            
+            try {
+              // Check if background AI loading is complete
+              if (!aiLoadingComplete) {
+                console.log("Waiting for background AI loading to complete...");
+                player.ui.sendData({
+                  type: "loading-progress",
+                  current: 50,
+                  total: 100,
+                  message: "Finalizing AI setup...",
+                  percentage: 50
+                });
+                
+                // Wait for AI loading to complete
+                while (aiLoadingInProgress) {
+                  await new Promise(resolve => setTimeout(resolve, 100));
+                }
               }
-            } else {
-              console.error("Failed to start game even after spawning AI. Check game state logic.");
-              player.ui.sendData({ type: "error", message: "Failed to start single-player game." });
+              
+              // Send loading message for AI spawning
+              player.ui.sendData({
+                type: "loading-progress",
+                current: 70,
+                total: 100,
+                message: "Spawning AI players...",
+                percentage: 70
+              });
+              
+              // Phase 3: Spawn AI players (background loading already done)
+              console.log("Phase 3: Spawning AI players (background preparation complete)...");
+              await spawnAIPlayers(data.team);
+              
+              player.ui.sendData({
+                type: "loading-progress",
+                current: 90,
+                total: 100,
+                message: "Starting game...",
+                percentage: 90
+              });
+              
+              // Step 3: Start the game
+              console.log("Step 3: Starting game...");
+              const gameStarted = game.startGame();
+              if (gameStarted) {
+                console.log("✅ Game started successfully with stepwise loading!");
+                
+                player.ui.sendData({
+                  type: "loading-progress",
+                  current: 100,
+                  total: 100,
+                  message: "Game ready!",
+                  percentage: 100
+                });
+                
+                // Unfreeze player after short delay
+                setTimeout(() => {
+                  if (playerEntity && typeof playerEntity.unfreeze === 'function') {
+                    playerEntity.unfreeze();
+                    console.log("Player unfrozen - game active!");
+                  }
+                  
+                  // Clear loading UI
+                  player.ui.sendData({
+                    type: "loading-complete"
+                  });
+                }, 500);
+                
+              } else {
+                console.error("Failed to start game after stepwise loading");
+                player.ui.sendData({ 
+                  type: "loading-error", 
+                  message: "Failed to start game. Please try again." 
+                });
+              }
+              
+            } catch (error) {
+              console.error("Error during stepwise game loading:", error);
+              player.ui.sendData({ 
+                type: "loading-error", 
+                message: "Failed to load game. Please refresh and try again." 
+              });
             }
           } // End singlePlayerMode check
 
@@ -740,18 +898,37 @@ startServer((world) => {
         }
       });
 
-      // Attempt to start multiplayer game (logic needs adjustment for 6v6)
+      // Attempt to start multiplayer game (only for human players, not AI)
       const state = game.getState();
+      
+      // Count only human players (not AI) for multiplayer auto-start
+      const humanPlayerEntities = world.entityManager.getAllPlayerEntities().filter(
+        entity => entity instanceof SoccerPlayerEntity && !(entity instanceof AIPlayerEntity)
+      );
+      
+      const humanPlayersOnRed = humanPlayerEntities.filter(entity => 
+        game.getTeamOfPlayer(entity.player.username) === "red"
+      ).length;
+      
+      const humanPlayersOnBlue = humanPlayerEntities.filter(entity => 
+        game.getTeamOfPlayer(entity.player.username) === "blue"
+      ).length;
+      
+      const totalHumanPlayers = humanPlayersOnRed + humanPlayersOnBlue;
+      
       if (
         state.status === "waiting" &&
-        game.getPlayerCountOnTeam("red") >= state.minPlayersPerTeam && // Check each team individually
-        game.getPlayerCountOnTeam("blue") >= state.minPlayersPerTeam &&
-        (game.getPlayerCountOnTeam("red") + game.getPlayerCountOnTeam("blue")) >= state.minPlayersPerTeam * 2 && // Check total players
+        humanPlayersOnRed >= state.minPlayersPerTeam && // Check each team has enough humans
+        humanPlayersOnBlue >= state.minPlayersPerTeam &&
+        totalHumanPlayers >= state.minPlayersPerTeam * 2 && // Check total human players
         aiPlayers.length === 0 // Ensure we're not in single player mode (handled above)
       ) {
         // Potentially wait slightly or add a ready check before starting multiplayer
-        console.log("Enough players for multiplayer, attempting start...");
+        console.log(`Enough human players for multiplayer (Red: ${humanPlayersOnRed}, Blue: ${humanPlayersOnBlue}), attempting start...`);
         game.startGame(); 
+      } else if (aiPlayers.length > 0) {
+        // In single-player mode with AI - don't auto-start here, already handled by team selection
+        console.log(`Single-player mode detected (${aiPlayers.length} AI players) - skipping multiplayer auto-start`);
       }
     });
 

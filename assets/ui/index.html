@@ -7,6 +7,19 @@
 </head>
 <body>
 
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="loading-content">
+    <div class="loading-title">Loading Soccer Game</div>
+    <div class="loading-message" id="loading-message">Initializing game world...</div>
+    <div class="loading-progress-bar">
+      <div class="loading-progress-fill" id="loading-progress-fill"></div>
+    </div>
+    <div class="loading-percentage" id="loading-percentage">0%</div>
+    <div class="loading-spinner"></div>
+  </div>
+</div>
+
 <style>
   @import url('{{CDN_ASSETS_URL}}/ui/fonts/trebuchet-ms.css');
 
@@ -138,6 +151,94 @@
     visibility: visible !important;
     z-index: 10 !important;
     pointer-events: none !important;
+  }
+
+  /* ===== LOADING PROGRESS DISPLAY ===== */
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    visibility: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+
+  .loading-overlay.visible {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .loading-content {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 20px;
+    padding: 40px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    min-width: 400px;
+  }
+
+  .loading-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .loading-message {
+    font-size: 16px;
+    color: #cccccc;
+    margin-bottom: 30px;
+    min-height: 24px;
+  }
+
+  .loading-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 15px;
+  }
+
+  .loading-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #45a049);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  .loading-percentage {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .loading-spinner {
+    margin-top: 20px;
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 
   /* ===== ENHANCED TIMER DISPLAY ===== */
@@ -3198,6 +3299,49 @@
   let matchPhase = "waiting";
   let audioEnabled = true;
 
+  // ===== LOADING PROGRESS SYSTEM =====
+  function showLoadingOverlay() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.classList.add('visible');
+    }
+  }
+
+  function hideLoadingOverlay() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.classList.remove('visible');
+    }
+  }
+
+  function updateLoadingProgress(current, total, message, percentage) {
+    const messageEl = document.getElementById('loading-message');
+    const progressFill = document.getElementById('loading-progress-fill');
+    const percentageEl = document.getElementById('loading-percentage');
+    
+    if (messageEl) messageEl.textContent = message || 'Loading...';
+    if (progressFill) progressFill.style.width = `${percentage || 0}%`;
+    if (percentageEl) percentageEl.textContent = `${percentage || 0}%`;
+  }
+
+  function showLoadingError(message) {
+    const messageEl = document.getElementById('loading-message');
+    const progressFill = document.getElementById('loading-progress-fill');
+    
+    if (messageEl) {
+      messageEl.textContent = message || 'Loading failed. Please refresh and try again.';
+      messageEl.style.color = '#ff4444';
+    }
+    if (progressFill) {
+      progressFill.style.background = 'linear-gradient(90deg, #ff4444, #cc3333)';
+    }
+    
+    // Hide loading overlay after showing error briefly
+    setTimeout(() => {
+      hideLoadingOverlay();
+    }, 3000);
+  }
+
   // ===== AUDIO SYSTEM =====
   function playUISound(soundType) {
     if (!audioEnabled) return;
@@ -4357,12 +4501,90 @@
       showHalftimeStats(data);
     }
 
+    // Handle loading progress updates
+    if (data.type === "loading-progress") {
+      console.log("Loading progress:", data);
+      showLoadingOverlay();
+      updateLoadingProgress(data.current, data.total, data.message, data.percentage);
+    }
+
+    // Handle loading completion
+    if (data.type === "loading-complete") {
+      console.log("Loading complete");
+      hideLoadingOverlay();
+    }
+
+    // Handle loading errors
+    if (data.type === "loading-error") {
+      console.log("Loading error:", data.message);
+      showLoadingError(data.message);
+    }
+
+    // Handle background loading started (Phase 2)
+    if (data.type === "background-loading-started") {
+      console.log("Background loading started:", data.message);
+      showBackgroundLoadingIndicator(data.message);
+    }
+
+    // Handle background loading complete (Phase 2)
+    if (data.type === "background-loading-complete") {
+      console.log("Background loading complete:", data.message);
+      hideBackgroundLoadingIndicator();
+    }
+
     // Handle regular player stats updates
     if (data.type === "player-stats-update") {
       console.log("Player stats update received:", data);
       updatePlayerStats(data.playerStats);
     }
   });
+
+  // ===== BACKGROUND LOADING INDICATOR (PHASE 2) =====
+  function showBackgroundLoadingIndicator(message) {
+    let indicator = document.getElementById("background-loading-indicator");
+    
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = "background-loading-indicator";
+      indicator.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 15px;
+        background: linear-gradient(135deg, rgba(0, 100, 200, 0.9), rgba(0, 150, 255, 0.9));
+        color: white;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 9998;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        opacity: 0;
+        transform: translateX(100%);
+      `;
+      document.body.appendChild(indicator);
+    }
+    
+    indicator.textContent = `⚙️ ${message}`;
+    indicator.style.opacity = "1";
+    indicator.style.transform = "translateX(0)";
+  }
+  
+  function hideBackgroundLoadingIndicator() {
+    const indicator = document.getElementById("background-loading-indicator");
+    if (indicator) {
+      indicator.style.opacity = "0";
+      indicator.style.transform = "translateX(100%)";
+      
+      setTimeout(() => {
+        if (indicator.parentNode) {
+          indicator.parentNode.removeChild(indicator);
+        }
+      }, 300);
+    }
+  }
 
   // ===== ENHANCED GOAL CELEBRATION =====
   function showEnhancedGoal(team) {
