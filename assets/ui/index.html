@@ -38,37 +38,16 @@
     pointer-events: auto; /* Ensure UI can receive pointer events */
   }
 
-  /* ===== ENHANCED BUTTON STYLES TO PREVENT CURSOR ISSUES ===== */
+  /* ===== CLEAN BUTTON STYLES (HYTOPIA-COMPLIANT) ===== */
   button, .btn, .team-btn, .game-mode-btn, .control-btn, .how-to-play-btn, .tab-button {
-    cursor: pointer !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-    pointer-events: auto !important;
-    outline: none !important;
-    -webkit-tap-highlight-color: transparent !important;
-    /* Don't override background and border for specific button types that need styling */
-  }
-
-  button:focus, .btn:focus, .team-btn:focus, .game-mode-btn:focus, .control-btn:focus, .how-to-play-btn:focus, .tab-button:focus {
-    outline: none !important;
-    box-shadow: none !important;
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    transition: transform 0.1s ease;
   }
 
   button:active, .btn:active, .team-btn:active, .game-mode-btn:active, .control-btn:active, .how-to-play-btn:active, .tab-button:active {
-    transform: scale(0.98) !important;
-    transition: transform 0.1s ease !important;
-  }
-
-  /* Ensure UI container doesn't interfere with button clicks */
-  #ui-container, .instructions-panel, .team-selection, .game-mode-selection {
-    pointer-events: auto !important;
-  }
-
-  /* Ensure specific button types maintain their styling while being clickable */
-  .team-btn, .game-mode-btn {
-    border: 2px solid !important; /* Keep borders for these buttons */
+    transform: scale(0.98);
   }
 
   /* ===== MAIN SCOREBOARD SYSTEM ===== */
@@ -1507,6 +1486,188 @@
     color: #cccccc;
     font-size: 12px;
     line-height: 1.3;
+  }
+
+  /* ===== PLAYER COUNT SELECTION STYLES ===== */
+  .player-count-selection {
+    margin: 20px 0;
+    padding: 0 10px;
+  }
+
+  .player-count-title {
+    color: #FFD700;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .player-count-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .game-mode-btn.single-player {
+    border-color: #00AA00;
+    background: linear-gradient(135deg, rgba(0, 170, 0, 0.2), rgba(0, 170, 0, 0.1));
+    cursor: pointer !important;
+  }
+
+  .game-mode-btn.single-player:hover {
+    border-color: #00FF00;
+    background: linear-gradient(135deg, rgba(0, 170, 0, 0.4), rgba(0, 170, 0, 0.2));
+    box-shadow: 0 10px 30px rgba(0, 170, 0, 0.3);
+    transform: translateY(-3px);
+  }
+
+  .game-mode-btn.multiplayer {
+    border-color: #6666FF;
+    background: linear-gradient(135deg, rgba(102, 102, 255, 0.2), rgba(102, 102, 255, 0.1));
+    cursor: pointer !important;
+  }
+
+  .game-mode-btn.multiplayer:hover {
+    border-color: #8888FF;
+    background: linear-gradient(135deg, rgba(102, 102, 255, 0.4), rgba(102, 102, 255, 0.2));
+    box-shadow: 0 10px 30px rgba(102, 102, 255, 0.3);
+    transform: translateY(-3px);
+    cursor: pointer !important;
+  }
+  
+  /* CRITICAL FIX: Player Count Selection Button Styling */
+  .player-count-selection {
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    pointer-events: auto !important;
+  }
+  
+  .player-count-title {
+    color: #FFD700;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+  
+  .player-count-buttons {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  
+  /* Enhanced styling for player count buttons */
+  .player-count-buttons .game-mode-btn {
+    min-width: 200px;
+    padding: 20px 24px;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    z-index: 1000;
+    position: relative;
+  }
+  
+  .player-count-buttons .game-mode-btn:hover {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+  }
+  
+  .player-count-buttons .game-mode-btn.selected {
+    border-color: #FFD700 !important;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6) !important;
+    transform: translateY(-2px) scale(1.05) !important;
+  }
+  
+  /* Global cursor enforcement to prevent Hytopia pointer lock conflicts */
+  button, .btn, .team-btn, .game-mode-btn, input, select, textarea, [onclick], [role="button"] {
+    cursor: pointer !important;
+  }
+  
+  button:hover, .btn:hover, .team-btn:hover, .game-mode-btn:hover, input:hover, select:hover, textarea:hover, [onclick]:hover, [role="button"]:hover {
+    cursor: pointer !important;
+  }
+  
+  /* Prevent pointer events interference on UI containers */
+  .game-mode-selection, .player-count-selection, .team-selection, .instructions-panel, .ui-container {
+    pointer-events: auto !important;
+  }
+  
+  /* Override any potential cursor resets */
+  * {
+    cursor: inherit !important;
+  }
+  
+  body, html {
+    cursor: default !important;
+  }
+
+  .multiplayer-lobby {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 400px;
+    border: 2px solid rgba(102, 102, 255, 0.3);
+    backdrop-filter: blur(10px);
+    text-align: center;
+  }
+
+  .lobby-message {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .player-count-display {
+    color: #6666FF;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .current-players {
+    color: #00FF00;
+  }
+
+  .required-players {
+    color: #FFD700;
+  }
+
+  /* ===== ANIMATIONS FOR NOTIFICATIONS ===== */
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -60%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  @keyframes slideOutUp {
+    from {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, -40%);
+    }
   }
 
   /* Enhanced Team Selection */
@@ -3100,6 +3261,30 @@
     </div>
   </div>
   
+  <!-- Player Count Selection (new section) -->
+  <div class="player-count-selection" id="playerCountSelection" style="display: none;">
+    <div class="player-count-title">Choose Player Count</div>
+    <div class="player-count-buttons">
+      <button class="game-mode-btn single-player" id="singlePlayerBtn">
+        👤 Single Player
+        <div class="mode-description">Play Against AI</div>
+        <div class="mode-features">• You + 5 AI vs 6 AI • Immediate game start</div>
+      </button>
+      <button class="game-mode-btn multiplayer" id="multiplayerBtn">
+        👥 Multiplayer
+        <div class="mode-description">1v1 Human Match</div>
+        <div class="mode-features">• Human vs Human • Each player on different teams • 4 AI teammates each</div>
+      </button>
+    </div>
+    
+    <div class="multiplayer-lobby" id="multiplayerLobby" style="display: none;">
+      <div class="lobby-message">Waiting for second player to join...</div>
+      <div class="player-count-display">
+        <span class="current-players">1</span> / <span class="required-players">2</span> players
+      </div>
+    </div>
+  </div>
+  
   <div id="game-over-content" style="display: none;">
     <div class="game-over-header">
       <div class="game-over-message" id="game-over-title">Match Complete</div>
@@ -3435,12 +3620,12 @@
       }
     }, 100);
     
-    // Show team selection after a brief delay
+    // Show player count selection after a brief delay (new flow)
     setTimeout(() => {
-      document.getElementById('teamSelection').style.display = 'block';
+      document.getElementById('playerCountSelection').style.display = 'block';
       
-      // Smooth scroll to team selection
-      document.getElementById('teamSelection').scrollIntoView({
+      // Smooth scroll to player count selection
+      document.getElementById('playerCountSelection').scrollIntoView({
         behavior: 'smooth',
         block: 'center'
       });
@@ -3450,24 +3635,222 @@
   // Make function globally accessible
   window.selectGameMode = selectGameMode;
 
-  // ===== UNIVERSAL BUTTON CLICK HANDLER TO PREVENT CURSOR ISSUES =====
-  function handleButtonClick(event, callback) {
-    // Comprehensive event handling to prevent cursor mode issues
+  // ===== PLAYER COUNT SELECTION FUNCTIONS =====
+  let selectedPlayerCount = null;
+  let isMultiplayerLobby = false;
+
+  function selectPlayerCount(playerCount, event) {
+    // ENHANCED DEBUGGING AND ERROR HANDLING
+    console.log(`🎮 selectPlayerCount called with: ${playerCount}`);
+    
+    // Prevent any default behavior that might trigger cursor mode change
     if (event) {
       event.preventDefault();
       event.stopPropagation();
-      event.stopImmediatePropagation();
     }
     
-    // Ensure we stay in UI interaction mode
-    document.body.style.cursor = 'default';
+    // Validate playerCount parameter
+    if (!playerCount || (playerCount !== 'single' && playerCount !== 'multiplayer')) {
+      console.error('❌ Invalid playerCount parameter:', playerCount);
+      return;
+    }
     
-    // Execute the callback after a minimal delay to ensure UI state is stable
-    setTimeout(() => {
-      if (typeof callback === 'function') {
-        callback();
+    // Ensure game mode was selected first
+    if (!selectedGameMode) {
+      console.error('❌ No game mode selected yet');
+      alert('Please select a game mode (FIFA or Arcade) first!');
+      return;
+    }
+    
+    console.log(`✅ Player count selected: ${playerCount}`);
+    selectedPlayerCount = playerCount;
+    
+    // Maintain cursor state throughout function
+    document.body.style.cursor = 'default';
+    document.documentElement.style.cursor = 'default';
+    
+    playUISound("button-click");
+    
+    // Update button states with error handling
+    const playerCountButtons = document.querySelectorAll('.player-count-buttons .game-mode-btn');
+    console.log(`Found ${playerCountButtons.length} player count buttons`);
+    
+    playerCountButtons.forEach(btn => {
+      btn.classList.remove('selected');
+      btn.style.cursor = 'pointer'; // Ensure buttons maintain pointer cursor
+    });
+    
+    if (playerCount === 'single') {
+      const singleBtn = document.getElementById('singlePlayerBtn');
+      if (!singleBtn) {
+        console.error('❌ Single player button not found!');
+        return;
       }
+      
+      singleBtn.classList.add('selected');
+      singleBtn.style.cursor = 'pointer';
+      console.log('✅ Single player button selected');
+      
+      // Hide multiplayer lobby
+      const multiplayerLobby = document.getElementById('multiplayerLobby');
+      if (multiplayerLobby) {
+        multiplayerLobby.style.display = 'none';
+      }
+      
+      // Show team selection immediately for single player
+      setTimeout(() => {
+        // Maintain cursor state before DOM operations
+        document.body.style.cursor = 'default';
+        document.documentElement.style.cursor = 'default';
+        
+        const teamSelection = document.getElementById('teamSelection');
+        if (teamSelection) {
+          teamSelection.style.display = 'block';
+          console.log('✅ Team selection shown for single player');
+          
+          // Smooth scroll to team selection
+          teamSelection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        } else {
+          console.error('❌ Team selection element not found!');
+        }
+        
+        // Re-apply cursor state after scroll
+        setTimeout(() => {
+          document.body.style.cursor = 'default';
+          document.documentElement.style.cursor = 'default';
+        }, 100);
+      }, 300);
+      
+    } else if (playerCount === 'multiplayer') {
+      const multiBtn = document.getElementById('multiplayerBtn');
+      if (!multiBtn) {
+        console.error('❌ Multiplayer button not found!');
+        return;
+      }
+      
+      multiBtn.classList.add('selected');
+      multiBtn.style.cursor = 'pointer';
+      isMultiplayerLobby = true;
+      console.log('✅ Multiplayer button selected');
+      
+      // Show multiplayer lobby
+      const multiplayerLobby = document.getElementById('multiplayerLobby');
+      if (multiplayerLobby) {
+        multiplayerLobby.style.display = 'block';
+        console.log('✅ Multiplayer lobby shown');
+      } else {
+        console.error('❌ Multiplayer lobby element not found!');
+      }
+      
+      // Send to server that we want multiplayer mode
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        hytopia.sendData({
+          type: "join-multiplayer-lobby"
+        });
+        console.log('✅ Multiplayer lobby message sent to server');
+      } else {
+        console.warn('⚠️  Hytopia not available, multiplayer lobby simulation only');
+      }
+      
+      // For now, simulate waiting for second player
+      // In real implementation, this would be handled by server events
+      setTimeout(() => {
+        // Maintain cursor state in async operation
+        document.body.style.cursor = 'default';
+        document.documentElement.style.cursor = 'default';
+        
+        // Simulate second player joining after 3 seconds for demo
+        handleSecondPlayerJoined();
+      }, 3000);
+    }
+    
+    // Final cursor state enforcement
+    setTimeout(() => {
+      document.body.style.cursor = 'default';
+      document.documentElement.style.cursor = 'default';
     }, 10);
+  }
+
+  function handleSecondPlayerJoined() {
+    console.log("🎮 Second player joined multiplayer lobby");
+    
+    // Update player count display with error handling
+    const currentPlayersElement = document.querySelector('.current-players');
+    if (currentPlayersElement) {
+      currentPlayersElement.textContent = '2';
+      console.log('✅ Player count display updated');
+    } else {
+      console.error('❌ Current players element not found');
+    }
+    
+    // Update lobby message with error handling
+    const lobbyMessage = document.querySelector('.lobby-message');
+    if (lobbyMessage) {
+      lobbyMessage.textContent = 'Match ready! Players will be assigned to different teams.';
+      console.log('✅ Lobby message updated');
+    } else {
+      console.error('❌ Lobby message element not found');
+    }
+    
+    // Hide lobby and show team selection after brief delay
+    setTimeout(() => {
+      const multiplayerLobby = document.getElementById('multiplayerLobby');
+      const teamSelection = document.getElementById('teamSelection');
+      
+      if (multiplayerLobby) {
+        multiplayerLobby.style.display = 'none';
+        console.log('✅ Multiplayer lobby hidden');
+      } else {
+        console.error('❌ Multiplayer lobby element not found');
+      }
+      
+      if (teamSelection) {
+        teamSelection.style.display = 'block';
+        console.log('✅ Team selection shown for multiplayer');
+        
+        // Update team selection title for multiplayer
+        const teamTitle = document.querySelector('.team-selection-title');
+        if (teamTitle) {
+          teamTitle.textContent = 'Teams Auto-Assigned - Choose Your Team Color';
+          console.log('✅ Team selection title updated for multiplayer');
+        } else {
+          console.error('❌ Team selection title element not found');
+        }
+        
+        // Smooth scroll to team selection
+        teamSelection.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      } else {
+        console.error('❌ Team selection element not found');
+      }
+    }, 2000);
+  }
+
+  // Make functions globally accessible
+  window.selectPlayerCount = selectPlayerCount;
+  window.handleSecondPlayerJoined = handleSecondPlayerJoined;
+
+  // ===== SIMPLIFIED BUTTON CLICK HANDLER (HYTOPIA-COMPLIANT) =====
+  function handleButtonClick(event, callback) {
+    // Simple event handling without fighting the Hytopia framework
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    // Execute the callback
+    if (typeof callback === 'function') {
+      try {
+        callback();
+      } catch (error) {
+        console.warn('Error in button callback:', error);
+      }
+    }
   }
 
   // ===== ENHANCED SCORE ANIMATIONS =====
@@ -3692,9 +4075,14 @@
     
     console.log(`Team selected: ${team}`);
     
-    // Ensure a game mode has been selected
+    // Ensure a game mode and player count have been selected
     if (!selectedGameMode) {
       alert("Please select a game mode first!");
+      return;
+    }
+    
+    if (!selectedPlayerCount) {
+      alert("Please select single player or multiplayer first!");
       return;
     }
     
@@ -3709,7 +4097,9 @@
     const selectedBtn = team === "red" ? document.getElementById("redTeamBtn") : document.getElementById("blueTeamBtn");
     selectedBtn.classList.add("selected");
 
-    const singlePlayerMode = document.getElementById("singlePlayerToggle").checked;
+    // Determine if this is single player mode based on our new flow
+    const singlePlayerMode = (selectedPlayerCount === 'single');
+    const multiplayerMode = (selectedPlayerCount === 'multiplayer');
 
     // Hide the instructions panel
     document.getElementById("instructionsPanel").classList.add("hidden");
@@ -3717,11 +4107,13 @@
     // Send team selection to server after a brief delay to ensure UI transition completes
     setTimeout(() => {
       if (typeof hytopia !== 'undefined' && hytopia.sendData) {
-        console.log("Sending team selection to server:", team);
+        console.log(`Sending team selection to server: ${team} (${selectedPlayerCount} player mode)`);
         hytopia.sendData({
           type: "team-selected",
           team: team,
           singlePlayerMode: singlePlayerMode,
+          multiplayerMode: multiplayerMode,
+          playerCount: selectedPlayerCount,
           gameMode: selectedGameMode
         });
       }
@@ -3855,9 +4247,90 @@
     console.error("Could not find game mode buttons!"); // Debug log
   }
 
+  // CRITICAL FIX: Add Player Count Selection Button Event Listeners
+  const singlePlayerBtn = document.getElementById("singlePlayerBtn");
+  const multiplayerBtn = document.getElementById("multiplayerBtn");
+  
+  console.log("Single Player button:", singlePlayerBtn); // Debug log
+  console.log("Multiplayer button:", multiplayerBtn); // Debug log
+  
+  if (singlePlayerBtn) {
+    singlePlayerBtn.addEventListener("click", (e) => {
+      console.log("Single Player button clicked"); // Debug log
+      handleButtonClick(e, () => selectPlayerCount("single", e));
+    });
+    console.log("Single Player event listener added successfully"); // Debug log
+  } else {
+    console.error("Could not find Single Player button!"); // Debug log
+  }
+  
+  if (multiplayerBtn) {
+    multiplayerBtn.addEventListener("click", (e) => {
+      console.log("Multiplayer button clicked"); // Debug log
+      handleButtonClick(e, () => selectPlayerCount("multiplayer", e));
+    });
+    console.log("Multiplayer event listener added successfully"); // Debug log
+  } else {
+    console.error("Could not find Multiplayer button!"); // Debug log
+  }
+
+  // Enhanced UI initialization with comprehensive button setup
+  function initializeAllButtons() {
+    console.log('🎮 Initializing all button event handlers...');
+    
+    // Ensure all buttons have proper cursor and pointer events
+    const allButtons = document.querySelectorAll('button, .btn, .team-btn, .game-mode-btn');
+    let successCount = 0;
+    
+    allButtons.forEach((button, index) => {
+      try {
+        // Force proper styling
+        button.style.cursor = 'pointer';
+        button.style.pointerEvents = 'auto';
+        
+        // Add visual feedback on hover
+        button.addEventListener('mouseenter', () => {
+          button.style.cursor = 'pointer';
+        });
+        
+        button.addEventListener('mouseleave', () => {
+          button.style.cursor = 'pointer';
+        });
+        
+        successCount++;
+      } catch (error) {
+        console.error(`❌ Error initializing button ${index}:`, error);
+      }
+    });
+    
+    console.log(`✅ Successfully initialized ${successCount} buttons`);
+    
+    // Specific validation for critical buttons
+    const criticalButtons = [
+      'singlePlayerBtn',
+      'multiplayerBtn',
+      'redTeamBtn',
+      'blueTeamBtn',
+      'fifaModeBtn',
+      'arcadeModeBtn'
+    ];
+    
+    criticalButtons.forEach(buttonId => {
+      const button = document.getElementById(buttonId);
+      if (button) {
+        console.log(`✅ Found critical button: ${buttonId}`);
+        button.style.cursor = 'pointer';
+        button.style.pointerEvents = 'auto';
+      } else {
+        console.error(`❌ Critical button missing: ${buttonId}`);
+      }
+    });
+  }
+
   // Initialize the UI with error handling
   try {
     initializeScoreDisplay();
+    initializeAllButtons();
     console.log('✅ UI initialization completed successfully');
   } catch (error) {
     console.error('❌ UI initialization error:', error);
@@ -3900,6 +4373,59 @@
             selectedModeInfo.style.borderColor = 'rgba(255, 215, 0, 0.3)';
           }, 1000);
         }
+      }
+      else if (data.type === "multiplayer-waiting") {
+        console.log("Received multiplayer waiting message");
+        // Update the multiplayer lobby display
+        const currentPlayers = document.querySelector('.current-players');
+        if (currentPlayers) {
+          currentPlayers.textContent = data.playerCount.toString();
+        }
+        
+        const lobbyMessage = document.querySelector('.lobby-message');
+        if (lobbyMessage) {
+          lobbyMessage.textContent = data.message || "Waiting for second player to join...";
+        }
+      }
+      else if (data.type === "team-assigned") {
+        console.log(`Team assigned: ${data.team}`);
+        // Show notification about team assignment
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
+          color: white;
+          padding: 20px 30px;
+          border-radius: 15px;
+          font-weight: bold;
+          z-index: 10001;
+          box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+          border: 3px solid rgba(255, 255, 255, 0.3);
+          text-align: center;
+          animation: slideInDown 0.7s ease-out;
+        `;
+        
+        const teamColor = data.team === 'red' ? '🔴' : '🔵';
+        notification.innerHTML = `
+          <div style="font-size: 32px; margin-bottom: 10px;">${teamColor}</div>
+          <h2 style="margin: 0 0 10px 0; font-size: 20px;">Team Assignment</h2>
+          <div style="font-size: 16px;">${data.message}</div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+          notification.style.animation = 'slideOutUp 0.5s ease-in';
+          setTimeout(() => {
+            if (notification.parentNode) {
+              document.body.removeChild(notification);
+            }
+          }, 500);
+        }, 3000);
       }
     });
   }
@@ -5317,8 +5843,14 @@
     }
   });
 
+  // ===== HYTOPIA-COMPLIANT UI INITIALIZATION =====
+  // No pointer lock blocking needed - server manages this with player.ui.lockPointer()
+
   // Add universal click handlers for inline onclick buttons
   document.addEventListener('DOMContentLoaded', function() {
+    // Simple initialization without fighting Hytopia's pointer lock system
+    console.log('🎮 UI initialized - using Hytopia-compliant pointer management');
+    
     // Audio toggle button
     const audioToggle = document.getElementById('audio-toggle');
     if (audioToggle) {
@@ -5342,6 +5874,24 @@
         handleButtonClick(e, togglePowerUpPanel);
       });
     }
+
+    // Game mode selection buttons
+    const fifaModeBtn = document.getElementById('fifaModeBtn');
+    if (fifaModeBtn) {
+      fifaModeBtn.addEventListener('click', (e) => {
+        handleButtonClick(e, () => selectGameMode('fifa', e));
+      });
+    }
+
+    const arcadeModeBtn = document.getElementById('arcadeModeBtn');
+    if (arcadeModeBtn) {
+      arcadeModeBtn.addEventListener('click', (e) => {
+        handleButtonClick(e, () => selectGameMode('arcade', e));
+      });
+    }
+
+    // Player count selection buttons - NOW HANDLED ABOVE IN MAIN INITIALIZATION
+    // Removed duplicate event listeners to prevent conflicts
 
     // Add event listeners to any other buttons that use onclick
     document.querySelectorAll('button[onclick]').forEach(button => {
