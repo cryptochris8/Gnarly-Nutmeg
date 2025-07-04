@@ -22,7 +22,10 @@ import {
   FIELD_MAX_Z, 
   AI_GOAL_LINE_X_RED, 
   AI_GOAL_LINE_X_BLUE, 
-  SAFE_SPAWN_Y
+  SAFE_SPAWN_Y,
+  HALF_DURATION,
+  TOTAL_HALVES,
+  HALFTIME_DURATION
   // ABILITY_PICKUP_POSITIONS 
 } from "./gameConfig";
 import sharedState from "./sharedState";
@@ -71,6 +74,7 @@ export interface GameState {
     | "waiting"
     | "starting"
     | "playing"
+    | "halftime"
     | "overtime"
     | "finished"
     | "goal-scored"
@@ -81,6 +85,10 @@ export interface GameState {
     blue: number;
   };
   timeRemaining: number; // in seconds
+  currentHalf: number; // 1 or 2 (updated from quarters)
+  halfTimeRemaining: number; // time remaining in current half (updated from quarterTimeRemaining)
+  isHalftime: boolean; // true during halftime break
+  halftimeTimeRemaining: number; // time remaining in halftime (in seconds)
   maxPlayersPerTeam: number;
   minPlayersPerTeam: number;
   kickoffTeam: "red" | "blue" | null; // Team that gets to kick off
@@ -129,6 +137,10 @@ export class SoccerGame {
         blue: 0,
       },
       timeRemaining: MATCH_DURATION,
+      currentHalf: 1,
+      halfTimeRemaining: HALF_DURATION,
+      isHalftime: false,
+      halftimeTimeRemaining: 0,
       maxPlayersPerTeam: 6,
       minPlayersPerTeam: 1,
       kickoffTeam: null,
@@ -426,6 +438,8 @@ export class SoccerGame {
   }
 
   private gameLoop() {
+    // NOTE: This nested file has quarter system interface but needs full implementation
+    // For now, keep original logic to prevent errors
     if (this.state.timeRemaining <= 0) {
       console.log(`Time up! Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
       this.handleTimeUp();
@@ -435,6 +449,10 @@ export class SoccerGame {
 
     if (this.state.status !== "goal-scored") {
       this.state.timeRemaining--;
+      // Also update quarter time for UI compatibility
+      if (this.state.halfTimeRemaining > 0) {
+        this.state.halfTimeRemaining--;
+      }
     }
 
     if (this.state.timeRemaining === 5) {
@@ -453,13 +471,25 @@ export class SoccerGame {
       }
     });
 
-    // Send game state to UI
+    // Update shared state with current game state
+    sharedState.setGameState(this.state);
+
+    // Send game state to UI with quarter data for compatibility
     this.sendDataToAllPlayers({
       type: "game-state",
       timeRemaining: this.state.timeRemaining,
+      halfTimeRemaining: this.state.halfTimeRemaining,
+      currentHalf: this.state.currentHalf,
+      halftimeTimeRemaining: this.state.halftimeTimeRemaining,
+      isHalftime: this.state.isHalftime,
       score: this.state.score,
       status: this.state.status,
     });
+
+    // Send player stats update every 5 seconds during gameplay
+    if (this.state.status === "playing" && this.state.timeRemaining % 5 === 0) {
+      this.sendPlayerStatsUpdate();
+    }
   }
 
   private handleTimeUp() {
@@ -551,6 +581,23 @@ export class SoccerGame {
       blueScore: this.state.score.blue,
       playerStats,
       message: "End of Regulation Time"
+    });
+  }
+
+  private sendPlayerStatsUpdate() {
+    // Collect current player stats
+    const playerStats = this.world.entityManager
+      .getAllPlayerEntities()
+      .filter(
+        (entity): entity is SoccerPlayerEntity =>
+          entity instanceof SoccerPlayerEntity
+      )
+      .map((player) => player.getPlayerStats());
+
+    // Send player stats to all players for UI update
+    this.sendDataToAllPlayers({
+      type: "player-stats-update",
+      playerStats
     });
   }
 
@@ -801,6 +848,10 @@ export class SoccerGame {
         blue: 0,
       },
       timeRemaining: MATCH_DURATION,
+      currentHalf: 1,
+      halfTimeRemaining: HALF_DURATION,
+      isHalftime: false,
+      halftimeTimeRemaining: 0,
       maxPlayersPerTeam: 6,
       minPlayersPerTeam: 1,
       kickoffTeam: null,

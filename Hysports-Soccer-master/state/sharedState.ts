@@ -3,6 +3,13 @@ import AIPlayerEntity from "../entities/AIPlayerEntity";
 
 type AISystem = 'agent' | 'behaviortree';
 
+// Forward declaration to avoid circular imports
+interface GameState {
+    isHalftime: boolean;
+    status: string;
+    // Add other properties as needed
+}
+
 class SharedState {
     private static instance: SharedState;
     private attachedPlayer: PlayerEntity | null = null;
@@ -14,6 +21,7 @@ class SharedState {
     private ballHasMovedFromSpawn: boolean = false;
     private _aiSystem: AISystem = 'agent'; // Default to agent
     private currentGameStatus: string = "waiting"; // Track current game status
+    private gameState: GameState | null = null; // Reference to current game state
 
     private constructor() {}
 
@@ -133,6 +141,16 @@ class SharedState {
         return this.currentGameStatus;
     }
     // --- End Game Status Tracking ---
+
+    // --- Game State Management ---
+    public setGameState(gameState: GameState | null) {
+        this.gameState = gameState;
+    }
+
+    public getGameState(): GameState | null {
+        return this.gameState;
+    }
+    // --- End Game State Management ---
 }
 
 export default SharedState.getInstance(); 

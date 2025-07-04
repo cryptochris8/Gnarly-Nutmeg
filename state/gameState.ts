@@ -21,7 +21,10 @@ import {
   FIELD_MAX_Z, 
   AI_GOAL_LINE_X_RED, 
   AI_GOAL_LINE_X_BLUE, 
-  SAFE_SPAWN_Y
+  SAFE_SPAWN_Y,
+  HALF_DURATION,
+  TOTAL_HALVES,
+  HALFTIME_DURATION
   // ABILITY_PICKUP_POSITIONS 
 } from "./gameConfig";
 import sharedState from "./sharedState";
@@ -60,6 +63,15 @@ const TICKING_AUDIO = new Audio({
   duration: 5,
 });
 
+// Team statistics interface
+export interface TeamStats {
+  goals: number;
+  shots: number;
+  passes: number;
+  tackles: number;
+  possession: number;
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -67,22 +79,40 @@ export interface Player {
 }
 
 export interface GameState {
-  status:
-    | "waiting"
-    | "starting"
-    | "playing"
-    | "overtime"
-    | "finished"
-    | "goal-scored";
+  status: 'waiting' | 'starting' | 'playing' | 'halftime' | 'overtime' | 'goal-scored' | 'finished';
+  
+  // Player management (keep existing structure)
   players: Map<string, Player>;
+  
+  // Half-based timing system
+  currentHalf: number; // 1 or 2
+  halfTimeRemaining: number; // Time remaining in current half (in seconds)
+  isHalftime: boolean; // True during halftime break
+  halftimeTimeRemaining: number; // Time remaining in halftime break (in seconds)
+  
+  // Match info
+  timeRemaining: number; // Total time remaining (for backward compatibility)
+  matchDuration: number; // Total match time (10 minutes = 600 seconds)
+  overtimeTimeRemaining: number; // For overtime periods
+  
+  // Team and scoring (keep existing structure)
   score: {
     red: number;
     blue: number;
   };
-  timeRemaining: number; // in seconds
+  
+  // Team management
   maxPlayersPerTeam: number;
   minPlayersPerTeam: number;
-  kickoffTeam: "red" | "blue" | null; // Team that gets to kick off
+  
+  // Game flow
+  kickoffTeam: 'red' | 'blue' | null;
+  
+  // Statistics
+  matchStats: {
+    redTeam: TeamStats;
+    blueTeam: TeamStats;
+  };
 }
 
 export class SoccerGame {
@@ -117,9 +147,19 @@ export class SoccerGame {
         blue: 0,
       },
       timeRemaining: MATCH_DURATION,
+      currentHalf: 1,
+      halfTimeRemaining: HALF_DURATION,
+      isHalftime: false,
+      halftimeTimeRemaining: 0,
+      matchDuration: MATCH_DURATION,
+      overtimeTimeRemaining: 0,
       maxPlayersPerTeam: 6,
       minPlayersPerTeam: 1,
-      kickoffTeam: null
+      kickoffTeam: null,
+      matchStats: {
+        redTeam: { goals: 0, shots: 0, passes: 0, tackles: 0, possession: 0 },
+        blueTeam: { goals: 0, shots: 0, passes: 0, tackles: 0, possession: 0 }
+      }
     };
     this.world = world;
     this.soccerBall = entity;
@@ -337,12 +377,12 @@ export class SoccerGame {
   }
 
   private beginMatch() {
-    console.log("Beginning match");
+    console.log("Beginning match - Starting 1st Quarter");
     
     // Send game starting notification to UI for respawn handling
     this.sendDataToAllPlayers({
       type: "game-starting",
-      message: "New match starting - players respawned"
+      message: "New match starting - 1st Quarter begins!"
     });
     
     // First reset ball position - check and ensure proper spawn
@@ -393,9 +433,15 @@ export class SoccerGame {
       }
     });
     
-    // Set the game status to playing and start the game loop
+    // Initialize quarter system - Set the game status to playing and start the 1st quarter
     this.state.status = "playing";
+    this.state.currentHalf = 1;
+    this.state.halfTimeRemaining = HALF_DURATION;
     this.state.timeRemaining = MATCH_DURATION;
+    this.state.isHalftime = false;
+    this.state.halftimeTimeRemaining = 0;
+    
+    console.log(`🏟️ Starting 1st Half - ${HALF_DURATION} seconds per half, ${MATCH_DURATION} seconds total`);
     
     // Start the game loop for time tracking
     this.gameLoopInterval = setInterval(() => {
@@ -409,30 +455,75 @@ export class SoccerGame {
       this.arcadeManager.update();
     }
 
-    if (this.state.timeRemaining <= 0) {
-      console.log(`⏰ GAME LOOP: Time up! Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
-      this.handleTimeUp();
-      TICKING_AUDIO.pause();
+    // Update shared state with current game state
+    sharedState.setGameState(this.state);
+
+    // Handle halftime countdown
+    if (this.state.isHalftime) {
+      if (this.state.halftimeTimeRemaining <= 0) {
+        this.endHalftime();
+        return;
+      }
+      this.state.halftimeTimeRemaining--;
+      
+      // Send halftime state to UI
+      this.sendDataToAllPlayers({
+        type: "game-state",
+        timeRemaining: this.state.timeRemaining,
+        halfTimeRemaining: this.state.halfTimeRemaining,
+        currentHalf: this.state.currentHalf,
+        halftimeTimeRemaining: this.state.halftimeTimeRemaining,
+        isHalftime: this.state.isHalftime,
+        score: this.state.score,
+        status: this.state.status,
+      });
       return;
     }
 
-    if (this.state.status !== "goal-scored") {
-      this.state.timeRemaining--;
-    }
-    
-    // Log every 30 seconds during regular time, every 10 seconds in overtime
-    const logInterval = this.state.status === "overtime" ? 10 : 30;
-    if (this.state.timeRemaining % logInterval === 0 && this.state.status !== "goal-scored") {
-      console.log(`⏰ GAME LOOP: ${this.state.timeRemaining}s remaining, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
-    }
+    // Handle overtime separately (uses halfTimeRemaining for display)
+    if (this.state.status === "overtime") {
+      if (this.state.halfTimeRemaining <= 0) {
+        console.log("⏰ OVERTIME ENDED!");
+        this.handleTimeUp();
+        return;
+      }
+      
+      // Update overtime timer
+      this.state.halfTimeRemaining--;
+      this.state.timeRemaining = this.state.halfTimeRemaining; // Keep in sync
+      
+      // Play ticking sound in last 5 seconds of overtime
+      if (this.state.halfTimeRemaining === 5) {
+        TICKING_AUDIO.play(this.world);
+      }
+      
+      // Log overtime progress
+      if (this.state.halfTimeRemaining % 10 === 0) {
+        console.log(`⏰ OVERTIME: ${this.state.halfTimeRemaining}s remaining, Score: ${this.state.score.red}-${this.state.score.blue}`);
+      }
+    } else {
+      // Handle regular half time countdown
+      if (this.state.halfTimeRemaining <= 0) {
+        console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Score: ${this.state.score.red}-${this.state.score.blue}`);
+        this.handleHalfEnd();
+        return;
+      }
 
-    if (this.state.timeRemaining === 5) {
-      TICKING_AUDIO.play(this.world);
-    }
+      // Update timers only if not in goal-scored state
+      if (this.state.status !== "goal-scored") {
+        this.state.halfTimeRemaining--;
+        this.state.timeRemaining--;
+      }
+      
+      // Log every 30 seconds during regular time
+      if (this.state.halfTimeRemaining % 30 === 0 && this.state.status !== "goal-scored") {
+        console.log(`⏰ HALF ${this.state.currentHalf}: ${this.state.halfTimeRemaining}s remaining, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+      }
 
-    // Log overtime progress
-    if (this.state.status === "overtime" && this.state.timeRemaining % 10 === 0) {
-      console.log(`Overtime: ${this.state.timeRemaining} seconds remaining`);
+      // Play ticking sound in last 5 seconds of half
+      if (this.state.halfTimeRemaining === 5) {
+        TICKING_AUDIO.play(this.world);
+      }
     }
 
     // Update player movement statistics and stamina
@@ -448,16 +539,202 @@ export class SoccerGame {
       this.sendDataToAllPlayers({
         type: "game-state",
         timeRemaining: this.state.timeRemaining,
+        halfTimeRemaining: this.state.halfTimeRemaining,
+        currentHalf: this.state.currentHalf,
+        halftimeTimeRemaining: this.state.halftimeTimeRemaining,
+        isHalftime: this.state.isHalftime,
         score: this.state.score,
         status: this.state.status,
       });
     }
+
+    // Send player stats update every 5 seconds during gameplay
+    if (this.state.status === "playing" && this.state.timeRemaining % 5 === 0) {
+      this.sendPlayerStatsUpdate();
+    }
+  }
+
+  private handleHalfEnd() {
+    console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Handling half transition`);
+    
+    // Clear the game loop interval to stop the timer
+    if (this.gameLoopInterval) {
+      clearInterval(this.gameLoopInterval);
+      this.gameLoopInterval = null;
+    }
+    
+    // Stop ticking audio
+    TICKING_AUDIO.pause();
+
+    // Show half stats
+    this.showHalfStats();
+
+    // Check if it's halftime (after 1st half)
+    if (this.state.currentHalf === 1) {
+      this.startHalftime();
+    } else if (this.state.currentHalf === 2) {
+      // End of regulation time (after 2nd half)
+      this.handleEndOfRegulation();
+    }
+  }
+
+  private showHalfStats() {
+    // Collect current player stats for half display
+    const playerStats = this.world.entityManager
+      .getAllPlayerEntities()
+      .filter(
+        (entity): entity is SoccerPlayerEntity =>
+          entity instanceof SoccerPlayerEntity
+      )
+      .map((player) => player.getPlayerStats());
+
+    // Send half stats to all players
+    this.sendDataToAllPlayers({
+      type: "half-stats",
+      redScore: this.state.score.red,
+      blueScore: this.state.score.blue,
+      playerStats,
+      half: this.state.currentHalf,
+      message: `End of Half ${this.state.currentHalf}`
+    });
+  }
+
+  private sendPlayerStatsUpdate() {
+    // Collect current player stats
+    const playerStats = this.world.entityManager
+      .getAllPlayerEntities()
+      .filter(
+        (entity): entity is SoccerPlayerEntity =>
+          entity instanceof SoccerPlayerEntity
+      )
+      .map((player) => player.getPlayerStats());
+
+    // Send player stats to all players for UI update
+    this.sendDataToAllPlayers({
+      type: "player-stats-update",
+      playerStats
+    });
+  }
+
+  private startHalftime() {
+    console.log("🏟️ Starting halftime break");
+    this.state.isHalftime = true;
+    this.state.halftimeTimeRemaining = HALFTIME_DURATION;
+    this.state.status = "halftime";
+
+    // Announce halftime
+    this.world.chatManager.sendBroadcastMessage(
+      `Halftime! Score: Red ${this.state.score.red} - Blue ${this.state.score.blue}`
+    );
+
+    // Send halftime state to UI
+    this.sendDataToAllPlayers({
+      type: "game-state",
+      timeRemaining: this.state.timeRemaining,
+      halfTimeRemaining: this.state.halfTimeRemaining,
+      currentHalf: this.state.currentHalf,
+      halftimeTimeRemaining: this.state.halftimeTimeRemaining,
+      isHalftime: this.state.isHalftime,
+      score: this.state.score,
+      status: this.state.status,
+    });
+
+    // Restart game loop for halftime countdown
+    setTimeout(() => {
+      this.gameLoopInterval = setInterval(() => {
+        this.gameLoop();
+      }, 1000);
+    }, 2000); // 2 second delay to show half stats
+  }
+
+  private endHalftime() {
+    console.log("🏟️ Ending halftime, starting 2nd half");
+    this.state.isHalftime = false;
+    this.state.halftimeTimeRemaining = 0;
+    this.state.currentHalf = 2;
+    this.state.halfTimeRemaining = HALF_DURATION;
+    this.state.status = "playing";
+
+    // Announce start of 2nd half
+    this.world.chatManager.sendBroadcastMessage("2nd Half starting!");
+
+    // Perform kickoff positioning for 2nd half
+    // In soccer, the team that didn't start the game gets kickoff in 2nd half
+    const secondHalfKickoffTeam = this.state.kickoffTeam === "red" ? "blue" : "red";
+    this.performKickoffPositioning(secondHalfKickoffTeam, "2nd half start");
+
+    // Send countdown for 2nd half start
+    this.sendDataToAllPlayers({
+      type: "countdown",
+      count: "2nd Half!"
+    });
+
+    setTimeout(() => {
+      this.sendDataToAllPlayers({
+        type: "countdown",
+        count: ""
+      });
+      
+      // Ensure all players are unfrozen for 2nd half
+      this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+        if (entity instanceof SoccerPlayerEntity) {
+          entity.unfreeze();
+        }
+      });
+    }, 2000);
+  }
+
+  private handleEndOfRegulation() {
+    console.log("⏰ END OF REGULATION TIME! Handling end of 2 halves");
+    console.log(`⏰ Final Score: Red ${this.state.score.red} - Blue ${this.state.score.blue}`);
+    
+    // Show regulation time stats
+    this.showRegulationTimeStats();
+    
+    // Check if game is tied
+    if (this.state.score.red === this.state.score.blue) {
+      // Game is tied, go to overtime
+      setTimeout(() => {
+        console.log("Starting overtime setup...");
+        this.state.status = "overtime";
+        this.state.halfTimeRemaining = 60; // 1 minute overtime
+        this.state.timeRemaining = 60;
+        this.world.chatManager.sendBroadcastMessage(
+          "Tie game after 2 halves, going to overtime!"
+        );
+        this.sendDataToAllPlayers({
+          type: "countdown",
+          count: "Overtime!"
+        });
+
+        setTimeout(() => {
+          this.sendDataToAllPlayers({
+            type: "countdown",
+            count: ""
+          });
+          
+          // Ensure all players are unfrozen for overtime
+          this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+            if (entity instanceof SoccerPlayerEntity) {
+              entity.unfreeze();
+            }
+          });
+          
+          // Restart the game loop for overtime
+          this.gameLoopInterval = setInterval(() => {
+            this.gameLoop();
+          }, 1000);
+        }, 2000);
+      }, 3000);
+    } else {
+      // Game has a winner after 4 halves
+      this.endGame();
+    }
   }
 
   private handleTimeUp() {
-    console.log("⏰ TIME UP! Handling end of regulation/overtime time");
-    console.log(`⏰ Score at time up: Red ${this.state.score.red} - Blue ${this.state.score.blue}`);
-    console.log(`⏰ Game status: ${this.state.status}`);
+    console.log("⏰ OVERTIME TIME UP! Handling end of overtime");
+    console.log(`⏰ Score at overtime end: Red ${this.state.score.red} - Blue ${this.state.score.blue}`);
     
     // Clear the game loop interval to stop the timer
     if (this.gameLoopInterval) {
@@ -465,61 +742,17 @@ export class SoccerGame {
       this.gameLoopInterval = null;
     }
 
-    if (this.state.score.red === this.state.score.blue) {
-      if (this.state.status !== "overtime") {
-        // First show regulation time stats before going to overtime
-        this.showRegulationTimeStats();
-        
-        // Start overtime after a brief delay
-        setTimeout(() => {
-          console.log("Starting overtime setup...");
-          this.state.status = "overtime";
-          this.world.chatManager.sendBroadcastMessage(
-            "Tie game, going to overtime!"
-          );
-          this.state.timeRemaining = 60; // 1 minute overtime
-          this.sendDataToAllPlayers({
-            type: "countdown",
-            count: "Overtime!"
-          });
-          this.sendDataToAllPlayers({
-            type: "game-state",
-            timeRemaining: this.state.timeRemaining,
-            score: this.state.score,
-            status: this.state.status,
-          });
+    // Pause the ticking audio
+    TICKING_AUDIO.pause();
 
-          setTimeout(() => {
-            console.log("Starting overtime game loop...");
-            this.sendDataToAllPlayers({
-              type: "countdown",
-              count: ""
-            });
-            
-            // Ensure all players are unfrozen for overtime
-            this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
-              if (entity instanceof SoccerPlayerEntity) {
-                entity.unfreeze();
-                console.log(`Unfroze ${entity.player.username} for overtime`);
-              }
-            });
-            
-            // Restart the game loop for overtime
-            this.gameLoopInterval = setInterval(() => {
-              this.gameLoop();
-            }, 1000);
-            console.log("Overtime game loop started with interval:", this.gameLoopInterval);
-          }, 2000);
-        }, 3000); // 3 second delay to show stats
-      } else {
-        // Overtime ended and still tied, finish the game
-        this.world.chatManager.sendBroadcastMessage(
-          "Overtime ended! Match ends in a tie!"
-        );
-        this.endGame();
-      }
+    if (this.state.score.red === this.state.score.blue) {
+      // Overtime ended and still tied, finish the game
+      this.world.chatManager.sendBroadcastMessage(
+        "Overtime ended! Match ends in a tie!"
+      );
+      this.endGame();
     } else {
-      // Game has a winner
+      // Game has a winner after overtime
       this.endGame();
     }
   }
@@ -757,26 +990,31 @@ export class SoccerGame {
     
     console.log(`🏁 Total player stats collected: ${playerStats.length}`);
 
-    // Calculate team statistics
-    const redTeamStats = playerStats.filter(p => p.team === 'red');
-    const blueTeamStats = playerStats.filter(p => p.team === 'blue');
+    // Calculate team statistics from player stats
+    const redTeamStats = this.world.entityManager
+      .getAllPlayerEntities()
+      .filter((entity) => entity instanceof SoccerPlayerEntity && entity.team === "red")
+      .map((player) => (player as SoccerPlayerEntity).getPlayerStats());
     
-    const teamStats = {
+    const blueTeamStats = this.world.entityManager
+      .getAllPlayerEntities()
+      .filter((entity) => entity instanceof SoccerPlayerEntity && entity.team === "blue")
+      .map((player) => (player as SoccerPlayerEntity).getPlayerStats());
+    
+    const finalStats = {
       red: {
         goals: redTeamStats.reduce((sum, p) => sum + p.goals, 0),
         tackles: redTeamStats.reduce((sum, p) => sum + p.tackles, 0),
         passes: redTeamStats.reduce((sum, p) => sum + p.passes, 0),
         shots: redTeamStats.reduce((sum, p) => sum + p.shots, 0),
-        saves: redTeamStats.reduce((sum, p) => sum + p.saves, 0),
-        distanceTraveled: redTeamStats.reduce((sum, p) => sum + p.distanceTraveled, 0)
+        possession: redTeamStats.reduce((sum, p) => sum + p.saves, 0) // Using saves as placeholder for possession
       },
       blue: {
         goals: blueTeamStats.reduce((sum, p) => sum + p.goals, 0),
         tackles: blueTeamStats.reduce((sum, p) => sum + p.tackles, 0),
         passes: blueTeamStats.reduce((sum, p) => sum + p.passes, 0),
         shots: blueTeamStats.reduce((sum, p) => sum + p.shots, 0),
-        saves: blueTeamStats.reduce((sum, p) => sum + p.saves, 0),
-        distanceTraveled: blueTeamStats.reduce((sum, p) => sum + p.distanceTraveled, 0)
+        possession: blueTeamStats.reduce((sum, p) => sum + p.saves, 0) // Using saves as placeholder for possession
       }
     };
 
@@ -801,7 +1039,7 @@ export class SoccerGame {
       redScore: this.state.score.red,
       blueScore: this.state.score.blue,
       playerStats,
-      teamStats,
+      teamStats: finalStats,
       winner,
       matchDuration: MATCH_DURATION - this.state.timeRemaining,
       wasOvertime
@@ -823,7 +1061,7 @@ export class SoccerGame {
       redScore: this.state.score.red,
       blueScore: this.state.score.blue,
       playerStats,
-      teamStats,
+      teamStats: finalStats,
       winner,
       matchDuration: MATCH_DURATION - this.state.timeRemaining,
       wasOvertime
@@ -914,9 +1152,19 @@ export class SoccerGame {
         blue: 0,
       },
       timeRemaining: MATCH_DURATION,
+      currentHalf: 1,
+      halfTimeRemaining: HALF_DURATION,
+      isHalftime: false,
+      halftimeTimeRemaining: 0,
+      matchDuration: MATCH_DURATION,
+      overtimeTimeRemaining: 0,
       maxPlayersPerTeam: 6,
       minPlayersPerTeam: 1,
-      kickoffTeam: null
+      kickoffTeam: null,
+      matchStats: {
+        redTeam: { goals: 0, shots: 0, passes: 0, tackles: 0, possession: 0 },
+        blueTeam: { goals: 0, shots: 0, passes: 0, tackles: 0, possession: 0 }
+      }
     };
 
     // Reset the ball position and ensure no attachments with proper physics reset

@@ -187,6 +187,12 @@
     animation: celebration 0.5s infinite;
   }
 
+  .phase-indicator.halftime {
+    background: #9966CC;
+    color: #ffffff;
+    animation: pulse 1s infinite;
+  }
+
   .phase-indicator.finished {
     background: #AA0000;
     color: #ffffff;
@@ -2299,6 +2305,16 @@
     to { transform: rotate(360deg); }
   }
 
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
   /* ===== ENHANCED PLAYER STATUS HUD STYLES ===== */
   .player-status-hud {
     position: fixed;
@@ -3455,15 +3471,25 @@
         phaseIndicator.className = "phase-indicator starting";
         break;
       case "playing":
-        const minutes = Math.floor(data.timeRemaining / 60);
-        const seconds = data.timeRemaining % 60;
-        timeLeft.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        phaseIndicator.textContent = "MATCH";
+        // Display half time remaining (updated from quarter time)
+        const halfMinutes = Math.floor(data.halfTimeRemaining / 60);
+        const halfSeconds = data.halfTimeRemaining % 60;
+        timeLeft.textContent = `${halfMinutes}:${halfSeconds.toString().padStart(2, '0')}`;
+        phaseIndicator.textContent = `HALF ${data.currentHalf}`;
         phaseIndicator.className = "phase-indicator playing";
         break;
+      case "halftime":
+        // Display halftime countdown
+        const halftimeMinutes = Math.floor(data.halftimeTimeRemaining / 60);
+        const halftimeSeconds = data.halftimeTimeRemaining % 60;
+        timeLeft.textContent = `${halftimeMinutes}:${halftimeSeconds.toString().padStart(2, '0')}`;
+        phaseIndicator.textContent = "HALFTIME";
+        phaseIndicator.className = "phase-indicator halftime";
+        break;
       case "overtime":
-        const otMinutes = Math.floor(data.timeRemaining / 60);
-        const otSeconds = data.timeRemaining % 60;
+        // Display overtime time remaining (using half time remaining for consistency)
+        const otMinutes = Math.floor(data.halfTimeRemaining / 60);
+        const otSeconds = data.halfTimeRemaining % 60;
         timeLeft.textContent = `${otMinutes}:${otSeconds.toString().padStart(2, '0')}`;
         phaseIndicator.textContent = "OVERTIME";
         phaseIndicator.className = "phase-indicator overtime";
@@ -4324,6 +4350,18 @@
       console.log("Action feedback received:", data);
       showActionFeedback(data.feedbackType, data.title, data.message);
     }
+
+    // Handle halftime stats display
+    if (data.type === "half-stats") {
+      console.log("Half-stats received:", data);
+      showHalftimeStats(data);
+    }
+
+    // Handle regular player stats updates
+    if (data.type === "player-stats-update") {
+      console.log("Player stats update received:", data);
+      updatePlayerStats(data.playerStats);
+    }
   });
 
   // ===== ENHANCED GOAL CELEBRATION =====
@@ -4821,10 +4859,215 @@
     playUISound("button-click");
   }
 
+  // Show halftime stats overlay
+  function showHalftimeStats(data) {
+    console.log("🏟️ Displaying halftime stats:", data);
+    
+    // Create halftime stats overlay
+    const halftimeOverlay = document.createElement('div');
+    halftimeOverlay.id = 'halftime-stats-overlay';
+    halftimeOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      animation: fadeIn 0.5s ease-in;
+    `;
+    
+    // Create stats content
+    const statsContent = document.createElement('div');
+    statsContent.style.cssText = `
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      max-width: 800px;
+      width: 90%;
+      animation: slideInUp 0.7s ease-out;
+    `;
+    
+    // Create header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      margin-bottom: 30px;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+      padding-bottom: 20px;
+    `;
+    
+    header.innerHTML = `
+      <h1 style="font-size: 36px; margin: 0 0 10px 0; color: #FFD700;">
+        🏟️ ${data.message || 'Halftime Stats'}
+      </h1>
+      <div style="font-size: 24px; color: #87CEEB;">
+        Score: Red ${data.redScore} - ${data.blueScore} Blue
+      </div>
+    `;
+    
+    // Create player stats section
+    const playerStatsSection = document.createElement('div');
+    playerStatsSection.style.cssText = `
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 30px;
+    `;
+    
+    // Filter players by team
+    const redPlayers = data.playerStats.filter(p => p.team === 'red');
+    const bluePlayers = data.playerStats.filter(p => p.team === 'blue');
+    
+    // Create team stats containers
+    const redTeamStats = document.createElement('div');
+    redTeamStats.style.cssText = `
+      background: rgba(220, 38, 38, 0.2);
+      border: 2px solid #dc2626;
+      border-radius: 15px;
+      padding: 20px;
+    `;
+    
+    const blueTeamStats = document.createElement('div');
+    blueTeamStats.style.cssText = `
+      background: rgba(37, 99, 235, 0.2);
+      border: 2px solid #2563eb;
+      border-radius: 15px;
+      padding: 20px;
+    `;
+    
+    // Red team header
+    redTeamStats.innerHTML = `
+      <h3 style="color: #dc2626; margin: 0 0 15px 0; font-size: 20px;">
+        🔴 Red Team
+      </h3>
+      ${redPlayers.map(player => `
+        <div style="background: rgba(255, 255, 255, 0.1); margin: 8px 0; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between;">
+          <div>
+            <div style="font-weight: bold; color: #FFD700;">${player.name}</div>
+            <div style="font-size: 12px; color: #87CEEB;">${player.role.replace(/-/g, ' ')}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 14px;">⚽ ${player.goals} | 🦵 ${player.tackles}</div>
+            <div style="font-size: 12px; color: #87CEEB;">${Math.round(player.distanceTraveled)}m</div>
+          </div>
+        </div>
+      `).join('')}
+    `;
+    
+    // Blue team header
+    blueTeamStats.innerHTML = `
+      <h3 style="color: #2563eb; margin: 0 0 15px 0; font-size: 20px;">
+        🔵 Blue Team
+      </h3>
+      ${bluePlayers.map(player => `
+        <div style="background: rgba(255, 255, 255, 0.1); margin: 8px 0; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between;">
+          <div>
+            <div style="font-weight: bold; color: #FFD700;">${player.name}</div>
+            <div style="font-size: 12px; color: #87CEEB;">${player.role.replace(/-/g, ' ')}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 14px;">⚽ ${player.goals} | 🦵 ${player.tackles}</div>
+            <div style="font-size: 12px; color: #87CEEB;">${Math.round(player.distanceTraveled)}m</div>
+          </div>
+        </div>
+      `).join('')}
+    `;
+    
+    // Add countdown timer
+    const countdownSection = document.createElement('div');
+    countdownSection.style.cssText = `
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      border: 2px solid rgba(255, 215, 0, 0.5);
+    `;
+    
+    countdownSection.innerHTML = `
+      <div style="font-size: 18px; color: #FFD700; margin-bottom: 10px;">
+        ⏱️ Halftime Break
+      </div>
+      <div id="halftime-countdown" style="font-size: 24px; font-weight: bold; color: white;">
+        2:00
+      </div>
+      <div style="font-size: 14px; color: #87CEEB; margin-top: 5px;">
+        Second half starting soon...
+      </div>
+    `;
+    
+    // Assemble the overlay
+    playerStatsSection.appendChild(redTeamStats);
+    playerStatsSection.appendChild(blueTeamStats);
+    
+    statsContent.appendChild(header);
+    statsContent.appendChild(playerStatsSection);
+    statsContent.appendChild(countdownSection);
+    
+    halftimeOverlay.appendChild(statsContent);
+    document.body.appendChild(halftimeOverlay);
+    
+    // Start countdown timer
+    startHalftimeCountdown();
+    
+    // Play halftime sound
+    playUISound("game-start");
+  }
+
+  // Start halftime countdown timer
+  function startHalftimeCountdown() {
+    const countdownElement = document.getElementById('halftime-countdown');
+    if (!countdownElement) return;
+    
+    // Listen for halftime countdown updates from server
+    const originalOnMessage = hytopia.onMessage;
+    let halftimeMessageHandler;
+    
+    halftimeMessageHandler = (data) => {
+      if (data.type === "game-state" && data.isHalftime && data.halftimeTimeRemaining !== undefined) {
+        const minutes = Math.floor(data.halftimeTimeRemaining / 60);
+        const seconds = data.halftimeTimeRemaining % 60;
+        countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Remove overlay when halftime ends
+        if (data.halftimeTimeRemaining <= 0 || !data.isHalftime) {
+          removeHalftimeStatsOverlay();
+        }
+      }
+    };
+    
+    // Add the handler temporarily
+    if (typeof hytopia !== 'undefined' && hytopia.onMessage) {
+      hytopia.onMessage(halftimeMessageHandler);
+    }
+  }
+
+  // Remove halftime stats overlay
+  function removeHalftimeStatsOverlay() {
+    const overlay = document.getElementById('halftime-stats-overlay');
+    if (overlay) {
+      overlay.style.animation = 'fadeOut 0.5s ease-out';
+      setTimeout(() => {
+        if (overlay.parentNode) {
+          document.body.removeChild(overlay);
+        }
+      }, 500);
+    }
+  }
+
   // Make functions globally accessible
   window.closeGameOverScreen = closeGameOverScreen;
   window.viewStatsToggle = viewStatsToggle;
   window.returnToLobby = returnToLobby;
+  window.showHalftimeStats = showHalftimeStats;
 
   // ===== ENSURE ALL ONCLICK FUNCTIONS ARE AVAILABLE =====
   // Make all functions globally accessible to prevent "function not defined" errors

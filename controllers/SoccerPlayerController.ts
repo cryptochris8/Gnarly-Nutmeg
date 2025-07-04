@@ -311,12 +311,16 @@ export default class PlayerEntityController extends BaseEntityController {
         return;
       }
 
-      // If stunned or frozen, ignore movement input
+      // Get game state to check for halftime
+      const gameState = sharedState.getGameState();
+      const isHalftime = gameState?.isHalftime || false;
+
+      // If stunned, frozen, or during halftime, ignore movement input
       const isStunned = entity.isStunned;
       const isTackling = entity.isTackling;
       const isFrozen = entity.isPlayerFrozen;
 
-      if (isStunned || isFrozen) {
+      if (isStunned || isFrozen || isHalftime) {
         input = {
           ...input,
           w: false,

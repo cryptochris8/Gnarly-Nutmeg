@@ -2,70 +2,78 @@
 // FIFA Mode: Realistic soccer simulation (uses existing settings - NEVER modified)
 // Arcade Mode: Enhanced gameplay with abilities and power-ups (completely separate)
 
+import { HALF_DURATION, TOTAL_HALVES, HALFTIME_DURATION } from './gameConfig';
+
 export enum GameMode {
   FIFA = "fifa",
   ARCADE = "arcade"
 }
 
-// FIFA Mode Configuration - Uses existing settings (PROTECTED - DO NOT MODIFY)
+// FIFA Mode Configuration - Realistic Soccer
 export const FIFA_MODE_CONFIG = {
-  mode: GameMode.FIFA,
-  name: "FIFA Mode",
-  description: "Realistic soccer simulation",
+  name: 'FIFA Mode',
+  description: 'Realistic soccer with professional rules and timing',
   
-  // Match settings
-  matchDuration: 5 * 60, // 5 minutes (current setting)
+  // Timing system - 2 halves of 5 minutes each
+  halfDuration: HALF_DURATION, // 5 minutes per half
+  totalHalves: TOTAL_HALVES, // 2 halves
+  halftimeDuration: HALFTIME_DURATION, // 2 minutes halftime break
   
-  // Features (FIFA mode has none of these)
-  enableAbilities: false,
-  enablePowerUps: false,
-  enableSpecialMoves: false,
-  enableParticleEffects: false,
+  // Realistic physics and gameplay
+  ballPhysics: {
+    damping: 0.95,
+    friction: 0.8,
+    bounciness: 0.6
+  },
   
-  // Physics (uses existing BALL_CONFIG - never modified)
-  useEnhancedPhysics: false,
+  playerSpeed: 1.0,
+  sprintMultiplier: 1.5,
   
-  // Audio (uses current system)
-  enhancedAudio: false,
+  // Professional soccer features
+  crowdAudio: true,
+  announcerCommentary: true,
+  realisticPhysics: true,
   
-  // UI (minimal, realistic)
-  showPowerUpHUD: false,
-  showAbilityIcons: false,
-  showStylePoints: false
-} as const;
+  // No arcade enhancements
+  powerUps: false,
+  specialAbilities: false,
+  enhancedPhysics: false
+};
 
-// Arcade Mode Configuration - Enhanced gameplay (SEPARATE from FIFA)
+// Arcade Mode Configuration - Enhanced Fun Soccer
 export const ARCADE_MODE_CONFIG = {
-  mode: GameMode.ARCADE,
-  name: "Arcade Mode",
-  description: "Fast-paced soccer with power-ups and abilities",
+  name: 'Arcade Mode',
+  description: 'Fast-paced soccer with power-ups and special abilities',
   
-  // Match settings (shorter, more action-packed)
-  matchDuration: 3 * 60, // 3 minutes for quick matches
+  // Timing system - Same 2 halves but faster pace
+  halfDuration: HALF_DURATION, // 5 minutes per half (consistent with FIFA)
+  totalHalves: TOTAL_HALVES, // 2 halves
+  halftimeDuration: HALFTIME_DURATION, // 2 minutes halftime break
   
-  // Enhanced features (only in arcade mode)
-  enableAbilities: true,
-  enablePowerUps: true,
-  enableSpecialMoves: true,
-  enableParticleEffects: true,
+  // Enhanced physics for arcade feel
+  ballPhysics: {
+    damping: 0.9,
+    friction: 0.6,
+    bounciness: 0.8
+  },
   
-  // Enhanced physics (separate from FIFA)
-  useEnhancedPhysics: true,
+  playerSpeed: 1.2,
+  sprintMultiplier: 2.0,
   
-  // Enhanced audio
-  enhancedAudio: true,
+  // Arcade features
+  crowdAudio: true,
+  announcerCommentary: false, // Focus on gameplay over commentary
+  realisticPhysics: false,
   
-  // Enhanced UI
-  showPowerUpHUD: true,
-  showAbilityIcons: true,
-  showStylePoints: true,
+  // Arcade enhancements
+  powerUps: true,
+  specialAbilities: true,
+  enhancedPhysics: true,
   
-  // Arcade-specific settings
-  powerUpSpawnInterval: 30, // seconds
-  abilityRespawnTime: 15, // seconds
-  maxPowerUpsOnField: 4,
-  stylePointMultiplier: 1.5
-} as const;
+  // Special arcade timing features
+  fastPacedGameplay: true,
+  quickRestarts: true
+};
 
 // Current game mode (defaults to FIFA for safety)
 let currentGameMode: GameMode = GameMode.FIFA;
