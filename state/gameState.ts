@@ -398,7 +398,7 @@ export class SoccerGame {
     }
 
     if (this.state.timeRemaining <= 0) {
-      console.log(`Time up! Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+      console.log(`⏰ GAME LOOP: Time up! Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
       this.handleTimeUp();
       TICKING_AUDIO.pause();
       return;
@@ -406,6 +406,12 @@ export class SoccerGame {
 
     if (this.state.status !== "goal-scored") {
       this.state.timeRemaining--;
+    }
+    
+    // Log every 30 seconds during regular time, every 10 seconds in overtime
+    const logInterval = this.state.status === "overtime" ? 10 : 30;
+    if (this.state.timeRemaining % logInterval === 0 && this.state.status !== "goal-scored") {
+      console.log(`⏰ GAME LOOP: ${this.state.timeRemaining}s remaining, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
     }
 
     if (this.state.timeRemaining === 5) {
@@ -437,6 +443,10 @@ export class SoccerGame {
   }
 
   private handleTimeUp() {
+    console.log("⏰ TIME UP! Handling end of regulation/overtime time");
+    console.log(`⏰ Score at time up: Red ${this.state.score.red} - Blue ${this.state.score.blue}`);
+    console.log(`⏰ Game status: ${this.state.status}`);
+    
     // Clear the game loop interval to stop the timer
     if (this.gameLoopInterval) {
       clearInterval(this.gameLoopInterval);
@@ -636,25 +646,38 @@ export class SoccerGame {
     this.state.score[team]++;
     console.log(`⚽ Goal scored! New score: Red ${this.state.score.red} - Blue ${this.state.score.blue}`);
 
-    // Send updated score immediately
-    this.sendDataToAllPlayers({
-      type: "game-state",
-      timeRemaining: this.state.timeRemaining,
-      score: this.state.score,
-      status: this.state.status,
-      kickoffTeam: this.state.kickoffTeam, // Also include kickoff team here
-    });
+    // Don't send game-state update here - the goal-scored event will handle score display
+    // This prevents conflicts with the UI scoreboard updates
+    console.log(`📊 Score updated internally - UI will receive score via goal-scored event`);
 
-    if (
-      this.state.status === "overtime" ||
-      Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 5
-    ) {
+    // Only end game in overtime if score difference is extreme (10+ goals)
+    // Or if it's a normal mercy rule but ONLY in the final 2 minutes
+    const finalTwoMinutes = this.state.timeRemaining <= 120; // 2 minutes = 120 seconds
+    const extremeScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 10;
+    const moderateScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 5;
+    
+    if (this.state.status === "overtime") {
+      // In overtime, only end if score difference becomes extreme (10+)
+      if (extremeScoreDifference) {
+        console.log(`🏁 Game ended due to extreme score difference in overtime: ${this.state.score.red}-${this.state.score.blue}`);
+        this.endGame();
+      }
+    } else if (extremeScoreDifference) {
+      // Extreme difference (10+ goals) ends game any time
+      console.log(`🏁 Game ended due to extreme score difference: ${this.state.score.red}-${this.state.score.blue}`);
+      this.endGame();
+    } else if (moderateScoreDifference && finalTwoMinutes) {
+      // Moderate difference (5+ goals) only ends game in final 2 minutes
+      console.log(`🏁 Game ended due to mercy rule in final minutes: ${this.state.score.red}-${this.state.score.blue} with ${this.state.timeRemaining}s remaining`);
       this.endGame();
     }
   }
 
   private endGame() {
-    console.log("Ending game");
+    console.log("🏁 ENDING GAME - Starting end game sequence");
+    console.log(`🏁 Final Score: Red ${this.state.score.red} - Blue ${this.state.score.blue}`);
+    console.log(`🏁 Time Remaining: ${this.state.timeRemaining} seconds`);
+    console.log(`🏁 Game Status: ${this.state.status}`);
 
     // Store whether this was an overtime game before changing status
     const wasOvertime = this.state.status === "overtime";
@@ -669,13 +692,22 @@ export class SoccerGame {
     this.state.status = "finished";
 
     // Collect comprehensive player stats
-    const playerStats = this.world.entityManager
-      .getAllPlayerEntities()
-      .filter(
-        (entity): entity is SoccerPlayerEntity =>
-          entity instanceof SoccerPlayerEntity
-      )
-      .map((player) => player.getPlayerStats());
+    const allEntities = this.world.entityManager.getAllPlayerEntities();
+    console.log(`🏁 Found ${allEntities.length} total player entities`);
+    
+    const soccerPlayerEntities = allEntities.filter(
+      (entity): entity is SoccerPlayerEntity =>
+        entity instanceof SoccerPlayerEntity
+    );
+    console.log(`🏁 Found ${soccerPlayerEntities.length} soccer player entities`);
+    
+    const playerStats = soccerPlayerEntities.map((player) => {
+      const stats = player.getPlayerStats();
+      console.log(`🏁 Collected stats for ${stats.name} (${stats.team}): ${stats.goals} goals, ${stats.tackles} tackles`);
+      return stats;
+    });
+    
+    console.log(`🏁 Total player stats collected: ${playerStats.length}`);
 
     // Calculate team statistics
     const redTeamStats = playerStats.filter(p => p.team === 'red');
@@ -716,7 +748,7 @@ export class SoccerGame {
     });
 
     // Send game over data to UI (DO NOT reset game automatically)
-    this.sendDataToAllPlayers({
+    const gameOverData = {
       type: "game-over",
       redScore: this.state.score.red,
       blueScore: this.state.score.blue,
@@ -725,7 +757,18 @@ export class SoccerGame {
       winner,
       matchDuration: MATCH_DURATION - this.state.timeRemaining,
       wasOvertime
+    };
+    
+    console.log("🏁 Sending game-over data to UI:", {
+      type: gameOverData.type,
+      scores: `${gameOverData.redScore}-${gameOverData.blueScore}`,
+      winner: gameOverData.winner,
+      playerStatsCount: gameOverData.playerStats.length,
+      matchDuration: gameOverData.matchDuration,
+      wasOvertime: gameOverData.wasOvertime
     });
+    
+    this.sendDataToAllPlayers(gameOverData);
 
     // Use type assertions for custom event name and payload
     this.world.emit("game-over" as any, {

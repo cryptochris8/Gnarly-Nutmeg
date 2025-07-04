@@ -670,10 +670,25 @@ export class SoccerGame {
       kickoffTeam: this.state.kickoffTeam, // Also include kickoff team here
     });
 
-    if (
-      this.state.status === "overtime" ||
-      Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 5
-    ) {
+    // Only end game in overtime if score difference is extreme (10+ goals)
+    // Or if it's a normal mercy rule but ONLY in the final 2 minutes
+    const finalTwoMinutes = this.state.timeRemaining <= 120; // 2 minutes = 120 seconds
+    const extremeScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 10;
+    const moderateScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 5;
+    
+    if (this.state.status === "overtime") {
+      // In overtime, only end if score difference becomes extreme (10+)
+      if (extremeScoreDifference) {
+        console.log(`🏁 Game ended due to extreme score difference in overtime: ${this.state.score.red}-${this.state.score.blue}`);
+        this.endGame();
+      }
+    } else if (extremeScoreDifference) {
+      // Extreme difference (10+ goals) ends game any time
+      console.log(`🏁 Game ended due to extreme score difference: ${this.state.score.red}-${this.state.score.blue}`);
+      this.endGame();
+    } else if (moderateScoreDifference && finalTwoMinutes) {
+      // Moderate difference (5+ goals) only ends game in final 2 minutes
+      console.log(`🏁 Game ended due to mercy rule in final minutes: ${this.state.score.red}-${this.state.score.blue} with ${this.state.timeRemaining}s remaining`);
       this.endGame();
     }
   }

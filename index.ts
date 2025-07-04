@@ -39,7 +39,8 @@ import {
   FIELD_MIN_Z,
   FIELD_MAX_Z,
   PASS_FORCE,
-  BALL_CONFIG
+  BALL_CONFIG,
+  MATCH_DURATION
 } from "./state/gameConfig";
 import SoccerPlayerEntity from "./entities/SoccerPlayerEntity";
 import AIPlayerEntity, { type SoccerAIRole } from "./entities/AIPlayerEntity";
@@ -554,18 +555,12 @@ startServer((world) => {
                 "1": false
               };
               
-              // Get the player's camera orientation
-              const cameraOrientation = {
-                yaw: player.camera.rotation.yaw || 0,
-                pitch: player.camera.rotation.pitch || 0
-              };
-              
-              // Call the controller's input handler directly
+              // Call the controller's input handler directly with default camera orientation
               if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
                 playerEntity.controller.tickWithPlayerInput(
                   playerEntity,
                   fakeInput,
-                  cameraOrientation,
+                  { yaw: 0, pitch: 0 }, // Default camera orientation for pass
                   16 // 16ms delta time (roughly 60fps)
                 );
                 
@@ -1142,6 +1137,58 @@ startServer((world) => {
           "Ball is not currently spawned"
         );
       }
+    });
+
+    // Add command to check end-game rules and timing
+    world.chatManager.registerCommand("/endgame", (player, args) => {
+      const state = game.getState();
+      const scoreDiff = Math.abs(state.score.red - state.score.blue);
+      const finalTwoMinutes = state.timeRemaining <= 120;
+      
+      world.chatManager.sendPlayerMessage(
+        player,
+        `=== END-GAME RULES STATUS ===`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Match Duration: ${MATCH_DURATION / 60} minutes (${MATCH_DURATION} seconds)`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Time Remaining: ${Math.floor(state.timeRemaining / 60)}:${(state.timeRemaining % 60).toString().padStart(2, '0')}`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Current Score: Red ${state.score.red} - ${state.score.blue} Blue`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Score Difference: ${scoreDiff} goals`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Final 2 Minutes: ${finalTwoMinutes ? "✅ YES" : "❌ NO"}`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `=== MERCY RULE CONDITIONS ===`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Moderate Mercy (5+ goal diff): Only triggers in final 2 minutes`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Current: ${scoreDiff >= 5 ? "✅ 5+ goal diff" : "❌ < 5 goal diff"} + ${finalTwoMinutes ? "✅ Final 2 min" : "❌ Not final 2 min"}`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Extreme Mercy (10+ goal diff): Triggers any time`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Current: ${scoreDiff >= 10 ? "✅ WOULD END GAME" : "❌ < 10 goal diff"}`
+      );
     });
 
     // Add command to show goal boundaries

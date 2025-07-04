@@ -62,7 +62,7 @@ export const AI_MIDFIELD_Z_BOUNDARY_MIN = GAME_CONFIG.AI_MIDFIELD_Z_BOUNDARY_MIN
 export const MAX_PLAYERS_PER_TEAM = GAME_CONFIG.MAX_PLAYERS_PER_TEAM;
 
 // Shared game constants
-export const MATCH_DURATION = 5 * 60; // 5 minutes
+export const MATCH_DURATION = 8 * 60; // 8 minutes (increased from 5 for better gameplay)
 
 export const PASS_FORCE = 5;
 
