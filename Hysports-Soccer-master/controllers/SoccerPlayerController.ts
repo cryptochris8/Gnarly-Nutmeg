@@ -56,6 +56,12 @@ const BALL_VELOCITY_THRESHOLD = 0.1; // Minimum velocity to consider ball moving
 const BALL_STUCK_CHECK_INTERVAL = 2000; // Check every 2 seconds
 const BALL_STUCK_TIME_THRESHOLD = 3000; // Consider ball stuck after 3 seconds
 
+// Add constants for goalkeeper header mechanics
+const GOALKEEPER_HEADER_RANGE = 3.5; // Range for goalkeeper headers
+const GOALKEEPER_HEADER_FORCE = 15; // Force applied during headers
+const HIGH_BALL_THRESHOLD = 2.0; // Height threshold for considering ball "high"
+const GOALKEEPER_JUMP_BOOST = 2.0; // Extra jump velocity for goalkeepers
+
 export default class PlayerEntityController extends BaseEntityController {
   /**
    * A function allowing custom logic to determine if the entity can walk.
@@ -97,7 +103,10 @@ export default class PlayerEntityController extends BaseEntityController {
   private _stepAudio: Audio | undefined;
 
   /** @internal */
-  private _groundContactCount: number = 0;
+  private _groundContactCount: number = 0
+  
+  /** @internal */
+  private _lastHeaderTime: number = 0;
 
   /** @internal */
   private _platform: Entity | undefined;
@@ -610,16 +619,70 @@ export default class PlayerEntityController extends BaseEntityController {
         console.log(`Player ${entity.player?.username || 'unknown'} velocity limited to prevent instability`);
       }
 
-      if (sp && this.canJump(this) && !this._holdingQ && !hasBall) {
-        if (
-          this.isGrounded &&
-          currentVelocity.y > -0.001 &&
-          currentVelocity.y <= 3
-        ) {
+      // Enhanced jump mechanics with goalkeeper header support
+      if (sp && this.canJump(this) && !this._holdingQ) {
+        const isGoalkeeper = (entity as any).aiRole === 'goalkeeper' || 
+                            (entity as any).role === 'goalkeeper';
+        
+        // Check for goalkeeper header opportunity
+        if (isGoalkeeper && !hasBall) {
+          const ball = sharedState.getSoccerBall();
+          if (ball) {
+            const ballPosition = ball.position;
+            const playerPosition = entity.position;
+            
+            // Calculate distance to ball
+            const distanceToBall = Math.sqrt(
+              Math.pow(ballPosition.x - playerPosition.x, 2) + 
+              Math.pow(ballPosition.z - playerPosition.z, 2)
+            );
+            
+            // Check if ball is high enough and within range for header
+            const isHighBall = ballPosition.y > playerPosition.y + HIGH_BALL_THRESHOLD;
+            const isInHeaderRange = distanceToBall <= GOALKEEPER_HEADER_RANGE;
+            
+            if (isHighBall && isInHeaderRange) {
+              // Enhanced jump for goalkeeper headers
+              if (this.isGrounded && currentVelocity.y > -0.001 && currentVelocity.y <= 3) {
+                const enhancedJumpVelocity = this.jumpVelocity * GOALKEEPER_JUMP_BOOST;
+                targetVelocities.y = enhancedJumpVelocity;
+                
+                // Apply enhanced vertical impulse for goalkeeper jump
+                const jumpImpulseY = enhancedJumpVelocity * mass;
+                entity.applyImpulse({ x: 0, y: jumpImpulseY, z: 0 });
+                
+                // Calculate direction toward ball for header
+                const directionToBall = {
+                  x: ballPosition.x - playerPosition.x,
+                  z: ballPosition.z - playerPosition.z
+                };
+                const distance = Math.sqrt(directionToBall.x * directionToBall.x + directionToBall.z * directionToBall.z);
+                
+                if (distance > 0) {
+                  const normalizedDirection = {
+                    x: directionToBall.x / distance,
+                    z: directionToBall.z / distance
+                  };
+                  
+                  // Perform header after a short delay to simulate jump timing
+                  setTimeout(() => {
+                    this.performGoalkeeperHeader(entity, ball, normalizedDirection);
+                  }, 200); // 200ms delay for realistic header timing
+                }
+                
+                console.log(`Goalkeeper ${entity.player?.username || 'AI'} jumping for header!`);
+              }
+              return; // Skip normal jump processing for goalkeeper headers
+            }
+          }
+        }
+        
+        // Normal jump processing for non-goalkeepers or when no header opportunity
+        if (!hasBall && this.isGrounded && currentVelocity.y > -0.001 && currentVelocity.y <= 3) {
           targetVelocities.y = this.jumpVelocity;
-           // Apply vertical impulse for jump
-           const jumpImpulseY = this.jumpVelocity * mass;
-           entity.applyImpulse({ x: 0, y: jumpImpulseY, z: 0 });
+          // Apply vertical impulse for jump
+          const jumpImpulseY = this.jumpVelocity * mass;
+          entity.applyImpulse({ x: 0, y: jumpImpulseY, z: 0 });
         }
       }
 
@@ -1242,5 +1305,94 @@ export default class PlayerEntityController extends BaseEntityController {
     } catch (error) {
       console.error(`Error in directional pass: ${error}`);
     }
+  }
+  
+  /**
+   * Performs a goalkeeper header to deflect or catch high shots
+   * @param entity - The goalkeeper entity
+   * @param ball - The soccer ball entity
+   * @param direction - The direction toward the ball
+   */
+  private performGoalkeeperHeader(entity: PlayerEntity, ball: any, direction: { x: number; z: number }) {
+    const currentTime = Date.now();
+    
+    // Prevent header spam - minimum 500ms between headers
+    if (currentTime - this._lastHeaderTime < 500) {
+      return;
+    }
+    
+    this._lastHeaderTime = currentTime;
+    
+    // Calculate header force based on ball velocity and position
+    const ballVelocity = ball.linearVelocity;
+    const ballSpeed = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
+    
+    // Determine header action based on ball speed and goalkeeper position
+    if (ballSpeed > 6.0) {
+      // Fast shot - deflect away from goal
+      const deflectionDirection = this.calculateDeflectionDirection(entity, ball);
+      const deflectionForce = GOALKEEPER_HEADER_FORCE * 1.2; // Extra force for fast shots
+      
+      ball.setLinearVelocity({
+        x: deflectionDirection.x * deflectionForce,
+        y: Math.max(3.0, ballVelocity.y * 0.3), // Maintain some upward velocity
+        z: deflectionDirection.z * deflectionForce
+      });
+      
+      // Play deflection sound effect if available
+      console.log(`Goalkeeper ${entity.player?.username || 'AI'} deflected a fast shot!`);
+      
+    } else {
+      // Slower shot - attempt to catch or control
+      const catchDirection = {
+        x: -ballVelocity.x * 0.8, // Absorb most of the ball's velocity
+        y: Math.max(1.0, -Math.abs(ballVelocity.y) * 0.5), // Slight upward movement
+        z: -ballVelocity.z * 0.8
+      };
+      
+      ball.setLinearVelocity(catchDirection);
+      
+      console.log(`Goalkeeper ${entity.player?.username || 'AI'} caught the ball with a header!`);
+    }
+  }
+  
+  /**
+   * Calculates the optimal deflection direction for goalkeeper headers
+   * @param entity - The goalkeeper entity
+   * @param ball - The soccer ball entity
+   * @returns Direction vector for ball deflection
+   */
+  private calculateDeflectionDirection(entity: PlayerEntity, ball: any): { x: number; z: number } {
+    const soccerEntity = entity as any; // Cast to access team property
+    const goalCenterX = soccerEntity.team === 'red' ? -37 : 52; // Goal line X coordinates
+    const goalCenterZ = 0; // Center of goal
+    
+    // Calculate direction away from goal
+    const ballToGoal = {
+      x: goalCenterX - ball.position.x,
+      z: goalCenterZ - ball.position.z
+    };
+    
+    const distance = Math.sqrt(ballToGoal.x * ballToGoal.x + ballToGoal.z * ballToGoal.z);
+    
+    if (distance === 0) {
+      // Ball is at goal center, deflect to the side
+      return { x: 0, z: Math.random() > 0.5 ? 1 : -1 };
+    }
+    
+    // Deflect perpendicular to the ball-to-goal direction
+    const perpendicular = {
+      x: -ballToGoal.z / distance,
+      z: ballToGoal.x / distance
+    };
+    
+    // Add some randomness for realistic deflections
+    const randomFactor = 0.3;
+    const randomAngle = (Math.random() - 0.5) * randomFactor;
+    
+    return {
+      x: perpendicular.x * Math.cos(randomAngle) - perpendicular.z * Math.sin(randomAngle),
+      z: perpendicular.x * Math.sin(randomAngle) + perpendicular.z * Math.cos(randomAngle)
+    };
   }
 }

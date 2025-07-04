@@ -63,15 +63,28 @@ export default class SoccerPlayerEntity extends PlayerEntity {
     this.role = role; // Assign role
     // create random id for player
     this.playerId = Math.random().toString(36).substring(2, 15);
-    this.setController(
-      new CustomSoccerPlayer({
-        canJump: () => true,
-        canWalk: () => true,
-        canRun: () => true,
-        runVelocity: 5.5,
-        walkVelocity: 3.5,
-      })
-    );
+    // Set goalkeeper-specific speed boost for better shot blocking
+    if (role === 'goalkeeper') {
+      this.setController(
+        new CustomSoccerPlayer({
+          canJump: () => true,
+          canWalk: () => true,
+          canRun: () => true,
+          runVelocity: 7.0,    // Increased from 5.5 for goalkeepers
+          walkVelocity: 4.5,   // Increased from 3.5 for goalkeepers
+        })
+      );
+    } else {
+      this.setController(
+        new CustomSoccerPlayer({
+          canJump: () => true,
+          canWalk: () => true,
+          canRun: () => true,
+          runVelocity: 5.5,
+          walkVelocity: 3.5,
+        })
+      );
+    }
     
     // Don't set camera properties immediately, only on EntityEvent.SPAWN
     // This ensures the entity is fully registered before attaching the camera

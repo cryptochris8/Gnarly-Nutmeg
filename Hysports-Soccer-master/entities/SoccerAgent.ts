@@ -684,15 +684,40 @@ export class SoccerAgent {
     switch(this.entity.aiRole) {
       case 'goalkeeper':
         const distanceToBallGK = ball ? this.entity.distanceBetween(this.entity.position, ballPos) : Infinity;
-        const gkSafeZoneRadius = (roleDef.preferredArea.maxX || 5) * 1.5;
+        const gkSafeZoneRadius = (roleDef.preferredArea.maxX || 12) * 1.5; // Increased from 5 to 12
         const gkInterceptReach = roleDef.interceptDistance * 1.2;
         
+        // Get ball velocity for enhanced positioning
+        const ballVelocity = ball ? ball.linearVelocity : { x: 0, y: 0, z: 0 };
+        const ballSpeed = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
+        
+        // Enhanced shot detection
+        const isMovingTowardsGoal = this.entity.team === 'red' ? ballVelocity.x < -2 : ballVelocity.x > 2;
+        const isFastShot = ballSpeed > 8.0;
+        const isMediumShot = ballSpeed > 5.0;
+        
         // Base position is always the center of goal
-        let gkBaseX = ownGoalLineX + (2 * direction); // Slightly in front of goal line
+        let gkBaseX = ownGoalLineX + (3 * direction); // Increased from 2 to 3 units in front of goal line
         let gkBaseZ = AI_FIELD_CENTER_Z;
         
-        // If ball is closer than safe zone AND within intercept reach, position to block
-        if (distanceToBallGK < gkSafeZoneRadius && distanceToBallGK < gkInterceptReach) {
+        // Enhanced positioning logic based on ball speed and direction
+        if (isFastShot && isMovingTowardsGoal) {
+          // Aggressive positioning for fast shots - use predictive positioning
+          const predictionTime = 0.4;
+          const predictedBallPos = {
+            x: ballPos.x + (ballVelocity.x * predictionTime),
+            z: ballPos.z + (ballVelocity.z * predictionTime)
+          };
+          
+          // Position to cut off the angle to predicted ball position
+          const ballToGoalZ = AI_FIELD_CENTER_Z - predictedBallPos.z;
+          const optimalZ = AI_FIELD_CENTER_Z + (ballToGoalZ * 0.5);
+          
+          // Clamp to stay within enhanced goal area
+          const maxGoalWidth = 9; // Increased from default
+          gkBaseZ = Math.max(AI_FIELD_CENTER_Z - maxGoalWidth, Math.min(AI_FIELD_CENTER_Z + maxGoalWidth, optimalZ));
+          
+        } else if (distanceToBallGK < gkSafeZoneRadius && distanceToBallGK < gkInterceptReach) {
           // Position between ball and center of goal for optimal blocking angle
           const ballToGoalX = ownGoalLineX - ballPos.x;
           const ballToGoalZ = AI_FIELD_CENTER_Z - ballPos.z;
@@ -704,12 +729,12 @@ export class SoccerAgent {
             const normZ = ballToGoalZ / distance;
             
             // Position along this vector, closer to goal
-            gkBaseX = ownGoalLineX + (normX * 2); // Stay 2 units in front of goal line
-            gkBaseZ = AI_FIELD_CENTER_Z + (normZ * 2);
+            gkBaseX = ownGoalLineX + (normX * 3); // Increased from 2 to 3 units in front of goal line
+            gkBaseZ = AI_FIELD_CENTER_Z + (normZ * 3); // Increased from 2 to 3 for better coverage
           }
         } else {
-          // Ball is further away - position slightly toward ball side
-          const zOffset = Math.min(3, Math.max(-3, (ballPos.z - AI_FIELD_CENTER_Z) * 0.3));
+          // Ball is further away - enhanced positioning toward ball side
+          const zOffset = Math.min(4, Math.max(-4, (ballPos.z - AI_FIELD_CENTER_Z) * 0.4)); // Increased response
           gkBaseZ = AI_FIELD_CENTER_Z + zOffset;
         }
         

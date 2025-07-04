@@ -73,15 +73,15 @@ export const ROLE_DEFINITIONS: Record<SoccerAIRole, RoleDefinition> = {
     defensiveContribution: 10,
     offensiveContribution: 1,
     preferredArea: {
-      minX: -8,  // Goalkeeper box area - 8 units from goal line
-      maxX: 8,   // Can come out 8 units from goal line
-      minZ: -12, // Goal width coverage (adjusted to field center Z=-3)
-      maxZ: 6    // Goal width coverage (adjusted to field center Z=-3)
+      minX: -12,  // Increased from -8 to -12 for better coverage
+      maxX: 12,   // Increased from 8 to 12 for better coverage
+      minZ: -15,  // Increased goal width coverage
+      maxZ: 9     // Increased goal width coverage
     },
-    pursuitTendency: 0.4,       // Increased to retrieve balls more often
-    positionRecoverySpeed: 0.95, // Keep fast return to position
+    pursuitTendency: 0.7,       // Increased from 0.4 for more aggressive ball pursuit
+    positionRecoverySpeed: 1.2, // Increased from 0.95 for faster return to position
     supportDistance: 0.5,        // Stays close to goal
-    interceptDistance: 10        // Increased to reach more balls
+    interceptDistance: 18        // Increased from 10 to 18 for better reach
   },
   'left-back': {
     name: 'Left Back',
@@ -649,16 +649,102 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   }
   
   /**
+   * Enhanced predictive positioning system for goalkeepers
+   * Calculates optimal position based on ball velocity and trajectory
+   */
+  private calculatePredictiveGoalkeeperPosition(ballPosition: Vector3Like, ballVelocity: Vector3Like): Vector3Like {
+    const ball = sharedState.getSoccerBall();
+    if (!ball) return this.position;
+
+    // Predict where ball will be in 0.5 seconds
+    const predictionTime = 0.5;
+    const predictedBallPos = {
+      x: ballPosition.x + (ballVelocity.x * predictionTime),
+      y: ballPosition.y + (ballVelocity.y * predictionTime),
+      z: ballPosition.z + (ballVelocity.z * predictionTime)
+    };
+
+    // Calculate goal center position
+    const goalCenterX = this.team === 'red' ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+    const goalCenterZ = AI_FIELD_CENTER_Z;
+    
+    // Position to cut off the angle between predicted ball position and goal center
+    const direction = this.team === 'red' ? 1 : -1;
+    const interceptX = goalCenterX + (3 * direction); // Stay 3 units in front of goal line
+    
+    // Calculate Z position to cut off shooting angle
+    const ballToGoalZ = goalCenterZ - predictedBallPos.z;
+    const optimalZ = goalCenterZ + (ballToGoalZ * 0.4); // Position 40% toward ball's Z
+    
+    // Clamp Z position to stay within goal area
+    const maxGoalWidth = 8;
+    const clampedZ = Math.max(goalCenterZ - maxGoalWidth, Math.min(goalCenterZ + maxGoalWidth, optimalZ));
+    
+    return { x: interceptX, y: this.position.y, z: clampedZ };
+  }
+
+  /**
+   * Check if ball is heading towards goal based on velocity
+   */
+  private isBallHeadingTowardsGoal(ballPosition: Vector3Like, ballVelocity: Vector3Like): boolean {
+    const goalCenterX = this.team === 'red' ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+    const goalCenterZ = AI_FIELD_CENTER_Z;
+    
+    // Check if ball is moving towards goal X coordinate
+    const isMovingTowardsGoalX = this.team === 'red' ? ballVelocity.x < -2 : ballVelocity.x > 2;
+    
+    // Check if ball is within goal Z range or moving towards it
+    const goalZMin = goalCenterZ - 6;
+    const goalZMax = goalCenterZ + 6;
+    const isInGoalZRange = ballPosition.z >= goalZMin && ballPosition.z <= goalZMax;
+    
+    return isMovingTowardsGoalX && isInGoalZRange;
+  }
+
+  /**
+   * Apply rapid response movement for fast incoming shots
+   */
+  private applyRapidResponse(ballVelocity: Vector3Like): void {
+    const ballSpeed = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
+    
+    if (ballSpeed > 8.0) { // Fast shot incoming
+      // Temporarily boost movement speed for urgent response
+      const currentVelocity = this.linearVelocity;
+      this.setLinearVelocity({
+        x: currentVelocity.x * 1.4,
+        y: currentVelocity.y,
+        z: currentVelocity.z * 1.4
+      });
+      
+      // Play diving animation (using kick as substitute)
+      if (this.isSpawned) {
+        this.startModelOneshotAnimations(['kick']);
+        
+        // Stop the animation after a short duration
+        setTimeout(() => {
+          if (this.isSpawned) {
+            this.stopModelAnimations(['kick']);
+          }
+        }, 800);
+      }
+    }
+  }
+
+  /**
    * Decision making for Goalkeeper
-   * Stays near goal line (X-axis), moves laterally (Z-axis) with ball Z, comes out for close balls.
-   * Enhanced to match true goalkeeper positioning and behavior.
+   * Enhanced with predictive positioning, shot detection, and rapid response
    */
   private goalkeeperDecision(ballPosition: Vector3Like, myPosition: Vector3Like, hasBall: boolean, goalLineX: number) {
     const roleDefinition = ROLE_DEFINITIONS['goalkeeper'];
+    const ball = sharedState.getSoccerBall();
+    
+    // Get ball velocity for enhanced decision making
+    const ballVelocity = ball ? ball.linearVelocity : { x: 0, y: 0, z: 0 };
+    const ballSpeed = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
     
     // Define goal width and penalty area radius
     const goalWidth = 10;
-    const penaltyAreaRadius = 15;
+    const penaltyAreaRadius = 18; // Increased from 15 for better coverage
 
     // Get distance from goal line to ball
     const distanceFromGoalToBall = Math.abs(ballPosition.x - goalLineX);
@@ -668,6 +754,16 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     // Distance from goalkeeper to ball
     const distanceToBall = this.distanceBetween(ballPosition, myPosition);
+    
+    // Enhanced shot detection
+    const isShotOnGoal = this.isBallHeadingTowardsGoal(ballPosition, ballVelocity);
+    const isFastShot = ballSpeed > 8.0;
+    const isMediumShot = ballSpeed > 5.0;
+    
+    // Apply rapid response for fast shots
+    if (isFastShot && isShotOnGoal) {
+      this.applyRapidResponse(ballVelocity);
+    }
     
     // New: Check if the ball is in a corner
     const isInCorner = (
@@ -938,29 +1034,34 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
         }
       }
     } 
-    // Default positioning - stay on goal line and track ball Z position
+    // Enhanced positioning system based on ball speed and trajectory
     else {
       // Reset possession timer when not having the ball
       this.ballPossessionStartTime = null;
       
-      // Position along goal line based on ball position
-      // Use angle-based positioning for better positional play
-      // This calculates the angle of the ball from the center of goal
-      const ballAngle = Math.atan2(
-        ballPosition.z - AI_FIELD_CENTER_Z,
-        ballPosition.x - goalLineX
-      );
-      
-      // Calculate Z position on goal line based on angle
-      // Use a dampening factor to prevent overreaction to wide positions
-      const angleResponse = 0.7; // Lower = less movement toward sides
-      const targetZ = AI_FIELD_CENTER_Z + Math.sin(ballAngle) * (goalWidth/2) * angleResponse;
-      
-      this.targetPosition = {
-        x: goalLineX + (this.team === 'red' ? 1 : -1), // Slightly off goal line
-        y: myPosition.y,
-        z: targetZ
-      };
+      // Use predictive positioning for fast shots or balls heading towards goal
+      if ((isMediumShot && isShotOnGoal) || (ballSpeed > 3.0 && distanceToBall < 20)) {
+        // Use predictive positioning for better shot blocking
+        this.targetPosition = this.calculatePredictiveGoalkeeperPosition(ballPosition, ballVelocity);
+      } else {
+        // Standard positioning - stay on goal line and track ball Z position
+        // Use angle-based positioning for better positional play
+        const ballAngle = Math.atan2(
+          ballPosition.z - AI_FIELD_CENTER_Z,
+          ballPosition.x - goalLineX
+        );
+        
+        // Calculate Z position on goal line based on angle
+        // Enhanced response factor for better coverage
+        const angleResponse = 0.8; // Increased from 0.7 for better movement
+        const targetZ = AI_FIELD_CENTER_Z + Math.sin(ballAngle) * (goalWidth/2) * angleResponse;
+        
+        this.targetPosition = {
+          x: goalLineX + (this.team === 'red' ? 1 : -1), // Slightly off goal line
+          y: myPosition.y,
+          z: targetZ
+        };
+      }
     }
     
     // Ensure position is within the role's preferred area
