@@ -14,6 +14,17 @@ export class FIFACrowdManager {
   private chantInterval: Timer | null = null;
   private isActive: boolean = false;
   
+  // Voice management system to prevent overlapping announcer audio
+  private currentAnnouncerAudio: Audio | null = null;
+  private isAnnouncerSpeaking: boolean = false;
+  private announcerQueue: Array<{
+    type: string;
+    audioUri: string;
+    priority: number;
+    volume: number;
+  }> = [];
+  private queueProcessorInterval: Timer | null = null;
+  
   // Audio collections based on available files
   private crowdSounds = {
     ambient: [
@@ -66,6 +77,9 @@ export class FIFACrowdManager {
   constructor(world: World) {
     this.world = world;
     console.log("FIFA Crowd Manager initialized");
+    
+    // Start the announcer queue processor
+    this.startQueueProcessor();
   }
 
   /**
@@ -113,6 +127,16 @@ export class FIFACrowdManager {
       clearTimeout(this.chantInterval);
       this.chantInterval = null;
     }
+    
+    // Stop current announcer audio and clear queue
+    if (this.currentAnnouncerAudio) {
+      this.currentAnnouncerAudio.pause();
+      this.currentAnnouncerAudio = null;
+    }
+    this.isAnnouncerSpeaking = false;
+    this.announcerQueue = [];
+    
+    // Note: Don't stop queue processor as it should run continuously
   }
 
   /**
@@ -174,7 +198,7 @@ export class FIFACrowdManager {
 
     console.log("🥅 Playing FIFA crowd goal reaction");
     
-    // Play crowd cheer
+    // Play crowd cheer (immediate, no queue needed for crowd sounds)
     const goalCheer = new Audio({
       uri: this.crowdSounds.reactions.goalCheer,
       loop: false,
@@ -182,20 +206,9 @@ export class FIFACrowdManager {
     });
     goalCheer.play(this.world);
 
-    // Delay announcer commentary slightly
-    setTimeout(() => {
-      const announcerClips = this.crowdSounds.announcer.goals;
-      
-      const randomAnnouncer = this.getRandomSound(announcerClips);
-      const announcerAudio = new Audio({
-        uri: randomAnnouncer,
-        loop: false,
-        volume: 0.6,
-      });
-      announcerAudio.play(this.world);
-      
-      console.log(`📻 Playing announcer: ${randomAnnouncer.split('/').pop()}`);
-    }, 1500); // 1.5 second delay for realistic timing
+    // Queue announcer commentary with high priority
+    const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.goals);
+    this.queueAnnouncement("goal", randomAnnouncer, 100, 0.6); // Priority 100 = highest
   }
 
   /**
@@ -214,19 +227,10 @@ export class FIFACrowdManager {
     });
     reactionAudio.play(this.world);
 
-    // Sometimes add announcer commentary
+    // Sometimes add announcer commentary with medium priority
     if (Math.random() < 0.6) { // 60% chance
-      setTimeout(() => {
-        const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.nearMiss);
-        const announcerAudio = new Audio({
-          uri: randomAnnouncer,
-          loop: false,
-          volume: 0.5,
-        });
-        announcerAudio.play(this.world);
-        
-        console.log(`📻 Playing near miss announcer: ${randomAnnouncer.split('/').pop()}`);
-      }, 800);
+      const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.nearMiss);
+      this.queueAnnouncement("near-miss", randomAnnouncer, 60, 0.5); // Priority 60 = medium
     }
   }
 
@@ -246,18 +250,9 @@ export class FIFACrowdManager {
     });
     applauseAudio.play(this.world);
 
-    // Add save commentary
-    setTimeout(() => {
-      const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.saves);
-      const announcerAudio = new Audio({
-        uri: randomAnnouncer,
-        loop: false,
-        volume: 0.5,
-      });
-      announcerAudio.play(this.world);
-      
-      console.log(`📻 Playing save announcer: ${randomAnnouncer.split('/').pop()}`);
-    }, 1200);
+    // Queue save commentary with medium-high priority
+    const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.saves);
+    this.queueAnnouncement("save", randomAnnouncer, 70, 0.5); // Priority 70 = medium-high
   }
 
   /**
@@ -268,15 +263,9 @@ export class FIFACrowdManager {
 
     console.log("🔥 Playing FIFA momentum announcement");
     
+    // Queue momentum commentary with high priority (but lower than goals)
     const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.momentum);
-    const announcerAudio = new Audio({
-      uri: randomAnnouncer,
-      loop: false,
-      volume: 0.6,
-    });
-    announcerAudio.play(this.world);
-    
-    console.log(`📻 Playing momentum announcer: ${randomAnnouncer.split('/').pop()}`);
+    this.queueAnnouncement("momentum", randomAnnouncer, 90, 0.6); // Priority 90 = high
   }
 
   /**
@@ -295,18 +284,9 @@ export class FIFACrowdManager {
     });
     foulAudio.play(this.world);
 
-    // Then play red card announcement
-    setTimeout(() => {
-      const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.redCard);
-      const announcerAudio = new Audio({
-        uri: randomAnnouncer,
-        loop: false,
-        volume: 0.7,
-      });
-      announcerAudio.play(this.world);
-      
-      console.log(`📻 Playing red card announcer: ${randomAnnouncer.split('/').pop()}`);
-    }, 1500);
+    // Queue red card announcement with very high priority
+    const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.redCard);
+    this.queueAnnouncement("red-card", randomAnnouncer, 95, 0.7); // Priority 95 = very high
   }
 
   /**
@@ -317,15 +297,9 @@ export class FIFACrowdManager {
 
     console.log("🏁 Playing FIFA game end announcement");
     
+    // Queue game end announcement with highest priority
     const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.gameEnd);
-    const announcerAudio = new Audio({
-      uri: randomAnnouncer,
-      loop: false,
-      volume: 0.7,
-    });
-    announcerAudio.play(this.world);
-    
-    console.log(`📻 Playing game end announcer: ${randomAnnouncer.split('/').pop()}`);
+    this.queueAnnouncement("game-end", randomAnnouncer, 110, 0.7); // Priority 110 = maximum
   }
 
   /**
@@ -352,15 +326,9 @@ export class FIFACrowdManager {
 
     console.log("🏁 Playing FIFA game start announcement");
     
+    // Queue game start announcement with very high priority
     const randomAnnouncer = this.getRandomSound(this.crowdSounds.announcer.gameStart);
-    const gameStartAudio = new Audio({
-      uri: randomAnnouncer,
-      loop: false,
-      volume: 0.7,
-    });
-    gameStartAudio.play(this.world);
-    
-    console.log(`📻 Playing game start announcer: ${randomAnnouncer.split('/').pop()}`);
+    this.queueAnnouncement("game-start", randomAnnouncer, 105, 0.7); // Priority 105 = very high
   }
 
   /**
@@ -389,5 +357,118 @@ export class FIFACrowdManager {
    */
   public isActivated(): boolean {
     return this.isActive;
+  }
+
+  /**
+   * Check if an announcer is currently speaking
+   */
+  public isAnnouncerBusy(): boolean {
+    return this.isAnnouncerSpeaking;
+  }
+
+  /**
+   * Get the current announcer queue status
+   */
+  public getQueueStatus(): { queueLength: number; isPlaying: boolean; currentType?: string } {
+    return {
+      queueLength: this.announcerQueue.length,
+      isPlaying: this.isAnnouncerSpeaking,
+      currentType: this.isAnnouncerSpeaking ? "announcer-speaking" : undefined
+    };
+  }
+
+  /**
+   * Clear the announcer queue (for testing/debugging)
+   */
+  public clearAnnouncerQueue(): void {
+    console.log(`🎙️ Clearing announcer queue (${this.announcerQueue.length} items)`);
+    this.announcerQueue = [];
+    
+    // Also stop current announcer if playing
+    if (this.currentAnnouncerAudio) {
+      this.currentAnnouncerAudio.pause();
+      this.currentAnnouncerAudio = null;
+      this.isAnnouncerSpeaking = false;
+      console.log(`🎙️ Stopped current announcer audio`);
+    }
+  }
+
+  /**
+   * Start the announcer queue processor to manage voice overlap
+   */
+  private startQueueProcessor(): void {
+    this.queueProcessorInterval = setInterval(() => {
+      this.processAnnouncerQueue();
+    }, 500); // Check every 500ms
+  }
+
+  /**
+   * Process the announcer queue to ensure only one voice plays at a time
+   */
+  private processAnnouncerQueue(): void {
+    // If announcer is currently speaking, wait
+    if (this.isAnnouncerSpeaking) {
+      return;
+    }
+
+    // If queue is empty, nothing to do
+    if (this.announcerQueue.length === 0) {
+      return;
+    }
+
+    // Sort queue by priority (higher number = higher priority)
+    this.announcerQueue.sort((a, b) => b.priority - a.priority);
+
+    // Get the highest priority announcement
+    const nextAnnouncement = this.announcerQueue.shift();
+    if (!nextAnnouncement) return;
+
+    console.log(`🎙️ Playing queued announcer: ${nextAnnouncement.type} - ${nextAnnouncement.audioUri.split('/').pop()}`);
+
+    // Play the announcement
+    this.playAnnouncerAudio(nextAnnouncement.audioUri, nextAnnouncement.volume);
+  }
+
+  /**
+   * Add an announcement to the queue
+   */
+  private queueAnnouncement(type: string, audioUri: string, priority: number, volume: number = 0.6): void {
+    if (!this.isActive || !isFIFAMode()) return;
+
+    // Remove any duplicate announcements of the same type to prevent spam
+    this.announcerQueue = this.announcerQueue.filter(item => item.type !== type);
+
+    // Add new announcement
+    this.announcerQueue.push({
+      type,
+      audioUri,
+      priority,
+      volume
+    });
+
+    console.log(`📋 Queued announcer: ${type} (Priority: ${priority}, Queue size: ${this.announcerQueue.length})`);
+  }
+
+  /**
+   * Play announcer audio and track when it finishes
+   */
+  private playAnnouncerAudio(audioUri: string, volume: number): void {
+    this.isAnnouncerSpeaking = true;
+
+    this.currentAnnouncerAudio = new Audio({
+      uri: audioUri,
+      loop: false,
+      volume: volume,
+    });
+
+    this.currentAnnouncerAudio.play(this.world);
+
+    // Estimate audio duration and mark as finished
+    // Most announcer clips are 2-4 seconds, so we'll use a safe 5 second timeout
+    setTimeout(() => {
+      this.isAnnouncerSpeaking = false;
+      this.currentAnnouncerAudio = null;
+      console.log(`🎙️ Announcer finished speaking`);
+    }, 5000); // 5 second timeout
   }
 } 

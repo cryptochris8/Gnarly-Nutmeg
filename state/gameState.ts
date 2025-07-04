@@ -634,13 +634,9 @@ export class SoccerGame {
       volume: 0.3,
     }).play(this.world);
 
-    // Play goal commentator sound
-    new Audio({
-      uri: "audio/sfx/soccer/soccer-goal-commentator.wav",
-      loop: false,
-      volume: 0.8,
-    }).play(this.world);
-
+    // FIFA crowd manager handles all announcer audio through its queue system
+    // to prevent multiple voices playing simultaneously
+    
     // Play FIFA crowd goal reaction if in FIFA mode and crowd manager is available
     if (this.fifaCrowdManager && this.fifaCrowdManager.playGoalReaction) {
       this.fifaCrowdManager.playGoalReaction();

@@ -907,7 +907,7 @@ startServer((world) => {
       if (args.length < 2) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Usage: /crowd <start|stop|goal|foul|miss|applause|momentum|gameend|redcard|save|status>"
+          "Usage: /crowd <start|stop|goal|foul|miss|applause|momentum|gameend|redcard|save|status|queue|clear>"
         );
         return;
       }
@@ -944,21 +944,33 @@ startServer((world) => {
       } else if (action === "save") {
         fifaCrowdManager.playSaveReaction();
         world.chatManager.sendPlayerMessage(player, "🥅 Playing save reaction");
+      } else if (action === "queue") {
+        const queueStatus = fifaCrowdManager.getQueueStatus();
+        world.chatManager.sendPlayerMessage(player, `=== ANNOUNCER QUEUE STATUS ===`);
+        world.chatManager.sendPlayerMessage(player, `Queue Length: ${queueStatus.queueLength} announcements`);
+        world.chatManager.sendPlayerMessage(player, `Currently Playing: ${queueStatus.isPlaying ? "✅ Yes" : "❌ No"}`);
+        world.chatManager.sendPlayerMessage(player, `Announcer Busy: ${fifaCrowdManager.isAnnouncerBusy() ? "🎙️ Speaking" : "🔇 Silent"}`);
+        world.chatManager.sendPlayerMessage(player, `Use '/crowd clear' to clear queue if needed`);
+      } else if (action === "clear") {
+        fifaCrowdManager.clearAnnouncerQueue();
+        world.chatManager.sendPlayerMessage(player, "🧹 Cleared announcer queue and stopped current audio");
       } else if (action === "status") {
         const isActive = fifaCrowdManager.isActivated();
         const currentMode = getCurrentGameMode();
         const shouldBeActive = isFIFAMode() && game.inProgress();
+        const queueStatus = fifaCrowdManager.getQueueStatus();
         
         world.chatManager.sendPlayerMessage(player, `=== FIFA CROWD STATUS ===`);
         world.chatManager.sendPlayerMessage(player, `Current Mode: ${currentMode.toUpperCase()}`);
         world.chatManager.sendPlayerMessage(player, `Crowd Manager: ${isActive ? "🏟️ Active" : "🔇 Inactive"}`);
         world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game.inProgress() ? "✅ Yes" : "❌ No"}`);
         world.chatManager.sendPlayerMessage(player, `Should Be Active: ${shouldBeActive ? "✅ Yes" : "❌ No"}`);
-        world.chatManager.sendPlayerMessage(player, `Available Commands: goal, momentum, gameend, redcard, save, miss, foul`);
+        world.chatManager.sendPlayerMessage(player, `Voice Queue: ${queueStatus.queueLength} pending, ${queueStatus.isPlaying ? "🎙️ Playing" : "🔇 Silent"}`);
+        world.chatManager.sendPlayerMessage(player, `Available Commands: goal, momentum, gameend, redcard, save, miss, foul, queue, clear`);
       } else {
         world.chatManager.sendPlayerMessage(
           player,
-          "Invalid action. Use: start, stop, goal, foul, miss, applause, momentum, gameend, redcard, save, status"
+          "Invalid action. Use: start, stop, goal, foul, miss, applause, momentum, gameend, redcard, save, status, queue, clear"
         );
       }
     });
