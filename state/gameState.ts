@@ -695,11 +695,24 @@ export class SoccerGame {
       console.log(`🎯 Pointer unlocked for ${player.username} - Halftime UI interaction enabled`);
     });
 
-    // Send halftime stats display to UI
+    // Collect current player stats for halftime display
+    const playerStats = this.world.entityManager
+      .getAllPlayerEntities()
+      .filter(
+        (entity): entity is SoccerPlayerEntity =>
+          entity instanceof SoccerPlayerEntity
+      )
+      .map((player) => player.getPlayerStats());
+
+    // Send halftime stats display to UI with complete data
     this.sendDataToAllPlayers({
       type: "halftime-stats",
       message: "Halftime Stats - Click 'Start Second Half' to continue",
-      canStartSecondHalf: true
+      canStartSecondHalf: true,
+      redScore: this.state.score.red,
+      blueScore: this.state.score.blue,
+      playerStats,
+      half: this.state.currentHalf
     });
 
     // DON'T restart the game loop - wait for manual button click
