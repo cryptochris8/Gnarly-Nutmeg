@@ -3240,6 +3240,12 @@
       <div class="powerup-icon">🛡️</div>
       <div class="powerup-cooldown-overlay" id="shield-cooldown"></div>
     </div>
+
+    <div class="powerup-button" id="stamina-btn" onclick="activatePowerUp('stamina')" title="Stamina Potion - Instant stamina restoration">
+      <div class="powerup-key-hint">5</div>
+      <div class="powerup-icon">🧪</div>
+      <div class="powerup-cooldown-overlay" id="stamina-cooldown"></div>
+    </div>
   </div>
 
   <div id="powerup-effect-display" class="powerup-effect-display" style="display: none;"></div>
@@ -6591,11 +6597,11 @@
   function getPowerupButtonId(powerUpType) {
     const buttonMap = {
       'freeze_blast': 'freeze-blast-btn',
-      
       'fireball': 'fireball-btn',
       'mega_kick': 'mega-kick-btn',
       'random_powerup': 'random-powerup-btn',
-      'shield': 'shield-btn'
+      'shield': 'shield-btn',
+      'stamina': 'stamina-btn'
     };
     return buttonMap[powerUpType] || 'random-powerup-btn';
   }
@@ -6604,11 +6610,11 @@
   function getPowerupName(powerUpType) {
     const nameMap = {
       'freeze_blast': 'Freeze Blast',
-      
       'fireball': 'Fireball',
       'mega_kick': 'Mega Kick',
       'random_powerup': 'Random Power-up',
-      'shield': 'Shield'
+      'shield': 'Shield',
+      'stamina': 'Stamina Potion'
     };
     return nameMap[powerUpType] || 'Unknown Power-up';
   }
@@ -6670,11 +6676,11 @@
   function getPowerupIcon(powerUpType) {
     const iconMap = {
       'freeze_blast': '🧊',
-      
       'fireball': '🔥',
       'mega_kick': '⚽',
       'random_powerup': '🎲',
-      'shield': '🛡️'
+      'shield': '🛡️',
+      'stamina': '🧪'
     };
     return iconMap[powerUpType] || '⚡';
   }
