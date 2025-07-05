@@ -5711,6 +5711,8 @@
       color: white;
       font-family: 'Inter', sans-serif;
       animation: fadeIn 0.5s ease-in;
+      pointer-events: auto;
+      cursor: default;
     `;
     
     // Create stats content
@@ -5869,33 +5871,19 @@
     halftimeOverlay.appendChild(statsContent);
     document.body.appendChild(halftimeOverlay);
     
-    // Add event listener to the button (better than onclick for Hytopia)
+    // ✨ HYTOPIA-COMPLIANT BUTTON HANDLING ✨
+    // Instead of addEventListener, add click handler attribute for Hytopia compatibility
     setTimeout(() => {
       const button = document.getElementById('start-second-half-btn');
       if (button) {
-        console.log("🚀 Adding event listener to halftime button");
+        console.log("🚀 Setting up Hytopia-compliant halftime button");
         
-        // Remove any existing onclick to prevent conflicts
-        button.removeAttribute('onclick');
+        // Use onclick attribute instead of addEventListener (Hytopia-compliant)
+        button.setAttribute('onclick', 'startSecondHalf()');
         
-        // Add click event listener
-        button.addEventListener('click', function(e) {
-          console.log("🚀 Halftime button clicked!");
-          e.preventDefault();
-          e.stopPropagation();
-          startSecondHalf();
-        });
-        
-        // Add hover effects manually since we removed onmouseover/onmouseout
-        button.addEventListener('mouseenter', function() {
-          this.style.transform = 'scale(1.05)';
-          this.style.boxShadow = '0 15px 40px rgba(34, 197, 94, 0.6)';
-        });
-        
-        button.addEventListener('mouseleave', function() {
-          this.style.transform = 'scale(1.02)';
-          this.style.boxShadow = '0 12px 35px rgba(34, 197, 94, 0.6)';
-        });
+        // Add hover effects with onmouseover/onmouseout (Hytopia-compliant)
+        button.setAttribute('onmouseover', 'this.style.transform="scale(1.05)"; this.style.boxShadow="0 15px 40px rgba(34, 197, 94, 0.6)";');
+        button.setAttribute('onmouseout', 'this.style.transform="scale(1.02)"; this.style.boxShadow="0 12px 35px rgba(34, 197, 94, 0.6)";');
         
         // Force cursor to pointer
         button.style.cursor = 'pointer !important';
@@ -5903,9 +5891,9 @@
         // Ensure button is always visible and clickable
         ensureHalftimeButtonVisible();
         
-        console.log("✅ Halftime button event listeners added successfully");
+        console.log("✅ Hytopia-compliant halftime button setup complete");
       } else {
-        console.error("❌ Could not find halftime button for event listener");
+        console.error("❌ Could not find halftime button for setup");
       }
     }, 100);
     

@@ -642,6 +642,13 @@ export class SoccerGame {
       manualHalftime: true, // Flag to indicate manual halftime system
     });
 
+    // ✨ UNLOCK POINTER FOR HALFTIME UI INTERACTION ✨
+    // Unlock pointer for all players so they can interact with halftime UI
+    PlayerManager.instance.getConnectedPlayers().forEach((player) => {
+      player.ui.lockPointer(false);
+      console.log(`🎯 Pointer unlocked for ${player.username} - Halftime UI interaction enabled`);
+    });
+
     // Send halftime stats display to UI
     this.sendDataToAllPlayers({
       type: "halftime-stats",
@@ -704,6 +711,13 @@ export class SoccerGame {
         if (entity instanceof SoccerPlayerEntity) {
           entity.unfreeze();
         }
+      });
+      
+      // ✨ LOCK POINTER FOR GAMEPLAY ✨
+      // Lock pointer for all players when returning to gameplay
+      PlayerManager.instance.getConnectedPlayers().forEach((player) => {
+        player.ui.lockPointer(true);
+        console.log(`🎮 Pointer locked for ${player.username} - Game controls enabled`);
       });
     }, 2000);
   }
