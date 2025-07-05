@@ -457,6 +457,17 @@ export default class SoccerPlayerEntity extends PlayerEntity {
     this.sendEnhancedUIUpdate();
   }
 
+  public restoreStamina(amount?: number) {
+    if (amount !== undefined) {
+      // Restore specific amount
+      this.stamina = Math.min(this.maxStamina, this.stamina + amount);
+    } else {
+      // Restore to full if no amount specified
+      this.stamina = this.maxStamina;
+    }
+    this.sendEnhancedUIUpdate();
+  }
+
   public setBallPossession(hasBall: boolean) {
     this.hasBallPossession = hasBall;
     this.sendEnhancedUIUpdate();

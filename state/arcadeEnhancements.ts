@@ -61,7 +61,7 @@ export class ArcadeEnhancementManager {
     
     const enhancementTypes: EnhancementType[] = [
       'speed', 'power', 'precision', 'freeze_blast', 
-      'fireball', 'mega_kick', 'shield'
+      'fireball', 'mega_kick', 'shield', 'stamina'
     ];
     const randomType = enhancementTypes[Math.floor(Math.random() * enhancementTypes.length)];
     
@@ -195,6 +195,10 @@ export class ArcadeEnhancementManager {
         case 'shield':
           console.log(`🎮 ARCADE: Executing shield for ${playerId}`);
           this.executeShield(playerId);
+          break;
+        case 'stamina':
+          console.log(`🎮 ARCADE: Executing stamina restoration for ${playerId}`);
+          this.executeStamina(playerId);
           break;
         case 'speed':
         case 'power':
@@ -795,6 +799,45 @@ export class ArcadeEnhancementManager {
     console.log(`🛡️ ${playerId} has shield protection for 30 seconds!`);
   }
 
+  // Execute stamina restoration power-up
+  private executeStamina(playerId: string): void {
+    const player = this.findPlayerEntity(playerId);
+    if (!player) {
+      console.error(`Player ${playerId} not found for stamina restoration`);
+      return;
+    }
+
+    // Restore stamina to full (100%)
+    player.restoreStamina();
+    
+    console.log(`🧪 ${playerId} used stamina potion - stamina restored to 100%!`);
+    
+    // Play stamina restoration sound
+    new Audio({
+      uri: "audio/sfx/ui/inventory-grab-item.mp3",
+      loop: false,
+      volume: 0.6,
+    }).play(this.world);
+
+    // Send UI update to show restored stamina
+    try {
+      player.player.ui.sendData({
+        type: "player-status-update",
+        stamina: player.getStaminaPercentage()
+      });
+      
+      // Send feedback notification
+      player.player.ui.sendData({
+        type: "powerup-feedback",
+        success: true,
+        powerUpType: 'stamina',
+        message: "STAMINA RESTORED!"
+      });
+    } catch (error) {
+      console.error(`Failed to send stamina UI update: ${error}`);
+    }
+  }
+
   // Check if player has mega kick active
   public hasMegaKick(playerId: string): boolean {
     const enhancement = this.playerEnhancements.get(playerId);
@@ -1089,7 +1132,7 @@ export class ArcadeEnhancementManager {
 }
 
 // Enhancement types - expanded for arcade power-ups
-export type EnhancementType = 'speed' | 'power' | 'precision' | 'freeze_blast' | 'fireball' | 'mega_kick' | 'shield';
+export type EnhancementType = 'speed' | 'power' | 'precision' | 'freeze_blast' | 'fireball' | 'mega_kick' | 'shield' | 'stamina';
 
 // Player enhancement interface
 export interface PlayerEnhancement {
