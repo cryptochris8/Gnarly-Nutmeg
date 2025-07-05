@@ -287,12 +287,30 @@ export class SoccerGame {
     console.log(`Team counts: Red = ${redTeamCount}, Blue = ${blueTeamCount}`);
     console.log(`Min players per team: ${this.state.minPlayersPerTeam}`);
 
-    if (
-      redTeamCount < this.state.minPlayersPerTeam ||
-      blueTeamCount < this.state.minPlayersPerTeam
-    ) {
-      console.log("Not enough players to start game");
+    // Check if we have at least one human player total (for single-player mode)
+    const totalHumanPlayers = redTeamCount + blueTeamCount;
+    console.log(`Total human players: ${totalHumanPlayers}`);
+    
+    if (totalHumanPlayers === 0) {
+      console.log("No human players to start game");
       return false;
+    }
+    
+    // For single-player mode, we only need 1 human player total (AI fills the rest)
+    // For multiplayer mode, we need at least 1 human player per team
+    const isSinglePlayerMode = totalHumanPlayers === 1;
+    
+    if (!isSinglePlayerMode) {
+      // Multiplayer mode - check both teams have human players
+      if (
+        redTeamCount < this.state.minPlayersPerTeam ||
+        blueTeamCount < this.state.minPlayersPerTeam
+      ) {
+        console.log("Not enough players to start multiplayer game");
+        return false;
+      }
+    } else {
+      console.log("Single-player mode detected - starting with AI players");
     }
 
     console.log("Starting game sequence");
