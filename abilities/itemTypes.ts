@@ -37,3 +37,22 @@ export const speedBoostOptions: ItemAbilityOptions = {
     icon: "speed-boost",
     idleAnimation: "Take 001",
 };
+
+/**
+ * Stamina Power-Up Configuration (Arcade Mode Only)
+ * 
+ * Uses the potion-water model for perfect thematic fit
+ * Provides stamina restoration and enhanced regeneration
+ */
+export const staminaBoostOptions: ItemAbilityOptions = {
+    name: "Stamina Potion",
+    speed: 1.5,              // 50% stamina enhancement multiplier (using speed field)
+    damage: 0,               // No damage - this is a consumable
+    modelUri: "models/items/potion-water.gltf", // Perfect model for stamina potion
+    modelScale: 0.5,         // Medium size for visibility
+    projectileRadius: 0,     // Not a projectile
+    knockback: 0,            // No knockback
+    lifeTime: 2.0,           // 2 second visual effect duration
+    icon: "stamina-potion",  // UI icon identifier
+    idleAnimation: "idle",   // Default idle animation (if available)
+};

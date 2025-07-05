@@ -3276,6 +3276,11 @@
       <div class="powerup-cooldown-overlay" id="freeze-blast-cooldown"></div>
     </div>
     
+    <div class="powerup-button" id="stamina-btn" onclick="activatePowerUp('stamina')" title="Stamina Potion - Instant stamina restoration + enhanced regeneration">
+      <div class="powerup-key-hint">2</div>
+      <div class="powerup-icon">🧪</div>
+      <div class="powerup-cooldown-overlay" id="stamina-cooldown"></div>
+    </div>
 
     
     <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')" title="Fireball - Explosive area damage">
@@ -6250,7 +6255,7 @@
   // Power-up cooldowns (in milliseconds)
   const POWERUP_COOLDOWNS = {
     'freeze_blast': 10000,    // 10 seconds
-      
+    'stamina': 20000,         // 20 seconds
     'fireball': 12000,        // 12 seconds
     'mega_kick': 15000,       // 15 seconds
     'random_powerup': 3000    // 3 seconds for F key
@@ -6259,7 +6264,7 @@
   // Track cooldown states
   const powerupCooldownStates = {
     'freeze_blast': { onCooldown: false, endTime: 0 },
-    
+    'stamina': { onCooldown: false, endTime: 0 },
     'fireball': { onCooldown: false, endTime: 0 },
     'mega_kick': { onCooldown: false, endTime: 0 },
     'random_powerup': { onCooldown: false, endTime: 0 }
@@ -6342,7 +6347,7 @@
 
     const powerUpEmojis = {
       'freeze_blast': '🧊 FREEZE!',
-      
+      'stamina': '🧪 STAMINA!',
       'fireball': '🔥 FIREBALL!',
       'mega_kick': '⚽ MEGA KICK!',
       'random_powerup': '🎲 RANDOM!'
@@ -6549,7 +6554,7 @@
           break;
         case '2':
           event.preventDefault();
-          
+          activatePowerUp('stamina');
           break;
         case '3':
           event.preventDefault();
@@ -6637,7 +6642,7 @@
   function getPowerupButtonId(powerUpType) {
     const buttonMap = {
       'freeze_blast': 'freeze-blast-btn',
-      
+      'stamina': 'stamina-btn',
       'fireball': 'fireball-btn',
       'mega_kick': 'mega-kick-btn',
       'random_powerup': 'random-powerup-btn',
@@ -6650,7 +6655,7 @@
   function getPowerupName(powerUpType) {
     const nameMap = {
       'freeze_blast': 'Freeze Blast',
-      
+      'stamina': 'Stamina Potion',
       'fireball': 'Fireball',
       'mega_kick': 'Mega Kick',
       'random_powerup': 'Random Power-up',
@@ -6716,7 +6721,7 @@
   function getPowerupIcon(powerUpType) {
     const iconMap = {
       'freeze_blast': '🧊',
-      
+      'stamina': '🧪',
       'fireball': '🔥',
       'mega_kick': '⚽',
       'random_powerup': '🎲',
