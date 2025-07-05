@@ -395,19 +395,25 @@ export function createBehaviorTree(agent: AIPlayerEntity): BehaviorNode {
                 z: ball.position.z + (ballVelocity.z * speedAdjustedFactor)
               };
               
-              // Additional logic for goalkeepers to stay in goal area
+              // Enhanced logic for goalkeepers with improved movement range
               if (agent.aiRole === 'goalkeeper') {
-                // Limit goalkeeper movement to goal area
+                // Enhanced goalkeeper movement with larger goal area coverage
                 const ownGoalLineX = agent.team === 'red' ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
-                const maxGKDistance = 8; // Maximum distance from goal line
+                const maxGKDistance = 12; // Increased from 8 to 12 for better coverage
                 const direction = agent.team === 'red' ? 1 : -1; // Direction from goal
                 
-                // Constrain X position to stay within goal area
+                // Constrain X position to stay within enhanced goal area
                 const maxX = ownGoalLineX + (maxGKDistance * direction);
                 if ((agent.team === 'red' && interceptPosition.x > maxX) || 
                     (agent.team === 'blue' && interceptPosition.x < maxX)) {
                   interceptPosition.x = maxX;
                 }
+                
+                // Enhanced Z constraint for better goal coverage
+                const goalCenterZ = AI_FIELD_CENTER_Z;
+                const maxGoalWidth = 10; // Increased from implicit smaller value
+                interceptPosition.z = Math.max(goalCenterZ - maxGoalWidth, 
+                                             Math.min(goalCenterZ + maxGoalWidth, interceptPosition.z));
               }
             } else {
               // Ball not moving fast - go directly to it with slight lead

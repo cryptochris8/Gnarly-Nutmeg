@@ -17,7 +17,7 @@ if (!process.env.MEDIASOUP_WORKER_BIN) {
 // === END MEDIASOUP SETUP ===
 
 import { startServer, Audio, PlayerEntity, PlayerEvent, PlayerUIEvent, PlayerCameraMode, PlayerManager, type Vector3Like, EntityEvent } from "hytopia";
-import worldMap from "./assets/maps/soccer.json"; // Uncommented to load the soccer map
+import worldMap from "./assets/maps/soccer.json";
 import { SoccerGame } from "./state/gameState";
 import createSoccerBall from "./utils/ball";
 import { 
@@ -59,252 +59,166 @@ import {
 import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
 import { FIFACrowdManager } from "./utils/fifaCrowdManager";
 import PerformanceProfiler from "./utils/performanceProfiler";
-import PerformanceOptimizer from "./utils/performanceOptimizations";
+import { PerformanceOptimizer } from "./utils/performanceOptimizations";
 
 startServer((world) => {
-    // Load the soccer map
-    console.log("Loading soccer map...");
-    world.loadMap(worldMap); // Uncommented to load the soccer map
+    console.log("🎮 Starting simplified soccer server...");
+    
+    // Load map and initialize game immediately at startup
+    console.log("🏟️ Loading soccer stadium...");
+    world.loadMap(worldMap);
+    console.log("✅ Soccer map loaded");
+    
+    // Set up enhanced lighting for the stadium
+    world.setDirectionalLightIntensity(0.6);
+    world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 });
+    world.setDirectionalLightColor({ r: 255, g: 248, b: 235 });
+    world.setAmbientLightIntensity(1.2);
+    world.setAmbientLightColor({ r: 250, g: 250, b: 255 });
+    console.log("✅ Enhanced stadium lighting configured");
+    
+    // Create soccer ball
+    console.log("⚽ Creating soccer ball...");
+    const soccerBall = createSoccerBall(world);
+    console.log("✅ Soccer ball created and spawned");
+    
+    // Initialize game systems
+    let aiPlayers: AIPlayerEntity[] = [];
+    const game = new SoccerGame(world, soccerBall, aiPlayers);
+    
+    // Initialize arcade enhancement system
+    const arcadeManager = new ArcadeEnhancementManager(world);
+    (world as any)._arcadeManager = arcadeManager;
+    game.setArcadeManager(arcadeManager);
+    
+    // Initialize FIFA crowd atmosphere system
+    const fifaCrowdManager = new FIFACrowdManager(world);
+    game.setFIFACrowdManager(fifaCrowdManager);
+    
+    // Initialize performance systems
+    const performanceProfiler = new PerformanceProfiler(world, {
+      enabled: false,
+      sampleInterval: 1000,
+      maxSamples: 60, // Reduced for memory efficiency
+      logInterval: 30000,
+      trackMemory: true
+    });
+    (world as any)._performanceProfiler = performanceProfiler;
+    
+    const performanceOptimizer = new PerformanceOptimizer('HIGH_PERFORMANCE'); // Start with high performance mode
+    
+    console.log("✅ Game initialized successfully!");
 
-    // === DOMED STADIUM LIGHTING OPTIMIZATION ===
-    console.log("Setting up domed stadium lighting with glass ceiling...");
-    
-    // Simulate natural daylight filtering through glass dome
-    // Higher directional light intensity to represent bright daylight through glass
-    world.setDirectionalLightIntensity(0.6); // Moderate intensity for natural daylight effect
-    
-    // Position sun directly overhead to simulate dome opening
-    world.setDirectionalLightPosition({ x: 0, y: 300, z: 0 }); // Very high overhead for dome effect
-    
-    // Bright warm directional light to simulate natural daylight through glass
-    world.setDirectionalLightColor({ r: 255, g: 248, b: 235 }); // Warm daylight color
-    
-    // High ambient light to simulate light bouncing off stadium surfaces and glass
-    world.setAmbientLightIntensity(1.2); // Bright ambient for indoor stadium feel
-    world.setAmbientLightColor({ r: 250, g: 250, b: 255 }); // Very bright, slightly cool ambient
-    
-    console.log("✅ Domed stadium lighting configured: Bright daylight through glass dome");
-    // === END DOMED STADIUM LIGHTING ===
-
-    // Store the main background music instance
+    // Music setup
     const mainMusic = new Audio({
       uri: "audio/music/Ian Post - 8 Bit Samba - No FX.mp3",
       loop: true,
       volume: 0.1,
     });
-    mainMusic.play(world); // Start playing immediately
+    mainMusic.play(world);
 
-    // Store the arcade gameplay music instance (energetic for arcade mode)
     const arcadeGameplayMusic = new Audio({
       uri: "audio/music/always-win.mp3",
       loop: true,
       volume: 0.1,
     });
 
-    // Store the FIFA gameplay music instance (more serious/professional for FIFA mode)
     const fifaGameplayMusic = new Audio({
       uri: "audio/music/hytopia-main.mp3",
       loop: true,
       volume: 0.1,
     });
 
-    // Helper function to get the appropriate gameplay music based on current game mode
     const getGameplayMusic = (): Audio => {
       return isFIFAMode() ? fifaGameplayMusic : arcadeGameplayMusic;
     };
 
-    // Create and spawn soccer ball entity
-    console.log("Creating soccer ball");
-    const soccerBall = createSoccerBall(world);
-    
-    // Ball is already spawned in createSoccerBall function, no need to spawn again
-    console.log("Soccer ball created and spawned successfully");
-    
-    // Initialize arcade enhancement system (only active in arcade mode)
-    const arcadeManager = new ArcadeEnhancementManager(world);
-    
-    // Attach arcade manager to world for direct access from controllers
-    (world as any)._arcadeManager = arcadeManager;
-    
-    // Initialize FIFA crowd atmosphere system (only active in FIFA mode)
-    const fifaCrowdManager = new FIFACrowdManager(world);
-    
-    // Initialize performance profiler system
-    const performanceProfiler = new PerformanceProfiler(world, {
-      enabled: false, // Start disabled, can be enabled via chat commands
-      sampleInterval: 1000, // Sample every second
-      maxSamples: 120, // Keep 2 minutes of data
-      logInterval: 15000, // Log every 15 seconds
-      trackMemory: true
-    });
-    
-    // Initialize performance optimizer system
-    const performanceOptimizer = new PerformanceOptimizer('BALANCED');
-    
-    // Initialize game
-    let aiPlayers: AIPlayerEntity[] = [];
-    const game = new SoccerGame(world, soccerBall, aiPlayers);
-    
-    // Connect arcade manager to game
-    game.setArcadeManager(arcadeManager);
-    
-    // Connect FIFA crowd manager to game
-    game.setFIFACrowdManager(fifaCrowdManager);
-    
-    // Attach performance profiler to world for direct access from entities
-    (world as any)._performanceProfiler = performanceProfiler;
-
-    // Function to spawn AI players for 6v6 setup
-    // Takes the human player's chosen team
-    // Returns a promise that resolves when AI spawning and activation is complete
-    const spawnAIPlayers = (playerTeam: "red" | "blue"): Promise<void> => {
-      return new Promise((resolve) => {
-        console.log(`Spawning AI players for large stadium setup (6v6). Player team: ${playerTeam}`);
-        
-        // Clean up any existing AI players and remove from shared state
-        aiPlayers.forEach(ai => {
-          if (ai.isSpawned) {
-            ai.deactivate();
-            sharedState.removeAIFromTeam(ai, ai.team);
-            ai.despawn();
-          }
-        });
-        aiPlayers = []; // Clear local list
-        
-        // Determine opponent and AI team
-        const aiTeam = playerTeam === "red" ? "blue" : "red";
-        console.log(`AI opponent team will be ${aiTeam}`);
-        
-        // Define the roles needed for a full team (large stadium 6v6)
-        const fullTeamRoles: SoccerAIRole[] = [
-          'goalkeeper',
-          'left-back',
-          'right-back',
-          'central-midfielder-1',
-          'central-midfielder-2',
-          'striker'
-        ];
-
-        // --- Register and Spawn Opponent AI Team ---
-        console.log(`Registering and spawning opponent AI team (${aiTeam})`);
-        fullTeamRoles.forEach(role => {
-          const aiID = `AI_Opponent_${aiTeam}_${role}`;
-          // Register in game state if not already there (e.g., due to reconnect)
-          if (game.getTeamOfPlayer(aiID) === null) {
-            game.joinGame(aiID, `AI ${role}`);
-            game.joinTeam(aiID, aiTeam);
-          }
-          // Create AI entity
-          const opponentAI = new AIPlayerEntity(world, aiTeam, role);
-          aiPlayers.push(opponentAI); // Track for cleanup
-          // Spawn at role-specific position
-          opponentAI.spawn(world, getStartPosition(aiTeam, role));
-          // Explicitly set initial rotation to face opponent goal
-          if (opponentAI.team === "blue") {
-            opponentAI.setRotation({ x: 0, y: 1, z: 0, w: 0 }); // Blue faces -X (towards Red's goal)
-          } else {
-            opponentAI.setRotation({ x: 0, y: 0, z: 0, w: 1 }); // Red faces +X (towards Blue's goal)
-          }
-          sharedState.addAIToTeam(opponentAI, aiTeam);
-        });
-        console.log(`Opponent AI team (${aiTeam}) spawned.`);
-
-        // --- Register and Spawn AI Teammates (Fill player's team) ---
-        const playersOnMyTeam = game.getPlayerCountOnTeam(playerTeam);
-        const maxPlayers = game.getMaxPlayersPerTeam(); // Should be 6 now
-        const neededTeammates = maxPlayers - playersOnMyTeam;
-        
-        console.log(`Player team (${playerTeam}) needs ${neededTeammates} AI teammates.`);
-
-        // Get roles already taken by human players (assume first joined are humans)
-        const humanPlayersOnTeam = Array.from(game.getState().players.values())
-                                        .filter(p => p.team === playerTeam && !p.id.startsWith('AI_'))
-                                        .map(p => p.id);
-        
-        // Create a list of roles that excludes the human player's role (which is now 'central-midfielder-1')
-        // This ensures we don't have duplicate midfielders if the human is one
-        const humanPlayerRole: SoccerAIRole = 'central-midfielder-1'; // Assuming human is now always this role
-        const availableRolesForTeammates = fullTeamRoles.filter(role => role !== humanPlayerRole);
-
-        for (let i = 0; i < neededTeammates; i++) {
-          // Assign roles sequentially from the available list
-          const role = availableRolesForTeammates[i] || 'central-midfielder-1'; // Default to midfielder if list runs out
-          const aiID = `AI_Teammate_${playerTeam}_${role}`;
-          
-          console.log(`Spawning AI teammate ${i + 1}/${neededTeammates} for team ${playerTeam} with role ${role}`);
-
-          // Register this AI player in the game state if needed
-          if (game.getTeamOfPlayer(aiID) === null) {
-            game.joinGame(aiID, `AI ${role}`);
-            game.joinTeam(aiID, playerTeam);
-          }
-          
-          // Create and spawn teammate AI
-          const teammateAI = new AIPlayerEntity(world, playerTeam, role);
-          aiPlayers.push(teammateAI); // Track for cleanup
-          teammateAI.spawn(world, getStartPosition(playerTeam, role));
-          // Explicitly set initial rotation to face opponent goal
-          if (teammateAI.team === "blue") {
-            teammateAI.setRotation({ x: 0, y: 1, z: 0, w: 0 }); // Blue faces -X (towards Red's goal)
-          } else {
-            teammateAI.setRotation({ x: 0, y: 0, z: 0, w: 1 }); // Red faces +X (towards Blue's goal)
-          }
-          sharedState.addAIToTeam(teammateAI, playerTeam); 
-        }
-        console.log(`AI teammates for team ${playerTeam} spawned.`);
-        
-        // Update the aiPlayersList in the game instance
-        game.updateAIPlayersList(aiPlayers);
-        console.log(`Updated game AI players list with ${aiPlayers.length} AI players.`);
-        
-        console.log("All required AI players spawned and registered.");
-        resolve(); // Resolve the promise
-      });
+    // Function to spawn AI players (simplified)
+    const spawnAIPlayers = async (playerTeam: "red" | "blue"): Promise<void> => {
+      console.log(`🤖 Spawning AI players for team ${playerTeam}...`);
+      
+      // Define full team roles
+      const fullTeamRoles: SoccerAIRole[] = [
+        'goalkeeper',
+        'left-back',
+        'right-back',
+        'central-midfielder-1',
+        'central-midfielder-2',
+        'striker'
+      ];
+      
+      // Spawn AI for player's team (5 AI players since human is central-midfielder-1)
+      const playerTeamRoles = fullTeamRoles.filter(role => role !== 'central-midfielder-1');
+      for (const role of playerTeamRoles) {
+        const aiPlayer = new AIPlayerEntity(world, playerTeam, role);
+        const spawnPosition = getStartPosition(playerTeam, role);
+        aiPlayer.spawn(world, spawnPosition);
+        aiPlayers.push(aiPlayer);
+        sharedState.addAIToTeam(aiPlayer, playerTeam);
+      }
+      
+      // Spawn full opponent team (6 AI players)
+      const opponentTeam = playerTeam === 'red' ? 'blue' : 'red';
+      for (const role of fullTeamRoles) {
+        const aiPlayer = new AIPlayerEntity(world, opponentTeam, role);
+        const spawnPosition = getStartPosition(opponentTeam, role);
+        aiPlayer.spawn(world, spawnPosition);
+        aiPlayers.push(aiPlayer);
+        sharedState.addAIToTeam(aiPlayer, opponentTeam);
+      }
+      
+      console.log(`✅ Spawned ${aiPlayers.length} AI players total`);
     };
 
-    // --- Helper Function for Starting Positions ---
+    // Function to get start position for AI players
     const getStartPosition = (team: "red" | "blue", role: SoccerAIRole): Vector3Like => {
-      const isRed = team === 'red';
-      const y = SAFE_SPAWN_Y; // Use consistent safe spawn height to prevent surface collision
-      let x = 0; // Depth relative to goal lines
-      let z = 0; // Width relative to center Z
-
-      // Determine own goal line and forward direction based on team
-      const ownGoalLineX = isRed ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
-      const forwardXMultiplier = isRed ? -1 : 1; // Red moves towards negative X, Blue towards positive X
-
-      // Large stadium - use the existing logic with full offsets
+      const isRedTeam = team === 'red';
+      const baseX = isRedTeam ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+      
       switch (role) {
         case 'goalkeeper':
-          x = ownGoalLineX + (1 * forwardXMultiplier * -1); // 1 unit in front of own goal
-          z = AI_FIELD_CENTER_Z; // Center of the goal width
-          break;
-        case 'left-back': // Min Z side
-          x = ownGoalLineX + (AI_DEFENSIVE_OFFSET_X * forwardXMultiplier * -1); // Use defensive offset depth
-          z = AI_FIELD_CENTER_Z + (AI_WIDE_Z_BOUNDARY_MIN - AI_FIELD_CENTER_Z) * 0.6; // Positioned towards the left sideline
-          break;
-        case 'right-back': // Max Z side
-          x = ownGoalLineX + (AI_DEFENSIVE_OFFSET_X * forwardXMultiplier * -1); // Use defensive offset depth
-          z = AI_FIELD_CENTER_Z + (AI_WIDE_Z_BOUNDARY_MAX - AI_FIELD_CENTER_Z) * 0.6; // Positioned towards the right sideline
-          break;
-        case 'central-midfielder-1': // Min Z side preference
-          x = ownGoalLineX + (AI_MIDFIELD_OFFSET_X * forwardXMultiplier * -1); // Use midfield offset depth
-          z = AI_FIELD_CENTER_Z + (AI_MIDFIELD_Z_BOUNDARY_MIN - AI_FIELD_CENTER_Z) * 0.5; // Left side of center midfield
-          break;
-        case 'central-midfielder-2': // Max Z side preference
-          x = ownGoalLineX + (AI_MIDFIELD_OFFSET_X * forwardXMultiplier * -1); // Use midfield offset depth
-          z = AI_FIELD_CENTER_Z + (AI_MIDFIELD_Z_BOUNDARY_MAX - AI_FIELD_CENTER_Z) * 0.5; // Right side of center midfield
-          break;
+          return {
+            x: baseX,
+            y: SAFE_SPAWN_Y,
+            z: AI_FIELD_CENTER_Z
+          };
+        case 'left-back':
+          return {
+            x: baseX + (isRedTeam ? AI_DEFENSIVE_OFFSET_X : -AI_DEFENSIVE_OFFSET_X),
+            y: SAFE_SPAWN_Y,
+            z: AI_WIDE_Z_BOUNDARY_MIN + 10
+          };
+        case 'right-back':
+          return {
+            x: baseX + (isRedTeam ? AI_DEFENSIVE_OFFSET_X : -AI_DEFENSIVE_OFFSET_X),
+            y: SAFE_SPAWN_Y,
+            z: AI_WIDE_Z_BOUNDARY_MAX - 10
+          };
+        case 'central-midfielder-1':
+          return {
+            x: baseX + (isRedTeam ? AI_MIDFIELD_OFFSET_X : -AI_MIDFIELD_OFFSET_X),
+            y: SAFE_SPAWN_Y,
+            z: AI_MIDFIELD_Z_BOUNDARY_MIN + 5
+          };
+        case 'central-midfielder-2':
+          return {
+            x: baseX + (isRedTeam ? AI_MIDFIELD_OFFSET_X : -AI_MIDFIELD_OFFSET_X),
+            y: SAFE_SPAWN_Y,
+            z: AI_MIDFIELD_Z_BOUNDARY_MAX - 5
+          };
         case 'striker':
-          x = ownGoalLineX + (AI_FORWARD_OFFSET_X * forwardXMultiplier * -1); // Use forward offset depth
-          z = AI_FIELD_CENTER_Z; // Central width
-          break;
-        default: // Fallback, place near center midfield
-          x = ownGoalLineX + (AI_MIDFIELD_OFFSET_X * forwardXMultiplier * -1);
-          z = AI_FIELD_CENTER_Z;
+          return {
+            x: baseX + (isRedTeam ? AI_FORWARD_OFFSET_X : -AI_FORWARD_OFFSET_X),
+            y: SAFE_SPAWN_Y,
+            z: AI_FIELD_CENTER_Z
+          };
+        default:
+          return {
+            x: baseX,
+            y: SAFE_SPAWN_Y,
+            z: AI_FIELD_CENTER_Z
+          };
       }
-
-      return { x, y, z };
     };
 
     world.on(
@@ -342,25 +256,33 @@ startServer((world) => {
           });
         });
         
-        // Clean up AI players and remove from shared state
+        // Clean up active AI players and remove from shared state
         aiPlayers.forEach(ai => {
           if (ai.isSpawned) {
             ai.deactivate();
             sharedState.removeAIFromTeam(ai, ai.team);
           }
         });
-        aiPlayers = []; // Clear local list
+        aiPlayers.length = 0; // Clear the array
 
-        game.resetGame(); // Reset the game state to waiting
+        // Reset game state if game is initialized
+        if (game) {
+          game.resetGame(); // Reset the game state to waiting
+        }
 
         // Reload UI for all players after game reset
         world.entityManager.getAllPlayerEntities().forEach((playerEntity) => {
           const player = playerEntity.player;
           player.ui.load("ui/index.html");
+          
+          // CRITICAL: Unlock pointer for UI interactions after reset (Hytopia-compliant approach)
+          player.ui.lockPointer(false);
+          console.log(`🎯 Pointer unlocked for ${player.username} after game reset - UI interactions enabled`);
+          
           player.ui.sendData({
             type: "team-counts",
-            red: game.getPlayerCountOnTeam("red"),
-            blue: game.getPlayerCountOnTeam("blue"),
+            red: game ? game.getPlayerCountOnTeam("red") : 0,
+            blue: game ? game.getPlayerCountOnTeam("blue") : 0,
             maxPlayers: 6,
             singlePlayerMode: true,
           });
@@ -377,7 +299,7 @@ startServer((world) => {
       // Check if this player is a developer and should auto-enable observer mode
       if (observerMode.isDeveloper(player.username)) {
         // Only auto-enable observer if no game is in progress
-        if (!game.inProgress()) {
+        if (!game || !game.inProgress()) {
           world.chatManager.sendPlayerMessage(
             player,
             "Developer detected. Use /observer to enable observer mode or /aitraining to start AI training match."
@@ -387,9 +309,13 @@ startServer((world) => {
       
       // Load UI first before any game state checks
       player.ui.load("ui/index.html");
+      
+      // CRITICAL: Unlock pointer for UI interactions (Hytopia-compliant approach)
+      player.ui.lockPointer(false);
+      console.log(`🎯 Pointer unlocked for ${player.username} - UI interactions enabled`);
 
       // Check game state
-      if (game.inProgress()) {
+      if (game && game.inProgress()) {
         return world.chatManager.sendPlayerMessage(
           player,
           "Game is already in progress, you can fly around and spectate!"
@@ -399,11 +325,11 @@ startServer((world) => {
       // Don't set camera configuration here - let the entity handle it
       // This prevents conflicts with the entity-based camera attachment
       
-      // Send initial UI data
+            // Send initial UI data
       player.ui.sendData({
         type: "team-counts",
-        red: game.getPlayerCountOnTeam("red"),
-        blue: game.getPlayerCountOnTeam("blue"),
+        red: game ? game.getPlayerCountOnTeam("red") : 0,
+        blue: game ? game.getPlayerCountOnTeam("blue") : 0,
         maxPlayers: 6,
         singlePlayerMode: true,
       });
@@ -432,15 +358,24 @@ startServer((world) => {
             mode: data.mode,
             config: getCurrentModeConfig()
           });
+          
+          console.log("🎮 Game mode selected - ready for team selection");
+        }
+        else if (data.type === "select-single-player") {
+          // Handle single player mode selection
+          console.log(`Player ${player.username} selected single player mode`);
+          
+          // Send confirmation - game is ready
+          player.ui.sendData({
+            type: "single-player-ready",
+            message: "Single player mode ready! Select your team to begin."
+          });
         }
         else if (data.type === "team-selected" && data.team) {
-          // Handle game mode selection if provided
-          if (data.gameMode) {
-            console.log(`Player selected game mode: ${data.gameMode}${data.playerCount ? ` with ${data.playerCount}v${data.playerCount}` : ''}`);
-            // Game mode switching removed - large stadium only
-          }
+          console.log(`Player ${player.username} selected team: ${data.team}`);
           
-          // Join team and try to start game when team is selected
+          // Game is already initialized at startup, just join team
+          
           if (game.getTeamOfPlayer(player.username) !== null) {
             console.log("Player already on a team");
             return;
@@ -503,30 +438,195 @@ startServer((world) => {
             fifaCrowdManager.playGameStart();
           }
 
-          // Single player mode - uses the new spawnAIPlayers
+          // Single player mode - spawn AI and start game
           if (data.singlePlayerMode) {
-            console.log(`Starting single player mode for team ${data.team} (6v6)`);
-            await spawnAIPlayers(data.team); // Call the updated function
-            console.log("AI spawning complete, attempting to start game...");
-            const gameStarted = game.startGame();
-            if (gameStarted) {
-              console.log("Game started successfully, unfreezing player.");
-              if (playerEntity && typeof playerEntity.unfreeze === 'function') {
-                playerEntity.unfreeze();
+            console.log(`Starting single player mode for team ${data.team}`);
+            
+            try {
+              // Spawn AI players
+              console.log("Spawning AI players...");
+              await spawnAIPlayers(data.team);
+              
+              // Start the game
+              console.log("Starting game with AI...");
+              const gameStarted = game && game.startGame();
+              if (gameStarted) {
+                console.log("✅ Game started successfully with AI!");
+                
+                // Unfreeze player after short delay
+                setTimeout(() => {
+                  if (playerEntity && typeof playerEntity.unfreeze === 'function') {
+                    playerEntity.unfreeze();
+                    console.log("Player unfrozen - game active!");
+                  }
+                  
+                  // CRITICAL: Lock pointer for gameplay (Hytopia-compliant approach)
+                  player.ui.lockPointer(true);
+                  console.log(`🎮 Pointer locked for ${player.username} - Game controls enabled`);
+                  
+                  // Clear loading UI
+                  player.ui.sendData({
+                    type: "loading-complete"
+                  });
+                }, 500);
+                
+              } else {
+                console.error("Failed to start game with AI");
+                player.ui.sendData({ 
+                  type: "loading-error", 
+                  message: "Failed to start game. Please try again." 
+                });
               }
-            } else {
-              console.error("Failed to start game even after spawning AI. Check game state logic.");
-              player.ui.sendData({ type: "error", message: "Failed to start single-player game." });
+              
+            } catch (error) {
+              console.error("Error during AI spawning:", error);
+              player.ui.sendData({ 
+                type: "loading-error", 
+                message: "Failed to spawn AI. Please refresh and try again." 
+              });
             }
           } // End singlePlayerMode check
+          
+          // Multiplayer mode - handle differently for 1v1 matches
+          else if (data.multiplayerMode) {
+            console.log(`Multiplayer mode: Player ${player.username} joined team ${data.team}`);
+            
+            // Check how many human players are currently in the game
+            const humanPlayers = PlayerManager.instance.getConnectedPlayers();
+            console.log(`Current human players in game: ${humanPlayers.length}`);
+            
+            if (humanPlayers.length === 1) {
+              // First player - wait for second player
+              console.log("First player in multiplayer lobby - waiting for second player");
+              player.ui.sendData({
+                type: "multiplayer-waiting",
+                message: "Waiting for second player to join...",
+                playerCount: 1,
+                requiredPlayers: 2
+              });
+            } else if (humanPlayers.length === 2) {
+              // Second player joined - start multiplayer game
+              console.log("Second player joined - starting multiplayer 1v1 match");
+              
+              // Assign players to different teams automatically
+              const firstPlayer = humanPlayers.find(p => p.username !== player.username);
+              const secondPlayer = player;
+              
+              // Assign teams: first player gets opposite team of what second player chose
+              const firstPlayerTeam = data.team === 'red' ? 'blue' : 'red';
+              const secondPlayerTeam = data.team;
+              
+              console.log(`Team assignment: ${firstPlayer?.username} -> ${firstPlayerTeam}, ${secondPlayer.username} -> ${secondPlayerTeam}`);
+              
+              // Notify both players about team assignments
+              firstPlayer?.ui.sendData({
+                type: "team-assigned",
+                team: firstPlayerTeam,
+                message: `You have been assigned to the ${firstPlayerTeam} team`
+              });
+              
+              secondPlayer.ui.sendData({
+                type: "team-assigned", 
+                team: secondPlayerTeam,
+                message: `You have been assigned to the ${secondPlayerTeam} team`
+              });
+              
+              // Start loading for multiplayer game
+              [firstPlayer, secondPlayer].forEach((p) => {
+                if (p) {
+                  p.ui.sendData({
+                    type: "loading-progress",
+                    current: 50,
+                    total: 100,
+                    message: "Setting up multiplayer match...",
+                    percentage: 50
+                  });
+                }
+              });
+              
+              // Spawn AI players for both teams (4 AI per team since 1 human per team)
+              console.log("Spawning AI players for multiplayer 1v1 match");
+              await spawnAIPlayers('red'); // This will spawn for both teams
+              
+              // Update loading progress
+              [firstPlayer, secondPlayer].forEach((p) => {
+                if (p) {
+                  p.ui.sendData({
+                    type: "loading-progress",
+                    current: 90,
+                    total: 100,
+                    message: "Starting multiplayer match...",
+                    percentage: 90
+                  });
+                }
+              });
+              
+              // Start the multiplayer game
+              const gameStarted = game.startGame();
+              if (gameStarted) {
+                console.log("✅ Multiplayer 1v1 game started successfully!");
+                
+                // Notify both players
+                [firstPlayer, secondPlayer].forEach((p) => {
+                  if (p) {
+                    p.ui.sendData({
+                      type: "loading-progress",
+                      current: 100,
+                      total: 100,
+                      message: "Match ready!",
+                      percentage: 100
+                    });
+                    
+                    // Clear loading UI after delay
+                    setTimeout(() => {
+                      p.ui.sendData({
+                        type: "loading-complete"
+                      });
+                    }, 500);
+                  }
+                });
+                
+                // Unfreeze both players
+                setTimeout(() => {
+                  const allPlayerEntities = world.entityManager.getAllPlayerEntities();
+                  allPlayerEntities.forEach(entity => {
+                    if (entity instanceof SoccerPlayerEntity && typeof entity.unfreeze === 'function') {
+                      entity.unfreeze();
+                      console.log(`Player ${entity.player.username} unfrozen - multiplayer game active!`);
+                    }
+                  });
+                }, 1000);
+                
+              } else {
+                console.error("Failed to start multiplayer game");
+                [firstPlayer, secondPlayer].forEach((p) => {
+                  if (p) {
+                    p.ui.sendData({ 
+                      type: "loading-error", 
+                      message: "Failed to start multiplayer game. Please try again." 
+                    });
+                  }
+                });
+              }
+            }
+          } // End multiplayerMode check
 
         } // End team-selected check
+        else if (data.type === "join-multiplayer-lobby") {
+          console.log(`Player ${player.username} wants to join multiplayer lobby`);
+          // For now, we'll handle this in the team-selected handler
+          // In a more complex implementation, this could manage a separate lobby system
+          player.ui.sendData({
+            type: "multiplayer-lobby-joined",
+            message: "Joined multiplayer lobby. Select your preferred team to continue."
+          });
+        }
         else if (data.type === "coin-toss-choice" && data.choice) {
           // Handle coin toss choice
           console.log(`Player ${player.username} chose ${data.choice} for coin toss`);
           
           // Process coin toss only if game is in starting state
-          if (game.getState().status === "starting") {
+          if (game && game.getState().status === "starting") {
             game.performCoinToss({
               playerId: player.username,
               choice: data.choice
@@ -702,7 +802,7 @@ startServer((world) => {
           console.log(`🔄 Player ${player.username} requested manual game reset from game over screen`);
           
           // Only allow reset if game is finished
-          if (game.getState().status === "finished") {
+          if (game && game.getState().status === "finished") {
             console.log("✅ Game is finished, proceeding with manual reset");
             
             // Reset music back to opening music
@@ -718,6 +818,10 @@ startServer((world) => {
             // Perform the actual game reset
             game.manualResetGame();
             
+            // CRITICAL: Unlock pointer for UI interactions after manual reset (Hytopia-compliant approach)
+            player.ui.lockPointer(false);
+            console.log(`🎯 Pointer unlocked for ${player.username} after manual reset - UI interactions enabled`);
+            
             // Clear AI players list
             aiPlayers.forEach(ai => {
               if (ai.isSpawned) {
@@ -731,92 +835,135 @@ startServer((world) => {
             
             console.log("✅ Manual game reset complete - players can now select teams");
           } else {
-            console.log(`❌ Manual reset denied - game status is: ${game.getState().status}`);
+            console.log(`❌ Manual reset denied - game status is: ${game ? game.getState().status : "null"}`);
             player.ui.sendData({
               type: "error",
               message: "Game reset only available when game is finished"
             });
           }
         }
+        else if (data.type === "start-second-half") {
+          // Handle manual start of second half from halftime button
+          console.log(`🚀 Player ${player.username} requested to start second half`);
+          
+          // Only allow if game is in halftime
+          if (game && game.getState().isHalftime) {
+            console.log("✅ Game is in halftime, starting second half");
+            
+            // Call the game's startSecondHalf method
+            game.startSecondHalf();
+            
+            console.log("✅ Second half started successfully");
+          } else {
+            console.log(`❌ Start second half denied - game status is: ${game ? game.getState().status : "null"}, halftime: ${game ? game.getState().isHalftime : "null"}`);
+            player.ui.sendData({
+              type: "error",
+              message: "Second half can only be started during halftime"
+            });
+          }
+        }
       });
 
-      // Attempt to start multiplayer game (logic needs adjustment for 6v6)
-      const state = game.getState();
-      if (
-        state.status === "waiting" &&
-        game.getPlayerCountOnTeam("red") >= state.minPlayersPerTeam && // Check each team individually
-        game.getPlayerCountOnTeam("blue") >= state.minPlayersPerTeam &&
-        (game.getPlayerCountOnTeam("red") + game.getPlayerCountOnTeam("blue")) >= state.minPlayersPerTeam * 2 && // Check total players
-        aiPlayers.length === 0 // Ensure we're not in single player mode (handled above)
-      ) {
-        // Potentially wait slightly or add a ready check before starting multiplayer
-        console.log("Enough players for multiplayer, attempting start...");
-        game.startGame(); 
+      // Attempt to start multiplayer game (only for human players, not AI)
+      if (game) {
+        const state = game.getState();
+        
+        // Count only human players (not AI) for multiplayer auto-start
+        const humanPlayerEntities = world.entityManager.getAllPlayerEntities().filter(
+          entity => entity instanceof SoccerPlayerEntity && !(entity instanceof AIPlayerEntity)
+        );
+        
+        const humanPlayersOnRed = humanPlayerEntities.filter(entity => 
+          game && game.getTeamOfPlayer(entity.player.username) === "red"
+        ).length;
+        
+        const humanPlayersOnBlue = humanPlayerEntities.filter(entity => 
+          game && game.getTeamOfPlayer(entity.player.username) === "blue"
+        ).length;
+        
+        const totalHumanPlayers = humanPlayersOnRed + humanPlayersOnBlue;
+        
+        if (
+          state.status === "waiting" &&
+          humanPlayersOnRed >= state.minPlayersPerTeam && // Check each team has enough humans
+          humanPlayersOnBlue >= state.minPlayersPerTeam &&
+          totalHumanPlayers >= state.minPlayersPerTeam * 2 && // Check total human players
+          aiPlayers.length === 0 // Ensure we're not in single player mode (handled above)
+        ) {
+          // Potentially wait slightly or add a ready check before starting multiplayer
+          console.log(`Enough human players for multiplayer (Red: ${humanPlayersOnRed}, Blue: ${humanPlayersOnBlue}), attempting start...`);
+          game.startGame(); 
+        } else if (aiPlayers.length > 0) {
+          // In single-player mode with AI - don't auto-start here, already handled by team selection
+          console.log(`Single-player mode detected (${aiPlayers.length} AI players) - skipping multiplayer auto-start`);
+        }
       }
     });
 
     world.on(PlayerEvent.LEFT_WORLD, ({ player }) => {
       console.log(`Player ${player.username} left world - checking if game reset needed`);
       
-      const playerTeam = game.getTeamOfPlayer(player.username);
-      game.removePlayer(player.username);
-      
-      // Despawn player's entity
-      world.entityManager
-        .getPlayerEntitiesByPlayer(player)
-        .forEach((entity) => entity.despawn());
+      if (game) {
+        const playerTeam = game.getTeamOfPlayer(player.username);
+        game.removePlayer(player.username);
+        
+        // Despawn player's entity
+        world.entityManager
+          .getPlayerEntitiesByPlayer(player)
+          .forEach((entity) => entity.despawn());
 
-      // Add a small delay to avoid false positives during goal handling or ball resets
-      setTimeout(() => {
-        // If game is in progress and was single player, reset AI
-        // Only check after delay to ensure this isn't during a game event
-        const humanPlayerCount = world.entityManager.getAllPlayerEntities().filter(e => e instanceof SoccerPlayerEntity && !(e instanceof AIPlayerEntity)).length;
-        
-        // Double-check that the player is actually disconnected (not just entity repositioning)
-        const playerStillConnected = world.entityManager.getAllPlayerEntities().some(entity => 
-          entity instanceof SoccerPlayerEntity && !(entity instanceof AIPlayerEntity) && entity.player.username === player.username
-        );
-        
-        if (game.inProgress() && aiPlayers.length > 0 && humanPlayerCount === 0 && !playerStillConnected) {
-           console.log("Confirmed: Last human player left single player game. Resetting AI.");
-           aiPlayers.forEach(ai => {
-             if (ai.isSpawned) {
-               ai.deactivate();
-               sharedState.removeAIFromTeam(ai, ai.team);
-               ai.despawn();
-             }
-           });
-           aiPlayers = []; // Clear local list
-           game.resetGame(); // Reset game as well since AI depended on human
-           
-           // Reset music back to opening music
-           console.log("Resetting music back to opening music");
-           getGameplayMusic().pause();
-           mainMusic.play(world);
-           
-           // Stop FIFA crowd atmosphere
-           fifaCrowdManager.stop();
-        } else if (game.inProgress() && playerTeam && game.getPlayerCountOnTeam(playerTeam) === 0 && !playerStillConnected) {
-           // Check if a team is now empty in multiplayer
-           console.log(`Team ${playerTeam} is now empty. Ending game.`);
-           game.resetGame(); // Or implement forfeit logic
-           
-           // Reset music back to opening music
-           console.log("Resetting music back to opening music");
-           getGameplayMusic().pause();
-           mainMusic.play(world);
-           
-           // Stop FIFA crowd atmosphere
-           fifaCrowdManager.stop();
-        } else {
-           console.log(`Player left but game continues - Human players: ${humanPlayerCount}, Player still connected: ${playerStillConnected}`);
-        }
-      }, 500); // 500ms delay to let any repositioning settle
+        // Add a small delay to avoid false positives during goal handling or ball resets
+        setTimeout(() => {
+          // If game is in progress and was single player, reset AI
+          // Only check after delay to ensure this isn't during a game event
+          const humanPlayerCount = world.entityManager.getAllPlayerEntities().filter(e => e instanceof SoccerPlayerEntity && !(e instanceof AIPlayerEntity)).length;
+          
+          // Double-check that the player is actually disconnected (not just entity repositioning)
+          const playerStillConnected = world.entityManager.getAllPlayerEntities().some(entity => 
+            entity instanceof SoccerPlayerEntity && !(entity instanceof AIPlayerEntity) && entity.player.username === player.username
+          );
+          
+          if (game && game.inProgress() && aiPlayers.length > 0 && humanPlayerCount === 0 && !playerStillConnected) {
+             console.log("Confirmed: Last human player left single player game. Resetting AI.");
+             aiPlayers.forEach(ai => {
+               if (ai.isSpawned) {
+                 ai.deactivate();
+                 sharedState.removeAIFromTeam(ai, ai.team);
+                 ai.despawn();
+               }
+             });
+             aiPlayers = []; // Clear local list
+             game.resetGame(); // Reset game as well since AI depended on human
+             
+             // Reset music back to opening music
+             console.log("Resetting music back to opening music");
+             getGameplayMusic().pause();
+             mainMusic.play(world);
+             
+             // Stop FIFA crowd atmosphere
+             fifaCrowdManager.stop();
+          } else if (game && game.inProgress() && playerTeam && game.getPlayerCountOnTeam(playerTeam) === 0 && !playerStillConnected) {
+             // Check if a team is now empty in multiplayer
+             console.log(`Team ${playerTeam} is now empty. Ending game.`);
+             game.resetGame(); // Or implement forfeit logic
+             
+             // Reset music back to opening music
+             console.log("Resetting music back to opening music");
+             getGameplayMusic().pause();
+             mainMusic.play(world);
+             
+             // Stop FIFA crowd atmosphere
+             fifaCrowdManager.stop();
+          } else {
+             console.log(`Player left but game continues - Human players: ${humanPlayerCount}, Player still connected: ${playerStillConnected}`);
+          }
+        }, 500); // 500ms delay to let any repositioning settle
+      }
     });
 
     world.chatManager.registerCommand("/stuck", (player, message) => {
       // Only allow this command during active gameplay
-      if (!game.inProgress()) {
+      if (!game || !game.inProgress()) {
         world.chatManager.sendPlayerMessage(
           player,
           "You can only use /stuck during an active game."
@@ -853,7 +1000,9 @@ startServer((world) => {
       });
       aiPlayers = [];
       // Update the game's aiPlayersList as well
-      game.updateAIPlayersList([]);
+      if (game) {
+        game.updateAIPlayersList([]);
+      }
       world.chatManager.sendPlayerMessage(
         player,
         "All AI players have been reset"
@@ -891,7 +1040,7 @@ startServer((world) => {
         world.chatManager.sendPlayerMessage(player, `=== AUDIO STATUS ===`);
         world.chatManager.sendPlayerMessage(player, `Current Mode: ${currentMode.toUpperCase()}`);
         world.chatManager.sendPlayerMessage(player, `Gameplay Track: ${trackName}`);
-        world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game.inProgress() ? "Yes" : "No"}`);
+        world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game ? (game.inProgress() ? "Yes" : "No") : "Not initialized"}`);
         world.chatManager.sendPlayerMessage(player, `FIFA Crowd: ${crowdStatus}`);
         world.chatManager.sendPlayerMessage(player, `Commands: /crowd <action> | /music <action>`);
       } else {
@@ -957,13 +1106,13 @@ startServer((world) => {
       } else if (action === "status") {
         const isActive = fifaCrowdManager.isActivated();
         const currentMode = getCurrentGameMode();
-        const shouldBeActive = isFIFAMode() && game.inProgress();
+        const shouldBeActive = isFIFAMode() && game && game.inProgress();
         const queueStatus = fifaCrowdManager.getQueueStatus();
         
         world.chatManager.sendPlayerMessage(player, `=== FIFA CROWD STATUS ===`);
         world.chatManager.sendPlayerMessage(player, `Current Mode: ${currentMode.toUpperCase()}`);
         world.chatManager.sendPlayerMessage(player, `Crowd Manager: ${isActive ? "🏟️ Active" : "🔇 Inactive"}`);
-        world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game.inProgress() ? "✅ Yes" : "❌ No"}`);
+        world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game ? (game.inProgress() ? "✅ Yes" : "❌ No") : "❌ Not initialized"}`);
         world.chatManager.sendPlayerMessage(player, `Should Be Active: ${shouldBeActive ? "✅ Yes" : "❌ No"}`);
         world.chatManager.sendPlayerMessage(player, `Voice Queue: ${queueStatus.queueLength} pending, ${queueStatus.isPlaying ? "🎙️ Playing" : "🔇 Silent"}`);
         world.chatManager.sendPlayerMessage(player, `Available Commands: goal, momentum, gameend, redcard, save, miss, foul, queue, clear`);
@@ -977,7 +1126,9 @@ startServer((world) => {
 
     // Add a debug command to check AI status
     world.chatManager.registerCommand("/debugai", (player, message) => {
-      game.updateAIPlayersList(aiPlayers);
+      if (game) {
+        game.updateAIPlayersList(aiPlayers);
+      }
       const gameAICount = aiPlayers.length;
       const activeAICount = aiPlayers.filter(ai => ai.isSpawned && !ai.isPlayerFrozen).length;
       const frozenAICount = aiPlayers.filter(ai => ai.isSpawned && ai.isPlayerFrozen).length;
@@ -988,7 +1139,7 @@ startServer((world) => {
       );
       
       // Force activate all AI if they're spawned but not active
-      if (game.inProgress() && frozenAICount > 0) {
+      if (game && game.inProgress() && frozenAICount > 0) {
         aiPlayers.forEach(ai => {
           if (ai.isSpawned && ai.isPlayerFrozen) {
             ai.unfreeze();
@@ -1166,6 +1317,10 @@ startServer((world) => {
 
     // Add command to check end-game rules and timing
     world.chatManager.registerCommand("/endgame", (player, args) => {
+      if (!game) {
+        world.chatManager.sendPlayerMessage(player, "Game not initialized yet. Please select a team first.");
+        return;
+      }
       const state = game.getState();
       const scoreDiff = Math.abs(state.score.red - state.score.blue);
       const finalTwoMinutes = state.timeRemaining <= 120;
@@ -1458,7 +1613,7 @@ startServer((world) => {
       setGameMode(GameMode.FIFA);
       
       // Switch music if game is in progress and mode actually changed
-      if (previousMode !== GameMode.FIFA && game.inProgress()) {
+      if (previousMode !== GameMode.FIFA && game && game.inProgress()) {
         console.log("Switching to FIFA mode music during active game");
         arcadeGameplayMusic.pause();
         fifaGameplayMusic.play(world);
@@ -1478,7 +1633,7 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Match Duration: ${getCurrentModeConfig().matchDuration / 60} minutes`
+        `Match Duration: ${getCurrentModeConfig().halfDuration * getCurrentModeConfig().totalHalves / 60} minutes`
       );
       world.chatManager.sendPlayerMessage(
         player,
@@ -1491,7 +1646,7 @@ startServer((world) => {
       setGameMode(GameMode.ARCADE);
       
       // Switch music if game is in progress and mode actually changed
-      if (previousMode !== GameMode.ARCADE && game.inProgress()) {
+      if (previousMode !== GameMode.ARCADE && game && game.inProgress()) {
         console.log("Switching to Arcade mode music during active game");
         fifaGameplayMusic.pause();
         arcadeGameplayMusic.play(world);
@@ -1511,7 +1666,7 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Match Duration: ${getCurrentModeConfig().matchDuration / 60} minutes`
+        `Match Duration: ${getCurrentModeConfig().halfDuration * getCurrentModeConfig().totalHalves / 60} minutes`
       );
       world.chatManager.sendPlayerMessage(
         player,
@@ -1537,15 +1692,15 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Match Duration: ${config.matchDuration / 60} minutes`
+        `Match Duration: ${config.halfDuration * config.totalHalves / 60} minutes`
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Power-ups: ${config.enablePowerUps ? "✅ Enabled" : "❌ Disabled"}`
+        `Power-ups: ${config.powerUps ? "✅ Enabled" : "❌ Disabled"}`
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Abilities: ${config.enableAbilities ? "✅ Enabled" : "❌ Disabled"}`
+        `Abilities: ${config.specialAbilities ? "✅ Enabled" : "❌ Disabled"}`
       );
       world.chatManager.sendPlayerMessage(
         player,
