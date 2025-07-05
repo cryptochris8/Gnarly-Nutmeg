@@ -532,7 +532,7 @@ export class SoccerGame {
         this.sendDataToAllPlayers({
           type: "stoppage-time-notification",
           stoppageTimeAdded: stoppageTime,
-          message: `${stoppageTime} minutes of stoppage time added`,
+          message: `${stoppageTime} seconds of stoppage time added`,
           half: this.state.currentHalf
         });
       }
