@@ -4022,10 +4022,10 @@
         const isStoppageTime = data.halfTimeRemaining <= 0;
         
         if (isStoppageTime && data.stoppageTimeAdded > 0) {
-          // Display stoppage time format (90+X)
-          const stoppageMinutes = Math.abs(data.halfTimeRemaining);
-          timeLeft.textContent = `90+${stoppageMinutes}`;
-          phaseIndicator.textContent = `HALF ${data.currentHalf} +${Math.floor(stoppageMinutes/60) || 1}'`;
+          // Display stoppage time format (5+X for 5-minute halves)
+          const stoppageSeconds = Math.abs(data.halfTimeRemaining);
+          timeLeft.textContent = `5+${stoppageSeconds}`;
+          phaseIndicator.textContent = `HALF ${data.currentHalf} +${Math.floor(stoppageSeconds/60) || 1}'`;
           phaseIndicator.className = "phase-indicator playing stoppage-time";
         } else {
           // Display regular half time remaining
