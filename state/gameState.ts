@@ -662,12 +662,20 @@ export class SoccerGame {
 
   // Public method to manually start the second half (called from UI button click)
   public startSecondHalf(): void {
+    console.log(`🏟️ Second half start requested - Current state: isHalftime=${this.state.isHalftime}, status=${this.state.status}`);
+    
     if (!this.state.isHalftime) {
       console.log("⚠️ Cannot start second half - not in halftime!");
+      console.log(`⚠️ Current game state: ${JSON.stringify({
+        isHalftime: this.state.isHalftime,
+        status: this.state.status,
+        currentHalf: this.state.currentHalf,
+        halfTimeRemaining: this.state.halfTimeRemaining
+      })}`);
       return;
     }
 
-    console.log("🏟️ Manual second half start requested");
+    console.log("🏟️ Manual second half start requested - proceeding with transition");
     
     // Call the existing endHalftime method to handle the transition
     this.endHalftime();
@@ -676,6 +684,8 @@ export class SoccerGame {
     this.gameLoopInterval = setInterval(() => {
       this.gameLoop();
     }, 1000);
+    
+    console.log("✅ Second half started successfully - game loop restarted");
   }
 
   private endHalftime() {
@@ -685,6 +695,20 @@ export class SoccerGame {
     this.state.currentHalf = 2;
     this.state.halfTimeRemaining = HALF_DURATION;
     this.state.status = "playing";
+
+    // ✨ CRITICAL: Send game state update immediately to remove halftime overlay
+    this.sendDataToAllPlayers({
+      type: "game-state",
+      timeRemaining: this.state.timeRemaining,
+      halfTimeRemaining: this.state.halfTimeRemaining,
+      currentHalf: this.state.currentHalf,
+      halftimeTimeRemaining: this.state.halftimeTimeRemaining,
+      isHalftime: this.state.isHalftime, // This should be false now
+      score: this.state.score,
+      status: this.state.status, // This should be "playing" now
+      message: "Starting 2nd Half"
+    });
+    console.log("✅ Game state update sent - halftime overlay should be removed");
 
     // Announce start of 2nd half
     this.world.chatManager.sendBroadcastMessage("2nd Half starting!");

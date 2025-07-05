@@ -5915,8 +5915,15 @@
   function listenForHalftimeEnd() {
     // Listen for game state updates to detect when halftime ends
     const halftimeMessageHandler = (data) => {
+      console.log("🔄 Halftime listener received message:", data.type, "isHalftime:", data.isHalftime, "status:", data.status);
+      
       if (data.type === "game-state" && !data.isHalftime && data.status === "playing") {
+        console.log("✅ Halftime has ended, removing overlay");
         // Halftime has ended, remove the overlay
+        removeHalftimeStatsOverlay();
+      } else if (data.type === "game-state" && data.message === "Starting 2nd Half") {
+        console.log("✅ Starting 2nd Half message received, removing overlay");
+        // Also remove overlay when we get the specific 2nd half message
         removeHalftimeStatsOverlay();
       }
     };
@@ -5948,6 +5955,14 @@
         type: 'start-second-half'
       });
       console.log("✅ Start second half event sent to server");
+      
+      // Add a failsafe to remove the overlay after a short delay
+      // This ensures the UI responds even if the server message is delayed
+      setTimeout(() => {
+        console.log("🔄 Failsafe: Removing halftime overlay after 3 seconds");
+        removeHalftimeStatsOverlay();
+      }, 3000);
+      
     } else {
       console.error("❌ Could not send start-second-half event - hytopia not available");
     }
@@ -5977,14 +5992,19 @@
 
   // Remove halftime stats overlay
   function removeHalftimeStatsOverlay() {
+    console.log("🔄 Attempting to remove halftime stats overlay");
     const overlay = document.getElementById('halftime-stats-overlay');
     if (overlay) {
+      console.log("✅ Halftime overlay found, removing with animation");
       overlay.style.animation = 'fadeOut 0.5s ease-out';
       setTimeout(() => {
         if (overlay.parentNode) {
           document.body.removeChild(overlay);
+          console.log("✅ Halftime overlay successfully removed from DOM");
         }
       }, 500);
+    } else {
+      console.log("⚠️ Halftime overlay not found - may have been already removed");
     }
   }
 
