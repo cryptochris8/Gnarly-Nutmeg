@@ -1868,79 +1868,7 @@
     border-radius: 4px;
   }
 
-  /* Game Options Styling */
-  .game-options {
-    text-align: center;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
 
-  .option-label {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer !important;
-    color: #ffffff;
-    font-size: 14px;
-    user-select: none;
-    position: relative;
-    padding-left: 30px;
-    pointer-events: auto;
-  }
-
-  .option-label input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    cursor: pointer;
-    height: 0;
-    width: 0;
-  }
-
-  .checkmark {
-    position: absolute;
-    left: 0;
-    height: 20px;
-    width: 20px;
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-    transition: all 0.3s ease;
-  }
-
-  .option-label:hover .checkmark {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
-  }
-
-  .option-label input:checked ~ .checkmark {
-    background-color: #4CAF50;
-    border-color: #4CAF50;
-  }
-
-  .checkmark:after {
-    content: "";
-    position: absolute;
-    display: none;
-  }
-
-  .option-label input:checked ~ .checkmark:after {
-    display: block;
-  }
-
-  .option-label .checkmark:after {
-    left: 6px;
-    top: 2px;
-    width: 5px;
-    height: 10px;
-    border: solid white;
-    border-width: 0 3px 3px 0;
-    transform: rotate(45deg);
-  }
-
-  .option-text {
-    margin-left: 8px;
-    opacity: 0.9;
-  }
 
   /* Mobile Responsiveness */
   @media (max-width: 768px) {
@@ -2882,51 +2810,7 @@
     line-height: 1.3;
   }
 
-  /* ===== PERFORMANCE INDICATORS ===== */
-  .performance-indicators {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    display: flex;
-    gap: 12px;
-    z-index: 1000;
-  }
 
-  .performance-stat {
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
-    border-radius: 10px;
-    padding: 12px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    text-align: center;
-    min-width: 60px;
-    transition: all 0.3s ease;
-  }
-
-  .performance-stat:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-  }
-
-  .stat-icon {
-    font-size: 18px;
-    margin-bottom: 4px;
-  }
-
-  .stat-value {
-    font-size: 16px;
-    font-weight: bold;
-    color: #ffffff;
-    margin-bottom: 2px;
-  }
-
-  .stat-label {
-    font-size: 10px;
-    color: #cccccc;
-    text-transform: uppercase;
-    font-weight: bold;
-  }
 
   /* ===== TEAM FORMATION DISPLAY ===== */
   .team-formation-display {
@@ -3041,16 +2925,7 @@
       padding: 15px;
     }
 
-    .performance-indicators {
-      bottom: 10px;
-      right: 10px;
-      gap: 8px;
-    }
 
-    .performance-stat {
-      min-width: 50px;
-      padding: 8px;
-    }
 
     .team-formation-display {
       left: 10px;
@@ -3085,13 +2960,99 @@
       min-width: auto;
     }
 
-    .performance-indicators {
-      flex-direction: column;
-      gap: 6px;
-    }
+
 
     .team-formation-display {
       display: none; /* Hide on very small screens */
+    }
+  }
+
+  /* ===== STOPPAGE TIME NOTIFICATION SYSTEM ===== */
+  .stoppage-time-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #FFD700, #FFA500, #FF8C00);
+    color: #000000;
+    padding: 25px 40px;
+    border-radius: 15px;
+    border: 3px solid #FFD700;
+    box-shadow: 0 8px 32px rgba(255, 215, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    z-index: 10000;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    animation: stoppageTimeSlideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    backdrop-filter: blur(5px);
+  }
+
+  .stoppage-time-notification.hide {
+    animation: stoppageTimeSlideOut 0.5s ease-in-out forwards;
+  }
+
+  .stoppage-time-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+    animation: stoppageTimePulse 1.5s ease-in-out infinite;
+  }
+
+  .stoppage-time-message {
+    font-size: 16px;
+    margin-top: 10px;
+    opacity: 0.9;
+  }
+
+  /* Pulsing animation for phase indicator during stoppage time */
+  .phase-indicator.stoppage-time {
+    animation: stoppageTimePhasePulse 2s ease-in-out infinite;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000000;
+    border: 2px solid #FFD700;
+  }
+
+  @keyframes stoppageTimeSlideIn {
+    0% {
+      transform: translate(-50%, -50%) scale(0.3);
+      opacity: 0;
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes stoppageTimeSlideOut {
+    0% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+    }
+  }
+
+  @keyframes stoppageTimePulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+
+  @keyframes stoppageTimePhasePulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
+      transform: scale(1.05);
     }
   }
 </style>
@@ -3141,29 +3102,7 @@
   <!-- Action notifications will be dynamically added here -->
 </div>
 
-<!-- PLAYER PERFORMANCE INDICATORS -->
-<div id="performance-indicators" class="performance-indicators" style="display: none;">
-  <div class="performance-stat">
-    <div class="stat-icon">⚽</div>
-    <div class="stat-value" id="shots-stat">0</div>
-    <div class="stat-label">Shots</div>
-  </div>
-  <div class="performance-stat">
-    <div class="stat-icon">🎯</div>
-    <div class="stat-value" id="passes-stat">0</div>
-    <div class="stat-label">Passes</div>
-  </div>
-  <div class="performance-stat">
-    <div class="stat-icon">🛡️</div>
-    <div class="stat-value" id="tackles-stat">0</div>
-    <div class="stat-label">Tackles</div>
-  </div>
-  <div class="performance-stat">
-    <div class="stat-icon">🏃</div>
-    <div class="stat-value" id="distance-stat">0m</div>
-    <div class="stat-label">Distance</div>
-  </div>
-</div>
+
 
 <!-- ENHANCED TEAM POSITIONING DISPLAY -->
 <div id="team-formation-display" class="team-formation-display" style="display: none;">
@@ -3241,10 +3180,10 @@
     </div>
     <div style="font-size: 11px; color: #ffcccc; line-height: 1.4;">
       🧊 <strong>Freeze Blast</strong> - Freezes nearby opponents<br>
-              ⚡ <strong>Speed Boost</strong> - Doubles movement speed<br>
-        🔥 <strong>Fireball</strong> - Explosive area damage<br>
-      ⚽ <strong>Mega Kick</strong> - Triple shot power<br>
-      🛡️ <strong>Shield</strong> - Temporary protection
+      ⚡ <strong>Mega Kick</strong> - Triple shot power<br>
+      🔥 <strong>Fireball</strong> - Explosive area damage<br>
+      🛡️ <strong>Shield</strong> - Temporary protection<br>
+      🧪 <strong>Stamina Potion</strong> - Instant stamina restoration
     </div>
     <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
       Press <span class="powerup-key">F</span> to activate power-up
@@ -3279,12 +3218,14 @@
 
     
     <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')" title="Fireball - Explosive area damage">
-      🔥
+      <div class="powerup-key-hint">2</div>
+      <div class="powerup-icon">🔥</div>
       <div class="powerup-cooldown-overlay" id="fireball-cooldown"></div>
     </div>
     
     <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')" title="Mega Kick - Triple shot power">
-      ⚡
+      <div class="powerup-key-hint">3</div>
+      <div class="powerup-icon">⚡</div>
       <div class="powerup-cooldown-overlay" id="mega-kick-cooldown"></div>
     </div>
 
@@ -3295,7 +3236,8 @@
     </div>
 
     <div class="powerup-button" id="shield-btn" onclick="activatePowerUp('shield')" title="Shield - Temporary protection">
-      🛡️
+      <div class="powerup-key-hint">4</div>
+      <div class="powerup-icon">🛡️</div>
       <div class="powerup-cooldown-overlay" id="shield-cooldown"></div>
     </div>
   </div>
@@ -3329,12 +3271,12 @@
       <button class="game-mode-btn fifa" id="fifaModeBtn">
         🏆 FIFA Mode
         <div class="mode-description">Realistic Soccer Simulation</div>
-        <div class="mode-features">• Pure soccer gameplay • 5-minute matches • No power-ups</div>
+        <div class="mode-features">• Pure soccer gameplay • 2 x 5-minute halves • No power-ups</div>
       </button>
       <button class="game-mode-btn arcade" id="arcadeModeBtn">
         🎪 Arcade Mode
         <div class="mode-description">Enhanced Soccer Action</div>
-        <div class="mode-features">• Power-ups & abilities • 3-minute matches • Special effects</div>
+        <div class="mode-features">• Power-ups & abilities • 2 x 5-minute halves • Special effects</div>
       </button>
     </div>
     
@@ -3515,13 +3457,7 @@
       </div>
     </div>
     
-    <div class="game-options">
-      <label class="option-label">
-        <input type="checkbox" id="singlePlayerToggle" checked>
-        <span class="checkmark"></span>
-        <span class="option-text">Play with AI teammates & opponents</span>
-      </label>
-    </div>
+
   </div>
 </div>
 
@@ -3662,7 +3598,7 @@
       titleEl.textContent = '🏆 FIFA Mode Selected';
       descEl.textContent = 'Experience realistic soccer simulation with authentic gameplay mechanics and timing.';
       featuresEl.innerHTML = `
-        • 5-minute regulation matches with possible overtime<br>
+        • 2 x 5-minute halves with possible overtime<br>
         • Pure soccer gameplay - no power-ups or special abilities<br>
         • Realistic physics and player movement<br>
         • Focus on skill, strategy, and teamwork<br>
@@ -3672,7 +3608,7 @@
       titleEl.textContent = '🎪 Arcade Mode Selected';
       descEl.textContent = 'Fast-paced soccer action with enhanced gameplay features and special effects.';
       featuresEl.innerHTML = `
-        • 3-minute quick matches for rapid gameplay<br>
+        • 2 x 5-minute halves for rapid gameplay<br>
         • Power-ups and special abilities for enhanced action<br>
         • Enhanced physics with special moves<br>
         • Particle effects and visual enhancements<br>
@@ -4082,12 +4018,23 @@
         phaseIndicator.className = "phase-indicator starting";
         break;
       case "playing":
-        // Display half time remaining (updated from quarter time)
-        const halfMinutes = Math.floor(data.halfTimeRemaining / 60);
-        const halfSeconds = data.halfTimeRemaining % 60;
-        timeLeft.textContent = `${halfMinutes}:${halfSeconds.toString().padStart(2, '0')}`;
-        phaseIndicator.textContent = `HALF ${data.currentHalf}`;
-        phaseIndicator.className = "phase-indicator playing";
+        // Check if we're in stoppage time (halfTimeRemaining <= 0)
+        const isStoppageTime = data.halfTimeRemaining <= 0;
+        
+        if (isStoppageTime && data.stoppageTimeAdded > 0) {
+          // Display stoppage time format (90+X)
+          const stoppageMinutes = Math.abs(data.halfTimeRemaining);
+          timeLeft.textContent = `90+${stoppageMinutes}`;
+          phaseIndicator.textContent = `HALF ${data.currentHalf} +${Math.floor(stoppageMinutes/60) || 1}'`;
+          phaseIndicator.className = "phase-indicator playing stoppage-time";
+        } else {
+          // Display regular half time remaining
+          const halfMinutes = Math.floor(data.halfTimeRemaining / 60);
+          const halfSeconds = data.halfTimeRemaining % 60;
+          timeLeft.textContent = `${halfMinutes}:${halfSeconds.toString().padStart(2, '0')}`;
+          phaseIndicator.textContent = `HALF ${data.currentHalf}`;
+          phaseIndicator.className = "phase-indicator playing";
+        }
         break;
       case "halftime":
         // Display halftime - manual system (no countdown)
@@ -4675,11 +4622,7 @@
       updatePlayerRole("player");
     }
 
-    // Show performance indicators
-    const perfIndicators = document.getElementById("performance-indicators");
-    if (perfIndicators) {
-      perfIndicators.style.display = "flex";
-    }
+
 
     // Initialize stamina
     updateStamina(100);
@@ -4743,20 +4686,7 @@
     playerStatus.hasBall = hasBall;
   }
 
-  // Update performance statistics
-  function updatePlayerStats(statType, value) {
-    const statElement = document.getElementById(`${statType}-stat`);
-    
-    if (statElement) {
-      if (statType === "distance") {
-        statElement.textContent = `${Math.round(value)}m`;
-      } else {
-        statElement.textContent = value;
-      }
-    }
 
-    playerStatus.stats[statType] = value;
-  }
 
   // Show action feedback
   function showActionFeedback(type, title, message, duration = 3000) {
@@ -4850,12 +4780,7 @@
       updateBallPossession(data.ballPossession);
     }
 
-    // Update player stats
-    if (data.playerStats) {
-      Object.keys(data.playerStats).forEach(stat => {
-        updatePlayerStats(stat, data.playerStats[stat]);
-      });
-    }
+
 
     // Show action feedback if provided
     if (data.actionFeedback) {
@@ -4882,10 +4807,7 @@
       showActionFeedback("success", "Welcome!", "Enhanced UI system loaded successfully");
       updatePlayerRole("striker");
       updateStamina(85);
-      updatePlayerStats("shots", 3);
-      updatePlayerStats("passes", 12);
-      updatePlayerStats("tackles", 2);
-      updatePlayerStats("distance", 1250);
+
       
       // Test ball possession after a delay
       setTimeout(() => {
@@ -5000,6 +4922,11 @@
 
     if (data.type === "countdown") {
       showCountdown(data.count);
+    }
+
+    if (data.type === "stoppage-time-notification") {
+      console.log("⏱️ Stoppage time notification received:", data);
+      showStoppageTimeNotification(data);
     }
 
     if (data.type === "power-bar") {
@@ -5227,6 +5154,48 @@
     setTimeout(() => {
       countdownText.style.display = "none";
     }, 1000);
+  }
+
+  // ===== STOPPAGE TIME NOTIFICATION SYSTEM =====
+  function showStoppageTimeNotification(data) {
+    // Create the notification element
+    const notification = document.createElement('div');
+    notification.className = 'stoppage-time-notification';
+    notification.innerHTML = `
+      <div class="stoppage-time-icon">⏱️</div>
+      <div><strong>STOPPAGE TIME</strong></div>
+      <div class="stoppage-time-message">${data.message}</div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Play stoppage time sound
+    playStoppageTimeSound();
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      notification.classList.add('hide');
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 500); // Wait for animation to complete
+    }, 3000);
+  }
+
+  function playStoppageTimeSound() {
+    if (audioEnabled) {
+      console.log("Playing stoppage time notification sound");
+      // Play specific stoppage-time.mp3 file
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        hytopia.sendData({
+          type: "play-audio",
+          audioFile: "stoppage-time.mp3",
+          volume: 0.7
+        });
+      }
+    }
   }
 
 

@@ -124,7 +124,7 @@ startServer((world) => {
     });
 
     const fifaGameplayMusic = new Audio({
-      uri: "audio/music/hytopia-main.mp3",
+      uri: "audio/music/Vettore - Silk.mp3",
       loop: true,
       volume: 0.1,
     });
@@ -1034,7 +1034,7 @@ startServer((world) => {
         world.chatManager.sendPlayerMessage(player, `Switched to gameplay music (${getCurrentGameMode()} mode)`);
       } else if (musicType === "status") {
         const currentMode = getCurrentGameMode();
-        const trackName = currentMode === GameMode.FIFA ? "hytopia-main.mp3" : "always-win.mp3";
+        const trackName = currentMode === GameMode.FIFA ? "Vettore - Silk.mp3" : "always-win.mp3";
         const crowdStatus = fifaCrowdManager.isActivated() ? "🏟️ Active" : "🔇 Inactive";
         
         world.chatManager.sendPlayerMessage(player, `=== AUDIO STATUS ===`);

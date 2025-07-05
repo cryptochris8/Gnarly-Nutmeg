@@ -90,6 +90,10 @@ export interface GameState {
   isHalftime: boolean; // True during halftime break
   halftimeTimeRemaining: number; // Time remaining in halftime break (in seconds)
   
+  // Stoppage time system
+  stoppageTimeAdded: number; // Additional stoppage time in seconds
+  stoppageTimeNotified: boolean; // Whether stoppage time notification has been sent
+  
   // Match info
   timeRemaining: number; // Total time remaining (for backward compatibility)
   matchDuration: number; // Total match time (10 minutes = 600 seconds)
@@ -151,6 +155,8 @@ export class SoccerGame {
       halfTimeRemaining: HALF_DURATION,
       isHalftime: false,
       halftimeTimeRemaining: 0,
+      stoppageTimeAdded: 0,
+      stoppageTimeNotified: false,
       matchDuration: MATCH_DURATION,
       overtimeTimeRemaining: 0,
       maxPlayersPerTeam: 6,
@@ -459,6 +465,10 @@ export class SoccerGame {
     this.state.isHalftime = false;
     this.state.halftimeTimeRemaining = 0;
     
+    // Initialize stoppage time system for first half
+    this.state.stoppageTimeAdded = 0;
+    this.state.stoppageTimeNotified = false;
+    
     console.log(`🏟️ Starting 1st Half - ${HALF_DURATION} seconds per half, ${MATCH_DURATION} seconds total`);
     
     // Start the game loop for time tracking
@@ -504,26 +514,52 @@ export class SoccerGame {
         console.log(`⏰ OVERTIME: ${this.state.halfTimeRemaining}s remaining, Score: ${this.state.score.red}-${this.state.score.blue}`);
       }
     } else {
-      // Handle regular half time countdown
-      if (this.state.halfTimeRemaining <= 0) {
+      // Handle regular half time countdown with continuous timer and stoppage time
+      
+      // Always update timers (continuous running clock)
+      this.state.halfTimeRemaining--;
+      this.state.timeRemaining--;
+      
+      // Check if we need to add stoppage time (when 60 seconds remaining)
+      if (this.state.halfTimeRemaining === 60 && !this.state.stoppageTimeNotified) {
+        const stoppageTime = Math.floor(Math.random() * 45) + 15; // Random 15-59 seconds
+        this.state.stoppageTimeAdded = stoppageTime;
+        this.state.stoppageTimeNotified = true;
+        
+        console.log(`⏱️ STOPPAGE TIME: ${stoppageTime} seconds added to ${this.state.currentHalf === 1 ? 'first' : 'second'} half`);
+        
+        // Send stoppage time notification to all players
+        this.sendDataToAllPlayers({
+          type: "stoppage-time-notification",
+          stoppageTimeAdded: stoppageTime,
+          message: `${stoppageTime} minutes of stoppage time added`,
+          half: this.state.currentHalf
+        });
+      }
+      
+      // Check if half should end (accounting for stoppage time)
+      const totalTimeWithStoppage = 0 - this.state.stoppageTimeAdded; // Negative because timer counts down
+      if (this.state.halfTimeRemaining <= totalTimeWithStoppage) {
         console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Score: ${this.state.score.red}-${this.state.score.blue}`);
         this.handleHalfEnd();
         return;
       }
-
-      // Update timers only if not in goal-scored state
-      if (this.state.status !== "goal-scored") {
-        this.state.halfTimeRemaining--;
-        this.state.timeRemaining--;
-      }
       
-      // Log every 30 seconds during regular time
-      if (this.state.halfTimeRemaining % 30 === 0 && this.state.status !== "goal-scored") {
-        console.log(`⏰ HALF ${this.state.currentHalf}: ${this.state.halfTimeRemaining}s remaining, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+      // Log every 30 seconds during regular time, and every 10 seconds during stoppage time
+      const isStoppageTime = this.state.halfTimeRemaining <= 0;
+      const logInterval = isStoppageTime ? 10 : 30;
+      
+      if (this.state.halfTimeRemaining % logInterval === 0) {
+        if (isStoppageTime) {
+          const stoppageMinutes = Math.abs(this.state.halfTimeRemaining);
+          console.log(`⏱️ STOPPAGE TIME: 90+${stoppageMinutes}s, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+        } else {
+          console.log(`⏰ HALF ${this.state.currentHalf}: ${this.state.halfTimeRemaining}s remaining, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+        }
       }
 
-      // Play ticking sound in last 5 seconds of half
-      if (this.state.halfTimeRemaining === 5) {
+      // Play ticking sound in last 5 seconds of regulation OR stoppage time
+      if (this.state.halfTimeRemaining === 5 || this.state.halfTimeRemaining === (0 - this.state.stoppageTimeAdded + 5)) {
         TICKING_AUDIO.play(this.world);
       }
     }
@@ -536,19 +572,19 @@ export class SoccerGame {
       }
     });
 
-    // Send game state to UI - but skip during goal-scored to prevent score conflicts
-    if (this.state.status !== "goal-scored") {
-      this.sendDataToAllPlayers({
-        type: "game-state",
-        timeRemaining: this.state.timeRemaining,
-        halfTimeRemaining: this.state.halfTimeRemaining,
-        currentHalf: this.state.currentHalf,
-        halftimeTimeRemaining: this.state.halftimeTimeRemaining,
-        isHalftime: this.state.isHalftime,
-        score: this.state.score,
-        status: this.state.status,
-      });
-    }
+    // Send game state to UI (now including stoppage time information)
+    this.sendDataToAllPlayers({
+      type: "game-state",
+      timeRemaining: this.state.timeRemaining,
+      halfTimeRemaining: this.state.halfTimeRemaining,
+      currentHalf: this.state.currentHalf,
+      halftimeTimeRemaining: this.state.halftimeTimeRemaining,
+      isHalftime: this.state.isHalftime,
+      stoppageTimeAdded: this.state.stoppageTimeAdded,
+      stoppageTimeNotified: this.state.stoppageTimeNotified,
+      score: this.state.score,
+      status: this.state.status,
+    });
 
     // Send player stats update every 5 seconds during gameplay
     if (this.state.status === "playing" && this.state.timeRemaining % 5 === 0) {
@@ -695,6 +731,10 @@ export class SoccerGame {
     this.state.currentHalf = 2;
     this.state.halfTimeRemaining = HALF_DURATION;
     this.state.status = "playing";
+    
+    // Reset stoppage time for second half
+    this.state.stoppageTimeAdded = 0;
+    this.state.stoppageTimeNotified = false;
 
     // ✨ CRITICAL: Send game state update immediately to remove halftime overlay
     this.sendDataToAllPlayers({
@@ -1218,6 +1258,8 @@ export class SoccerGame {
       halfTimeRemaining: HALF_DURATION,
       isHalftime: false,
       halftimeTimeRemaining: 0,
+      stoppageTimeAdded: 0,
+      stoppageTimeNotified: false,
       matchDuration: MATCH_DURATION,
       overtimeTimeRemaining: 0,
       maxPlayersPerTeam: 6,
