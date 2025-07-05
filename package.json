@@ -15,6 +15,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "@gltf-transform/cli": "^4.2.0",
     "@hytopia.com/assets": "^0.2.21",
     "hytopia": "^0.6.21"
   },
