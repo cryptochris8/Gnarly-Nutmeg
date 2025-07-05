@@ -1412,9 +1412,23 @@
   }
 
   .game-mode-btn.arcade:hover {
-    border-color: #FF8800;
-    background: linear-gradient(135deg, rgba(255, 102, 0, 0.4), rgba(255, 102, 0, 0.2));
-    box-shadow: 0 10px 30px rgba(255, 102, 0, 0.3);
+    background: linear-gradient(135deg, #f7931e, #ff8c42, #ffb366);
+    box-shadow: 
+      0 8px 30px rgba(255, 107, 53, 0.6),
+      0 0 20px rgba(255, 215, 0, 0.4),
+      inset 0 2px 6px rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+  }
+
+  .game-mode-btn.pickup {
+    border-color: #9366FF;
+    background: linear-gradient(135deg, rgba(147, 102, 255, 0.2), rgba(147, 102, 255, 0.1));
+  }
+
+  .game-mode-btn.pickup:hover {
+    border-color: #B388FF;
+    background: linear-gradient(135deg, rgba(147, 102, 255, 0.4), rgba(147, 102, 255, 0.2));
+    box-shadow: 0 10px 30px rgba(147, 102, 255, 0.3);
     transform: translateY(-3px);
   }
 
@@ -2543,6 +2557,23 @@
     transform: translateY(-3px);
   }
 
+  .game-mode-btn.pickup {
+    background: linear-gradient(135deg, #9c27b0, #673ab7, #7b1fa2);
+    border: 3px solid #e91e63;
+    box-shadow: 
+      0 6px 20px rgba(156, 39, 176, 0.4),
+      inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  }
+
+  .game-mode-btn.pickup:hover {
+    background: linear-gradient(135deg, #673ab7, #7b1fa2, #9c27b0);
+    box-shadow: 
+      0 8px 30px rgba(156, 39, 176, 0.6),
+      0 0 20px rgba(233, 30, 99, 0.4),
+      inset 0 2px 6px rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+  }
+
   .game-mode-btn.selected {
     transform: translateY(-2px) scale(1.02);
     box-shadow: 
@@ -3282,8 +3313,15 @@
       <button class="game-mode-btn arcade" id="arcadeModeBtn">
         🎪 Arcade Mode
         <div class="mode-description">Enhanced Soccer Action</div>
-        <div class="mode-features">• Power-ups & abilities • 2 x 5-minute halves • Special effects</div>
+        <div class="mode-features">• Unlimited F-key power-ups • 2 x 5-minute halves • Special effects</div>
       </button>
+      <!-- PICKUP MODE - TEMPORARILY DISABLED (READY FOR FUTURE UPGRADE)
+      <button class="game-mode-btn pickup" id="pickupModeBtn">
+        🎯 Pickup Mode
+        <div class="mode-description">Collectible Ability Soccer</div>
+        <div class="mode-features">• Physical pickups to collect • F-key uses collected ability • 2 x 5-minute halves</div>
+      </button>
+      -->
     </div>
     
     <div class="selected-mode-info" id="selectedModeInfo" style="display: none;">
@@ -4250,11 +4288,13 @@
   const blueTeamBtn = document.getElementById("blueTeamBtn");
   const fifaModeBtn = document.getElementById("fifaModeBtn");
   const arcadeModeBtn = document.getElementById("arcadeModeBtn");
+  // const pickupModeBtn = document.getElementById("pickupModeBtn"); // PICKUP MODE DISABLED
   
   console.log("Red button:", redTeamBtn); // Debug log
   console.log("Blue button:", blueTeamBtn); // Debug log
   console.log("FIFA button:", fifaModeBtn); // Debug log
   console.log("Arcade button:", arcadeModeBtn); // Debug log
+  // console.log("Pickup button:", pickupModeBtn); // Debug log - PICKUP MODE DISABLED
   
   // Team selection event listeners with universal handler
   if (redTeamBtn && blueTeamBtn) {
@@ -4277,6 +4317,10 @@
     arcadeModeBtn.addEventListener("click", (e) => {
       handleButtonClick(e, () => selectGameMode("arcade", e));
     });
+    // PICKUP MODE EVENT LISTENER DISABLED
+    // pickupModeBtn.addEventListener("click", (e) => {
+    //   handleButtonClick(e, () => selectGameMode("pickup", e));
+    // });
     console.log("Game mode event listeners added successfully"); // Debug log
   } else {
     console.error("Could not find game mode buttons!"); // Debug log
@@ -4348,6 +4392,7 @@
       'blueTeamBtn',
       'fifaModeBtn',
       'arcadeModeBtn'
+      // 'pickupModeBtn' // PICKUP MODE DISABLED
     ];
     
     criticalButtons.forEach(buttonId => {
@@ -6047,6 +6092,14 @@
         handleButtonClick(e, () => selectGameMode('arcade', e));
       });
     }
+
+    // PICKUP MODE DISABLED FOR NOW
+    // const pickupModeBtn = document.getElementById('pickupModeBtn');
+    // if (pickupModeBtn) {
+    //   pickupModeBtn.addEventListener('click', (e) => {
+    //     handleButtonClick(e, () => selectGameMode('pickup', e));
+    //   });
+    // }
 
     // Player count selection buttons - NOW HANDLED ABOVE IN MAIN INITIALIZATION
     // Removed duplicate event listeners to prevent conflicts

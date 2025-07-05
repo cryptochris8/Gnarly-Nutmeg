@@ -54,9 +54,11 @@ import {
   setGameMode, 
   isFIFAMode, 
   isArcadeMode,
+  isPickupMode,
   getCurrentModeConfig 
 } from "./state/gameModes";
 import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
+import { PickupGameManager } from "./state/pickupGameManager";
 import { FIFACrowdManager } from "./utils/fifaCrowdManager";
 import PerformanceProfiler from "./utils/performanceProfiler";
 import { PerformanceOptimizer } from "./utils/performanceOptimizations";
@@ -90,6 +92,11 @@ startServer((world) => {
     const arcadeManager = new ArcadeEnhancementManager(world);
     (world as any)._arcadeManager = arcadeManager;
     game.setArcadeManager(arcadeManager);
+    
+    // Initialize pickup game system
+    const pickupManager = new PickupGameManager(world);
+    (world as any)._pickupManager = pickupManager;
+    game.setPickupManager(pickupManager);
     
     // Initialize FIFA crowd atmosphere system
     const fifaCrowdManager = new FIFACrowdManager(world);
@@ -350,6 +357,9 @@ startServer((world) => {
           } else if (data.mode === "arcade") {
             setGameMode(GameMode.ARCADE);
             console.log("Game mode set to Arcade Mode");
+          } else if (data.mode === "pickup") {
+            setGameMode(GameMode.PICKUP);
+            console.log("Game mode set to Pickup Mode");
           }
           
           // Send confirmation back to UI
@@ -452,6 +462,12 @@ startServer((world) => {
               const gameStarted = game && game.startGame();
               if (gameStarted) {
                 console.log("✅ Game started successfully with AI!");
+                
+                // Activate pickup system if in pickup mode
+                if (isPickupMode()) {
+                  console.log("🎯 Activating pickup system for Pickup Mode");
+                  pickupManager.activate();
+                }
                 
                 // Unfreeze player after short delay
                 setTimeout(() => {
@@ -1662,7 +1678,7 @@ startServer((world) => {
       
       world.chatManager.sendPlayerMessage(
         player,
-        `🎪 Switched to Arcade Mode - Enhanced soccer with power-ups!`
+        `🎪 Switched to Arcade Mode - Enhanced soccer with unlimited F-key power-ups!`
       );
       world.chatManager.sendPlayerMessage(
         player,
@@ -1670,7 +1686,40 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Features: Power-ups, abilities, enhanced physics, and special effects!`
+        `Features: Unlimited F-key power-ups, enhanced physics, and special effects!`
+      );
+    });
+
+    world.chatManager.registerCommand("/pickup", (player, args) => {
+      const previousMode = getCurrentGameMode();
+      setGameMode(GameMode.PICKUP);
+      
+      // Switch music if game is in progress and mode actually changed
+      if (previousMode !== GameMode.PICKUP && game && game.inProgress()) {
+        console.log("Switching to Pickup mode music during active game");
+        fifaGameplayMusic.pause();
+        arcadeGameplayMusic.play(world); // Use arcade music for pickup mode
+        
+        // Stop FIFA crowd atmosphere when switching to pickup
+        fifaCrowdManager.stop();
+        
+        world.chatManager.sendPlayerMessage(
+          player,
+          `🎵 Switched to Pickup mode music`
+        );
+      }
+      
+      world.chatManager.sendPlayerMessage(
+        player,
+        `🎯 Switched to Pickup Mode - Soccer with collectible ability pickups!`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Match Duration: ${getCurrentModeConfig().halfDuration * getCurrentModeConfig().totalHalves / 60} minutes`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Features: Physical ability pickups, collect to use F-key abilities!`
       );
     });
 
@@ -1704,7 +1753,7 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Commands: /fifa (realistic) | /arcade (enhanced)`
+        `Commands: /fifa (realistic) | /arcade (unlimited F-key)`
       );
     });
 

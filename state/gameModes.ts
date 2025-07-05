@@ -6,7 +6,8 @@ import { HALF_DURATION, TOTAL_HALVES, HALFTIME_DURATION } from './gameConfig';
 
 export enum GameMode {
   FIFA = "fifa",
-  ARCADE = "arcade"
+  ARCADE = "arcade",
+  PICKUP = "pickup"
 }
 
 // FIFA Mode Configuration - Realistic Soccer
@@ -43,7 +44,7 @@ export const FIFA_MODE_CONFIG = {
 // Arcade Mode Configuration - Enhanced Fun Soccer
 export const ARCADE_MODE_CONFIG = {
   name: 'Arcade Mode',
-  description: 'Fast-paced soccer with power-ups and special abilities',
+  description: 'Fast-paced soccer with unlimited F-key power-ups and special abilities',
   
   // Timing system - Same 2 halves but faster pace
   halfDuration: HALF_DURATION, // 5 minutes per half (consistent with FIFA)
@@ -75,6 +76,42 @@ export const ARCADE_MODE_CONFIG = {
   quickRestarts: true
 };
 
+// Pickup Mode Configuration - Physical Ability Collection
+export const PICKUP_MODE_CONFIG = {
+  name: 'Pickup Mode',
+  description: 'Soccer with collectible ability pickups scattered on the field',
+  
+  // Timing system - Same as FIFA for balance
+  halfDuration: HALF_DURATION, // 5 minutes per half
+  totalHalves: TOTAL_HALVES, // 2 halves
+  halftimeDuration: HALFTIME_DURATION, // 2 minutes halftime break
+  
+  // Balanced physics between FIFA and Arcade
+  ballPhysics: {
+    damping: 0.92,
+    friction: 0.7,
+    bounciness: 0.7
+  },
+  
+  playerSpeed: 1.1,
+  sprintMultiplier: 1.7,
+  
+  // Pickup features
+  crowdAudio: true,
+  announcerCommentary: false, // Focus on pickup gameplay
+  realisticPhysics: false,
+  
+  // Pickup-specific enhancements
+  powerUps: false, // No F-key random power-ups
+  specialAbilities: true, // Collected abilities only
+  enhancedPhysics: true,
+  abilityPickups: true, // Physical pickups on field
+  
+  // Pickup timing features
+  fastPacedGameplay: false,
+  quickRestarts: true
+};
+
 // Current game mode (defaults to FIFA for safety)
 let currentGameMode: GameMode = GameMode.FIFA;
 
@@ -83,7 +120,16 @@ export const getCurrentGameMode = (): GameMode => currentGameMode;
 
 // Safe getter for current config
 export const getCurrentModeConfig = () => {
-  return currentGameMode === GameMode.FIFA ? FIFA_MODE_CONFIG : ARCADE_MODE_CONFIG;
+  switch (currentGameMode) {
+    case GameMode.FIFA:
+      return FIFA_MODE_CONFIG;
+    case GameMode.ARCADE:
+      return ARCADE_MODE_CONFIG;
+    case GameMode.PICKUP:
+      return PICKUP_MODE_CONFIG;
+    default:
+      return FIFA_MODE_CONFIG; // Default fallback
+  }
 };
 
 // Safe mode switching function
@@ -95,6 +141,7 @@ export const setGameMode = (mode: GameMode): void => {
 // Helper functions for mode checking (used throughout codebase)
 export const isFIFAMode = (): boolean => currentGameMode === GameMode.FIFA;
 export const isArcadeMode = (): boolean => currentGameMode === GameMode.ARCADE;
+export const isPickupMode = (): boolean => currentGameMode === GameMode.PICKUP;
 
 // Enhanced ball physics for arcade mode only (FIFA uses existing BALL_CONFIG)
 export const ARCADE_BALL_CONFIG = {

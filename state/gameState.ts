@@ -1226,6 +1226,13 @@ export class SoccerGame {
     this.playerMomentum.clear();
     console.log("🔄 Reset momentum tracking for new game");
 
+    // Clean up ability pickups (disabled)
+    // this.abilityPickups.forEach(pickup => {
+    //   pickup.destroy();
+    // });
+    // this.abilityPickups = [];
+    // console.log("🔄 Cleaned up ability pickups for new game");
+
     // Deactivate all AI players first to clear their intervals
     this.aiPlayersList.forEach(ai => {
       if (ai.isSpawned) {
@@ -1370,6 +1377,11 @@ export class SoccerGame {
   public setArcadeManager(arcadeManager: ArcadeEnhancementManager): void {
     this.arcadeManager = arcadeManager;
     console.log("Arcade manager set for SoccerGame");
+  }
+
+  public setPickupManager(pickupManager: any): void {
+    (this as any).pickupManager = pickupManager;
+    console.log("Pickup manager set for SoccerGame");
   }
 
   public setFIFACrowdManager(fifaCrowdManager: any): void {

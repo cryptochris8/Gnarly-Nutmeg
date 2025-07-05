@@ -482,17 +482,19 @@ export default class PlayerEntityController extends BaseEntityController {
         this._chargeStartTime = null;
       }
 
-      if (input["1"] && !hasBall) {
-        // Check cooldown before allowing axe throw
-        if(entity.abilityHolder.hasAbility()) {
-          // Use the ability
-          const direction = {x: entity.player.camera.facingDirection.x, y: entity.player.camera.facingDirection.y + 0.1, z: entity.player.camera.facingDirection.z};
-          entity.abilityHolder.getAbility()?.use(
-            entity.position,
-            direction,
-            entity 
-          );
-        }
+      // Handle collected ability activation with F key (pickup mode only)
+      if (input["f"] && !hasBall && entity.abilityHolder.hasAbility()) {
+        // Use the collected ability (from pickup system)
+        const direction = {x: entity.player.camera.facingDirection.x, y: entity.player.camera.facingDirection.y + 0.1, z: entity.player.camera.facingDirection.z};
+        entity.abilityHolder.getAbility()?.use(
+          entity.position,
+          direction,
+          entity 
+        );
+        
+        // Cancel the input to prevent any conflicts
+        input["f"] = false;
+        return; // Exit early to prevent other systems from activating
       }
 
       // Handle power-up activation with F key (only in arcade mode)
