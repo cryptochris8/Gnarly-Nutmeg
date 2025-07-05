@@ -63,6 +63,13 @@ const TICKING_AUDIO = new Audio({
   duration: 5,
 });
 
+const STOPPAGE_TIME_AUDIO = new Audio({
+  uri: "audio/sfx/crowd/stoppage-time.mp3",
+  loop: false,
+  volume: 0.7,
+  duration: 3,
+});
+
 // Team statistics interface
 export interface TeamStats {
   goals: number;
@@ -527,6 +534,9 @@ export class SoccerGame {
         this.state.stoppageTimeNotified = true;
         
         console.log(`⏱️ STOPPAGE TIME: ${stoppageTime} seconds added to ${this.state.currentHalf === 1 ? 'first' : 'second'} half`);
+        
+        // Play stoppage time audio notification
+        STOPPAGE_TIME_AUDIO.play(this.world);
         
         // Send stoppage time notification to all players
         this.sendDataToAllPlayers({

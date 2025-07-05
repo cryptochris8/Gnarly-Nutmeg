@@ -5170,8 +5170,7 @@
     // Add to page
     document.body.appendChild(notification);
     
-    // Play stoppage time sound
-    playStoppageTimeSound();
+    // Note: Audio is handled directly by the backend when stoppage time is added
     
     // Remove after 3 seconds
     setTimeout(() => {
@@ -5182,20 +5181,6 @@
         }
       }, 500); // Wait for animation to complete
     }, 3000);
-  }
-
-  function playStoppageTimeSound() {
-    if (audioEnabled) {
-      console.log("Playing stoppage time notification sound");
-      // Play specific stoppage-time.mp3 file
-      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
-        hytopia.sendData({
-          type: "play-audio",
-          audioFile: "stoppage-time.mp3",
-          volume: 0.7
-        });
-      }
-    }
   }
 
 
