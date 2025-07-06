@@ -573,9 +573,11 @@ export default class CustomSoccerPlayer extends BaseEntityController {
         !this._holdingQ
       ) {
         let velocity = isRunning ? this.runVelocity : this.walkVelocity;
+        
+        // Apply additive speed boosts (power-ups, abilities)
         velocity += entity.getSpeedAmplifier();
         
-        // Apply arcade mode and game mode speed enhancements
+        // Apply game mode speed enhancements
         const currentModeConfig = getCurrentModeConfig();
         const baseSpeedMultiplier = isRunning ? currentModeConfig.sprintMultiplier : currentModeConfig.playerSpeed;
         velocity *= baseSpeedMultiplier;
@@ -592,6 +594,16 @@ export default class CustomSoccerPlayer extends BaseEntityController {
             console.log(`🏃 ARCADE SPEED: ${entity.player.username} - Base: ${(isRunning ? this.runVelocity : this.walkVelocity).toFixed(1)}, Enhanced: ${velocity.toFixed(1)}`);
           }
         }
+        
+        // Apply stamina-based speed penalty (multiplicative)
+        const staminaMultiplier = entity.getStaminaSpeedMultiplier();
+        velocity *= staminaMultiplier;
+        
+        // Log stamina effect for debugging (occasionally)
+        if (Math.random() < 0.002 && staminaMultiplier < 1.0) { // Only log when stamina is affecting speed
+          console.log(`💨 STAMINA: ${entity.player.username} - Stamina: ${entity.getStaminaPercentage().toFixed(0)}%, Speed: ${(staminaMultiplier * 100).toFixed(0)}%`);
+        }
+        
         if (w) {
           targetVelocities.x -= velocity * Math.sin(yaw);
           targetVelocities.z -= velocity * Math.cos(yaw);

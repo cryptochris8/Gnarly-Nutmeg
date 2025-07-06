@@ -2965,13 +2965,17 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     // Apply FIFA mode speed multipliers to match human players
     const currentModeConfig = getCurrentModeConfig();
     const speedMultiplier = currentModeConfig.sprintMultiplier || 1.0; // Default to 1.0 if not defined
-    const maxSpeed = baseMaxSpeed * speedMultiplier;
+    let maxSpeed = baseMaxSpeed * speedMultiplier;
+    
+    // Apply stamina-based speed penalty (same as human players)
+    const staminaMultiplier = this.getStaminaSpeedMultiplier();
+    maxSpeed *= staminaMultiplier;
     
     const mass = this._mass > 0 ? this._mass : 1.0; // Ensure valid mass
     
     // Log speed enhancement for debugging (very occasional)
     if (Math.random() < 0.001) { // Very rare logging
-      console.log(`🤖 AI SPEED: ${this.player.username} (${this.aiRole}) - Base: ${baseMaxSpeed.toFixed(1)}, FIFA Enhanced: ${maxSpeed.toFixed(1)} (×${speedMultiplier})`);
+      console.log(`🤖 AI SPEED: ${this.player.username} (${this.aiRole}) - Base: ${baseMaxSpeed.toFixed(1)}, FIFA Enhanced: ${(baseMaxSpeed * speedMultiplier).toFixed(1)}, Final (with stamina): ${maxSpeed.toFixed(1)} (stamina: ${this.getStaminaPercentage().toFixed(0)}%)`);
     }
     
     // Calculate direction towards the target position (X and Z only)
