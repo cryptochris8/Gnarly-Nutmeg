@@ -534,6 +534,7 @@ export class SoccerGame {
         this.state.stoppageTimeNotified = true;
         
         console.log(`⏱️ STOPPAGE TIME: ${stoppageTime} seconds added to ${this.state.currentHalf === 1 ? 'first' : 'second'} half`);
+        console.log(`⏱️ Game will end when timer reaches -${stoppageTime} seconds (after ${stoppageTime} seconds of stoppage time)`);
         
         // Play stoppage time audio notification
         STOPPAGE_TIME_AUDIO.play(this.world);
@@ -547,10 +548,21 @@ export class SoccerGame {
         });
       }
       
-      // Check if half should end (accounting for stoppage time)
-      const totalTimeWithStoppage = 0 - this.state.stoppageTimeAdded; // Negative because timer counts down
-      if (this.state.halfTimeRemaining <= totalTimeWithStoppage) {
-        console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Score: ${this.state.score.red}-${this.state.score.blue}`);
+      // IMPROVED STOPPAGE TIME LOGIC - Only end when full stoppage time has elapsed
+      // Calculate the exact endpoint: negative stoppage time value
+      const stoppageTimeEndpoint = 0 - this.state.stoppageTimeAdded;
+      
+      // Only end half if we've added stoppage time AND reached the endpoint
+      if (this.state.stoppageTimeNotified && this.state.halfTimeRemaining <= stoppageTimeEndpoint) {
+        console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Timer: ${this.state.halfTimeRemaining}s, Required: ${stoppageTimeEndpoint}s`);
+        console.log(`⏰ Stoppage time fully elapsed: ${this.state.stoppageTimeAdded}s added, ${Math.abs(this.state.halfTimeRemaining)}s played`);
+        this.handleHalfEnd();
+        return;
+      }
+      
+      // Alternative end condition: if no stoppage time and regular time is up
+      if (!this.state.stoppageTimeNotified && this.state.halfTimeRemaining <= 0) {
+        console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Regular time finished, no stoppage time added`);
         this.handleHalfEnd();
         return;
       }
@@ -561,15 +573,20 @@ export class SoccerGame {
       
       if (this.state.halfTimeRemaining % logInterval === 0) {
         if (isStoppageTime) {
-          const stoppageMinutes = Math.abs(this.state.halfTimeRemaining);
-          console.log(`⏱️ STOPPAGE TIME: 90+${stoppageMinutes}s, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+          const stoppageSeconds = Math.abs(this.state.halfTimeRemaining);
+          console.log(`⏱️ STOPPAGE TIME: 5+${stoppageSeconds}s (${stoppageSeconds}s into stoppage, ${this.state.stoppageTimeAdded}s total), Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
         } else {
           console.log(`⏰ HALF ${this.state.currentHalf}: ${this.state.halfTimeRemaining}s remaining, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
         }
       }
 
-      // Play ticking sound in last 5 seconds of regulation OR stoppage time
-      if (this.state.halfTimeRemaining === 5 || this.state.halfTimeRemaining === (0 - this.state.stoppageTimeAdded + 5)) {
+      // Play ticking sound in last 5 seconds of regulation OR last 5 seconds of stoppage time
+      if (this.state.halfTimeRemaining === 5) {
+        TICKING_AUDIO.play(this.world);
+      }
+      
+      // Also play ticking sound 5 seconds before stoppage time ends
+      if (this.state.stoppageTimeNotified && this.state.halfTimeRemaining === (stoppageTimeEndpoint + 5)) {
         TICKING_AUDIO.play(this.world);
       }
     }
@@ -1051,11 +1068,14 @@ export class SoccerGame {
     // This prevents conflicts with the UI scoreboard updates
     console.log(`📊 Score updated internally - UI will receive score via goal-scored event`);
 
-    // Only end game in overtime if score difference is extreme (10+ goals)
-    // Or if it's a normal mercy rule but ONLY in the final 2 minutes
-    const finalTwoMinutes = this.state.timeRemaining <= 120; // 2 minutes = 120 seconds
+    // IMPROVED MERCY RULE LOGIC - Account for stoppage time properly
+    // Only consider "final 2 minutes" if we're NOT in stoppage time
+    const isInStoppageTime = this.state.halfTimeRemaining <= 0;
+    const finalTwoMinutes = !isInStoppageTime && this.state.timeRemaining <= 120; // 2 minutes = 120 seconds
     const extremeScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 10;
     const moderateScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 5;
+    
+    console.log(`🏁 Mercy rule check: Score diff ${Math.abs(this.state.score["red"] - this.state.score["blue"])}, Time: ${this.state.timeRemaining}s, Half time: ${this.state.halfTimeRemaining}s, In stoppage: ${isInStoppageTime}, Final 2 min: ${finalTwoMinutes}`);
     
     if (this.state.status === "overtime") {
       // In overtime, only end if score difference becomes extreme (10+)
@@ -1064,13 +1084,17 @@ export class SoccerGame {
         this.endGame();
       }
     } else if (extremeScoreDifference) {
-      // Extreme difference (10+ goals) ends game any time
+      // Extreme difference (10+ goals) ends game any time (even during stoppage time)
       console.log(`🏁 Game ended due to extreme score difference: ${this.state.score.red}-${this.state.score.blue}`);
       this.endGame();
     } else if (moderateScoreDifference && finalTwoMinutes) {
-      // Moderate difference (5+ goals) only ends game in final 2 minutes
+      // Moderate difference (5+ goals) only ends game in final 2 minutes of REGULAR time
+      // NOT during stoppage time - let stoppage time run its course
       console.log(`🏁 Game ended due to mercy rule in final minutes: ${this.state.score.red}-${this.state.score.blue} with ${this.state.timeRemaining}s remaining`);
       this.endGame();
+    } else if (moderateScoreDifference && isInStoppageTime) {
+      // During stoppage time, only log but don't end game unless extreme difference
+      console.log(`⚠️ Moderate score difference during stoppage time: ${this.state.score.red}-${this.state.score.blue} - letting stoppage time finish naturally`);
     }
   }
 
