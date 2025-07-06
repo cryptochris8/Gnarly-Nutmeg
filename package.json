@@ -18,7 +18,7 @@
   "dependencies": {
     "@gltf-transform/cli": "^4.2.0",
     "@hytopia.com/assets": "^0.2.21",
-    "hytopia": "^0.6.21"
+    "hytopia": "^0.6.27"
   },
   "trustedDependencies": [
     "mediasoup"
