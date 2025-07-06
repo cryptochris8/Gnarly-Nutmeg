@@ -784,6 +784,7 @@ export class SoccerGame {
     this.state.halftimeTimeRemaining = 0;
     this.state.currentHalf = 2;
     this.state.halfTimeRemaining = HALF_DURATION;
+    this.state.timeRemaining = HALF_DURATION; // CRITICAL FIX: Reset timeRemaining for second half
     this.state.status = "playing";
     
     // Reset stoppage time for second half
@@ -803,6 +804,7 @@ export class SoccerGame {
       message: "Starting 2nd Half"
     });
     console.log("✅ Game state update sent - halftime overlay should be removed");
+    console.log(`✅ Second half timing reset: timeRemaining=${this.state.timeRemaining}s, halfTimeRemaining=${this.state.halfTimeRemaining}s`);
 
     // Announce start of 2nd half
     this.world.chatManager.sendBroadcastMessage("2nd Half starting!");
@@ -1088,34 +1090,8 @@ export class SoccerGame {
     // This prevents conflicts with the UI scoreboard updates
     console.log(`📊 Score updated internally - UI will receive score via goal-scored event`);
 
-    // IMPROVED MERCY RULE LOGIC - Account for stoppage time properly
-    // Only consider "final 2 minutes" if we're NOT in stoppage time
-    const isInStoppageTime = this.state.halfTimeRemaining <= 0;
-    const finalTwoMinutes = !isInStoppageTime && this.state.timeRemaining <= 120; // 2 minutes = 120 seconds
-    const extremeScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 10;
-    const moderateScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 5;
-    
-    console.log(`🏁 Mercy rule check: Score diff ${Math.abs(this.state.score["red"] - this.state.score["blue"])}, Time: ${this.state.timeRemaining}s, Half time: ${this.state.halfTimeRemaining}s, In stoppage: ${isInStoppageTime}, Final 2 min: ${finalTwoMinutes}`);
-    
-    if (this.state.status === "overtime") {
-      // In overtime, only end if score difference becomes extreme (10+)
-      if (extremeScoreDifference) {
-        console.log(`🏁 Game ended due to extreme score difference in overtime: ${this.state.score.red}-${this.state.score.blue}`);
-        this.endGame();
-      }
-    } else if (extremeScoreDifference) {
-      // Extreme difference (10+ goals) ends game any time (even during stoppage time)
-      console.log(`🏁 Game ended due to extreme score difference: ${this.state.score.red}-${this.state.score.blue}`);
-      this.endGame();
-    } else if (moderateScoreDifference && finalTwoMinutes) {
-      // Moderate difference (5+ goals) only ends game in final 2 minutes of REGULAR time
-      // NOT during stoppage time - let stoppage time run its course
-      console.log(`🏁 Game ended due to mercy rule in final minutes: ${this.state.score.red}-${this.state.score.blue} with ${this.state.timeRemaining}s remaining`);
-      this.endGame();
-    } else if (moderateScoreDifference && isInStoppageTime) {
-      // During stoppage time, only log but don't end game unless extreme difference
-      console.log(`⚠️ Moderate score difference during stoppage time: ${this.state.score.red}-${this.state.score.blue} - letting stoppage time finish naturally`);
-    }
+    // Mercy rule removed - games are short (2x 5-minute halves) so let them play to completion
+    console.log(`⚽ Goal scored by ${team} team - game will continue to completion`);
   }
 
   private endGame() {
