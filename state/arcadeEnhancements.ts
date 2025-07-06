@@ -1,7 +1,7 @@
 // Arcade Enhancement System - Only Active in Arcade Mode
 // This system enhances existing gameplay without modifying FIFA mode
 
-import { World, Audio, Entity, RigidBodyType, type Vector3Like } from "hytopia";
+import { World, Audio, Entity, RigidBodyType, ColliderShape, CollisionGroup, BlockType, EntityEvent, type Vector3Like } from "hytopia";
 import { isArcadeMode, ARCADE_PHYSICS_MULTIPLIERS } from "./gameModes";
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 
@@ -199,6 +199,10 @@ export class ArcadeEnhancementManager {
         case 'stamina':
           console.log(`🎮 ARCADE: Executing stamina restoration for ${playerId}`);
           this.executeStamina(playerId);
+          break;
+        case 'shuriken':
+          console.log(`🎮 ARCADE: Executing shuriken throw for ${playerId}`);
+          this.executeShuriken(playerId);
           break;
         case 'speed':
         case 'power':
@@ -838,6 +842,130 @@ export class ArcadeEnhancementManager {
     }
   }
 
+  // Execute shuriken throw power-up
+  private executeShuriken(playerId: string): void {
+    console.log(`🥷 SHURIKEN: ${playerId} activating shuriken throw!`);
+    
+    const playerEntity = this.findPlayerEntity(playerId);
+    if (!playerEntity) {
+      console.error(`Player entity not found for shuriken throw: ${playerId}`);
+      return;
+    }
+
+    // Play shuriken activation sound
+    const shurikenAudio = new Audio({
+      uri: "audio/sfx/player/bow-01.mp3", // Using existing projectile sound
+      loop: false,
+      volume: 0.6,
+      position: playerEntity.position,
+      referenceDistance: 15
+    });
+    shurikenAudio.play(this.world);
+
+    // Create visual effect for shuriken activation
+    this.createPowerUpEffect(playerEntity.position, 'shuriken');
+
+    // Calculate throw direction from player rotation
+    const direction = this.calculateDirectionFromRotation(playerEntity.rotation);
+    const throwDirection = {
+      x: direction.x,
+      y: 0, // Keep horizontal
+      z: direction.z
+    };
+
+    // Create and launch shuriken projectile
+    this.createShurikenProjectile(playerEntity, throwDirection);
+    
+    console.log(`🥷 SHURIKEN THROWN: ${playerId} launched shuriken projectile!`);
+  }
+
+  // Create shuriken projectile with stunning effect
+  private createShurikenProjectile(playerEntity: SoccerPlayerEntity, direction: { x: number, y: number, z: number }): void {
+    const shuriken = new Entity({
+      name: 'shuriken-projectile',
+      modelUri: 'models/projectiles/shuriken.gltf',
+      modelScale: 0.4,
+      modelAnimationsPlaybackRate: 2.8,
+      modelLoopedAnimations: ["spin"],
+      rigidBodyOptions: {
+        type: RigidBodyType.DYNAMIC,
+        gravityScale: 0,
+      },
+    });
+
+    // Calculate spawn position in front of player
+    const spawnPosition = {
+      x: playerEntity.position.x + direction.x * 1.5,
+      y: playerEntity.position.y + 0.8,
+      z: playerEntity.position.z + direction.z * 1.5
+    };
+
+    // Spawn shuriken at calculated position
+    shuriken.spawn(this.world, spawnPosition);
+
+    // Launch shuriken with velocity
+    const velocity = {
+      x: direction.x * 12, // 12 units/second speed
+      y: 0,
+      z: direction.z * 12
+    };
+    shuriken.setLinearVelocity(velocity);
+
+    // Add collision detection for stunning effect
+    shuriken.createAndAddChildCollider({
+      shape: ColliderShape.BALL,
+      radius: 1.0,
+      isSensor: true,
+      collisionGroups: {
+        belongsTo: [CollisionGroup.ENTITY],
+        collidesWith: [CollisionGroup.PLAYER, CollisionGroup.ENTITY],
+      },
+      onCollision: (otherEntity: Entity | BlockType, started: boolean) => {
+        if (!started || otherEntity === playerEntity || !(otherEntity instanceof SoccerPlayerEntity)) return;
+
+        // Check if target is dodging to avoid stun
+        if (otherEntity.isDodging) {
+          console.log(`🥷 SHURIKEN DODGED: ${otherEntity.player.username} dodged the shuriken!`);
+          return;
+        }
+
+        // Stun the target player
+        otherEntity.stunPlayer();
+        console.log(`🥷 SHURIKEN HIT: ${otherEntity.player.username} stunned by shuriken!`);
+
+        // Play hit sound
+        const hitAudio = new Audio({
+          uri: "audio/sfx/damage/hit-armor.mp3",
+          loop: false,
+          volume: 0.4,
+          position: otherEntity.position,
+          referenceDistance: 10
+        });
+        hitAudio.play(this.world);
+
+        // Despawn shuriken after hit
+        if (shuriken.isSpawned) {
+          shuriken.despawn();
+        }
+      }
+    });
+
+    // Track shuriken lifetime and despawn after 1.5 seconds
+    let shurikenAge = 0;
+    const lifetime = 1.5; // 1.5 seconds lifetime
+    
+    shuriken.on(EntityEvent.TICK, ({ entity, tickDeltaMs }) => {
+      shurikenAge += tickDeltaMs / 1000;
+      
+      // Despawn if exceeded lifetime
+      if (shurikenAge >= lifetime) {
+        if (shuriken.isSpawned) {
+          shuriken.despawn();
+        }
+      }
+    });
+  }
+
   // Check if player has mega kick active
   public hasMegaKick(playerId: string): boolean {
     const enhancement = this.playerEnhancements.get(playerId);
@@ -1132,7 +1260,7 @@ export class ArcadeEnhancementManager {
 }
 
 // Enhancement types - expanded for arcade power-ups
-export type EnhancementType = 'speed' | 'power' | 'precision' | 'freeze_blast' | 'fireball' | 'mega_kick' | 'shield' | 'stamina';
+export type EnhancementType = 'speed' | 'power' | 'precision' | 'freeze_blast' | 'fireball' | 'mega_kick' | 'shield' | 'stamina' | 'shuriken';
 
 // Player enhancement interface
 export interface PlayerEnhancement {

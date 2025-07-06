@@ -25,12 +25,9 @@ import {
   HALF_DURATION,
   TOTAL_HALVES,
   HALFTIME_DURATION
-  // ABILITY_PICKUP_POSITIONS 
 } from "./gameConfig";
 import sharedState from "./sharedState";
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
-// import { AbilityConsumable } from "../abilities/AbilityConsumable";
-// import { shurikenThrowOptions, speedBoostOptions } from "../abilities/itemTypes";
 import AIPlayerEntity from "../entities/AIPlayerEntity";
 import { ArcadeEnhancementManager } from "./arcadeEnhancements";
 
@@ -132,7 +129,6 @@ export class SoccerGame {
   private soccerBall: Entity;
   private attachedPlayer: PlayerEntity | null = null;
   private gameLoopInterval: Timer | null = null;
-  // private abilityPickups: AbilityConsumable[] = [];
   private aiPlayersList: AIPlayerEntity[] = [];
   private arcadeManager: ArcadeEnhancementManager | null = null;
   private fifaCrowdManager: any | null = null; // FIFA crowd manager for stadium atmosphere
@@ -1473,15 +1469,7 @@ export class SoccerGame {
     console.log("🏆 Tournament manager set for SoccerGame");
   }
 
-  /**
-   * Get ability pickup position based on current game mode
-   * @param index - Index of the pickup position (0 or 1)
-   */
-  // private getAbilityPickupPosition(index: number): { x: number; y: number; z: number } {
-  //   // Large stadium ability pickup positions only
-  //   const positions = ABILITY_PICKUP_POSITIONS;
-  //   return positions[index] || positions[0];
-  // }
+
 
   // Perform coin toss and determine which team kicks off
   public performCoinToss(playerChoice?: { playerId: string, choice: "heads" | "tails" }): void {

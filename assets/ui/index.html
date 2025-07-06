@@ -1935,6 +1935,12 @@
     <div class="powerup-cooldown" id="stamina-cooldown"></div>
   </div>
   
+  <div class="powerup-button" id="shuriken-btn" onclick="activatePowerUp('shuriken')">
+    <div class="powerup-icon">🥷</div>
+    <div class="powerup-name">Shuriken (8)</div>
+    <div class="powerup-cooldown" id="shuriken-cooldown"></div>
+  </div>
+  
   <div class="powerup-button" id="shield-btn" onclick="activatePowerUp('shield')">
     <div class="powerup-icon">🛡️</div>
     <div class="powerup-name">Shield (U)</div>
@@ -5018,7 +5024,8 @@
         'shield': { name: '🛡️ Shield', desc: 'Blocks one attack' },
         'speed': { name: '⚡ Speed Enhancement', desc: 'Increased movement speed' },
         'power': { name: '💪 Power Enhancement', desc: 'Increased shot power' },
-        'precision': { name: '🎯 Precision Enhancement', desc: 'Improved accuracy' }
+        'precision': { name: '🎯 Precision Enhancement', desc: 'Improved accuracy' },
+        'shuriken': { name: '🥷 Shuriken Throw', desc: 'Launches stunning projectile that can be dodged' }
       };
       
       const info = powerUpInfo[powerUpData.type] || { name: powerUpData.type, desc: 'Unknown power-up' };
@@ -7662,6 +7669,10 @@
           event.preventDefault();
           activatePowerUp('stamina');
           break;
+        case '8':
+          event.preventDefault();
+          activatePowerUp('shuriken');
+          break;
         case 'f':
         case 'F':
           event.preventDefault();
@@ -7748,7 +7759,8 @@
       'stamina': 'stamina-btn',
       'speed': 'speed-btn',
       'power': 'power-btn',
-      'precision': 'precision-btn'
+      'precision': 'precision-btn',
+      'shuriken': 'shuriken-btn'
     };
     return buttonMap[powerUpType] || 'random-powerup-btn';
   }
@@ -7764,7 +7776,8 @@
       'stamina': 'Stamina Potion',
       'speed': 'Speed Boost',
       'power': 'Power Enhancement',
-      'precision': 'Precision Boost'
+      'precision': 'Precision Boost',
+      'shuriken': 'Shuriken Throw'
     };
     return nameMap[powerUpType] || 'Unknown Power-up';
   }
@@ -7833,7 +7846,8 @@
       'stamina': '🧪',
       'speed': '⚡',
       'power': '💥',
-      'precision': '🎯'
+      'precision': '🎯',
+      'shuriken': '🥷'
     };
     return iconMap[powerUpType] || '⚡';
   }

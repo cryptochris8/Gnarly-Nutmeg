@@ -423,7 +423,7 @@ export class SoccerAgent {
           z: 0,
           w: Math.cos(halfYaw)
         });
-        this.entity._agentSetRotationThisTick = true; 
+        this.entity.hasRotationBeenSetThisTick = true; 
         console.log(`${this.entity.player.username} dribbling: rotation set to face movement direction, yaw=${targetYaw.toFixed(2)}`);
       }
     }

@@ -268,7 +268,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   private agent: SoccerAgent;
   private behaviorTree: BehaviorNode | null = null;
   // Flag to prevent handleTick rotation override after agent action
-  public _agentSetRotationThisTick: boolean = false; 
+  public hasRotationBeenSetThisTick: boolean = false; 
   // Last rotation update time
   private _lastRotationUpdateTime: number | null = null;
   // Track ball possession time for all players
@@ -382,7 +382,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     this.isKickoffActive = true; // Start with kickoff active to respect positioning
     this.lastAIPosition = this.position;
     this.currentAnimState = 'idle';
-    this._agentSetRotationThisTick = false;
+    this.hasRotationBeenSetThisTick = false;
 
     console.log(`AI ${this.player.username} (${this.aiRole}) activated with kickoff mode active`);
 
@@ -419,7 +419,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     this.isKickoffActive = false;
     this.lastAIPosition = null;
     this.currentAnimState = null;
-    this._agentSetRotationThisTick = false;
+    this.hasRotationBeenSetThisTick = false;
     
     // Clear any pending animations
     if (this.isSpawned) {
@@ -645,7 +645,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     // ROTATION STABILITY: Reset agent rotation flag at the END of decision making
     // This ensures the agent's rotation choice persists until the next decision cycle
-    this._agentSetRotationThisTick = false;
+    this.hasRotationBeenSetThisTick = false;
   }
   
   /**
@@ -2177,6 +2177,18 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
    * Enhanced to prevent center-field clustering and maintain realistic soccer formations.
    * Changed to public for use in behavior tree
    */
+  /**
+   * Adjusts AI player positioning to maintain proper spacing and formation discipline
+   * 
+   * This function applies multiple spatial adjustments to prevent AI clustering:
+   * - Teammate repulsion: Prevents players from getting too close to each other
+   * - Center field avoidance: Reduces clustering around the center circle
+   * - Formation discipline: Pulls players back toward their assigned positions
+   * - Role-based jitter: Adds small positional variations based on player role
+   * 
+   * @param targetPos The desired target position before spacing adjustments
+   * @returns The adjusted position with spacing and formation considerations applied
+   */
   public adjustPositionForSpacing(targetPos: Vector3Like): Vector3Like {
     const teammates = sharedState.getAITeammates(this);
     let adjustment = { x: 0, y: 0, z: 0 };
@@ -2996,7 +3008,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     // Increase cooldown when player has the ball to reduce oscillation
     const rotationUpdateCooldown = hasBall ? 500 : 250; // Longer cooldown when having ball
     
-    if (!this._agentSetRotationThisTick && 
+    if (!this.hasRotationBeenSetThisTick && 
         (!this._lastRotationUpdateTime || 
         currentTime - this._lastRotationUpdateTime > rotationUpdateCooldown)) {
          
