@@ -4152,6 +4152,264 @@
         font-size: 14px;
       }
     }
+
+    /* ===== PHASE 2 ENHANCED MOBILE UI (HYTOPIA SDK COMPLIANT) ===== */
+    
+    /* Enhanced Mobile Scoreboard - Larger and More Prominent */
+    .enhanced-mobile-scoreboard {
+      display: none; /* Hidden by default - only shown on mobile */
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 15px;
+      padding: 20px 30px;
+      z-index: 9998;
+      font-family: 'Arial Black', Arial, sans-serif;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      min-width: 280px;
+      text-align: center;
+    }
+    
+    .mobile-team-score {
+      display: inline-block;
+      margin: 0 15px;
+      text-align: center;
+    }
+    
+    .mobile-team-name {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    
+    .mobile-team-red { color: #FF4444; }
+    .mobile-team-blue { color: #4488FF; }
+    
+    .mobile-score-number {
+      font-size: 32px;
+      font-weight: 900;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    }
+    
+    .mobile-game-time {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #CCCCCC;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      padding-top: 10px;
+    }
+    
+    /* Simplified Mobile Menu System */
+    .mobile-game-menu {
+      display: none; /* Hidden by default */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.95);
+      border-radius: 20px;
+      padding: 30px;
+      z-index: 10001;
+      min-width: 300px;
+      text-align: center;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .mobile-menu-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+    }
+    
+    .mobile-menu-button {
+      display: block;
+      width: 100%;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 15px 20px;
+      margin: 10px 0;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .mobile-menu-button:hover {
+      background: linear-gradient(135deg, #45a049, #4CAF50);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    }
+    
+    .mobile-menu-button.danger {
+      background: linear-gradient(135deg, #f44336, #da190b);
+    }
+    
+    .mobile-menu-button.danger:hover {
+      background: linear-gradient(135deg, #da190b, #f44336);
+      box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+    }
+    
+    /* Enhanced Mobile Team Selection */
+    .mobile-team-selection {
+      display: none; /* Hidden by default */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.95);
+      border-radius: 20px;
+      padding: 30px;
+      z-index: 10001;
+      min-width: 320px;
+      text-align: center;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .mobile-team-button {
+      display: block;
+      width: 100%;
+      padding: 20px;
+      margin: 15px 0;
+      border: 3px solid;
+      border-radius: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+    }
+    
+    .mobile-team-red-btn {
+      background: linear-gradient(135deg, rgba(255, 68, 68, 0.8), rgba(244, 67, 54, 0.8));
+      border-color: #FF4444;
+      color: white;
+    }
+    
+    .mobile-team-blue-btn {
+      background: linear-gradient(135deg, rgba(68, 136, 255, 0.8), rgba(33, 150, 243, 0.8));
+      border-color: #4488FF;
+      color: white;
+    }
+    
+    .mobile-team-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Mobile Game Status Overlay */
+    .mobile-game-status {
+      display: none; /* Hidden by default */
+      position: fixed;
+      bottom: 120px; /* Above mobile controls */
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 15px 25px;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: bold;
+      z-index: 9999;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      min-width: 200px;
+      text-align: center;
+    }
+    
+    /* Enhanced Mobile Controls Layout - Override Phase 1 */
+    @media (max-width: 768px) and (pointer: coarse) {
+      .enhanced-mobile-scoreboard,
+      .mobile-game-status {
+        display: block !important;
+      }
+      
+      /* Hide original scoreboard on mobile for Phase 2 */
+      .scoreboard {
+        display: none !important;
+      }
+      
+      /* Enhanced Virtual Joystick for Phase 2 */
+      .virtual-joystick {
+        width: 140px !important;
+        height: 140px !important;
+        bottom: 40px !important;
+        left: 40px !important;
+        background: radial-gradient(circle, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2)) !important;
+        border: 4px solid rgba(255, 255, 255, 0.5) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+      }
+      
+      .joystick-knob {
+        width: 50px !important;
+        height: 50px !important;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.9), rgba(200, 200, 200, 0.8)) !important;
+        border: 2px solid rgba(0, 0, 0, 0.3) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+      }
+      
+      /* Enhanced Action Buttons for Phase 2 */
+      .mobile-actions {
+        bottom: 40px !important;
+        right: 40px !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        grid-gap: 15px !important;
+        flex-direction: unset !important;
+      }
+      
+      .mobile-action-btn {
+        width: 70px !important;
+        height: 70px !important;
+        font-size: 12px !important;
+        border: 3px solid rgba(255, 255, 255, 0.6) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+      }
+      
+      .mobile-action-btn.primary {
+        background: linear-gradient(135deg, #FF6B6B, #EE5A52) !important;
+        color: white !important;
+      }
+      
+      .mobile-action-btn.secondary {
+        background: linear-gradient(135deg, #4ECDC4, #44A08D) !important;
+        color: white !important;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      /* Extra small screens - even larger touch targets */
+      .mobile-action-btn {
+        width: 75px !important;
+        height: 75px !important;
+        font-size: 11px !important;
+      }
+      
+      .virtual-joystick {
+        width: 150px !important;
+        height: 150px !important;
+      }
+      
+      .joystick-knob {
+        width: 55px !important;
+        height: 55px !important;
+      }
+      
+      .enhanced-mobile-scoreboard {
+        min-width: 250px;
+        padding: 15px 20px;
+      }
+      
+      .mobile-score-number {
+        font-size: 28px;
+      }
+    }
   </style>
 
 <div class="instructions-panel" id="instructionsPanel">
@@ -8372,6 +8630,397 @@
   window.initializeMobileControls = initializeMobileControls;
   window.handleMobileAction = handleMobileAction;
   window.detectMobileDevice = detectMobileDevice;
+
+  // ===== PHASE 2 ENHANCED MOBILE UI (HYTOPIA SDK COMPLIANT) =====
+  
+  // Enhanced mobile UI state
+  let enhancedMobileUIInitialized = false;
+  let mobilePerformanceMonitor = null;
+  let touchGestureHandler = null;
+  
+  // Initialize Phase 2 enhanced mobile UI
+  function initializeEnhancedMobileUI() {
+    if (enhancedMobileUIInitialized || !isMobileDevice) {
+      return;
+    }
+    
+    console.log('📱✨ Initializing Phase 2 Enhanced Mobile UI...');
+    
+    // Create enhanced mobile scoreboard
+    createEnhancedMobileScoreboard();
+    
+    // Create mobile game status overlay
+    createMobileGameStatus();
+    
+    // Initialize mobile performance monitoring
+    initializeMobilePerformanceMonitoring();
+    
+    // Initialize touch gesture system
+    initializeTouchGestureSystem();
+    
+    // Initialize mobile-optimized team selection
+    initializeMobileTeamSelection();
+    
+    // Initialize mobile game menu
+    initializeMobileGameMenu();
+    
+    enhancedMobileUIInitialized = true;
+    console.log('✅ Phase 2 Enhanced Mobile UI initialized');
+  }
+  
+  // Create enhanced mobile scoreboard
+  function createEnhancedMobileScoreboard() {
+    const scoreboard = document.createElement('div');
+    scoreboard.className = 'enhanced-mobile-scoreboard';
+    scoreboard.id = 'enhanced-mobile-scoreboard';
+    
+    scoreboard.innerHTML = `
+      <div class="mobile-team-score">
+        <div class="mobile-team-name mobile-team-red">Red</div>
+        <div class="mobile-score-number mobile-team-red" id="mobile-red-score">0</div>
+      </div>
+      <div class="mobile-team-score">
+        <div class="mobile-team-name mobile-team-blue">Blue</div>
+        <div class="mobile-score-number mobile-team-blue" id="mobile-blue-score">0</div>
+      </div>
+      <div class="mobile-game-time" id="mobile-game-time">
+        Waiting for game to start...
+      </div>
+    `;
+    
+    document.body.appendChild(scoreboard);
+    console.log('📱 Enhanced mobile scoreboard created');
+  }
+  
+  // Create mobile game status overlay
+  function createMobileGameStatus() {
+    const gameStatus = document.createElement('div');
+    gameStatus.className = 'mobile-game-status';
+    gameStatus.id = 'mobile-game-status';
+    gameStatus.textContent = 'Ready to play!';
+    
+    document.body.appendChild(gameStatus);
+    console.log('📱 Mobile game status overlay created');
+  }
+  
+  // Initialize mobile performance monitoring
+  function initializeMobilePerformanceMonitoring() {
+    const performanceIndicator = document.getElementById('mobile-performance-indicator');
+    if (!performanceIndicator) return;
+    
+    let frameCount = 0;
+    let lastTime = performance.now();
+    let fps = 60;
+    
+    mobilePerformanceMonitor = setInterval(() => {
+      const currentTime = performance.now();
+      const deltaTime = currentTime - lastTime;
+      frameCount++;
+      
+      if (deltaTime >= 1000) { // Update every second
+        fps = Math.round((frameCount * 1000) / deltaTime);
+        frameCount = 0;
+        lastTime = currentTime;
+        
+        // Update performance indicator with color coding
+        let performanceClass = 'performance-good';
+        let batteryStatus = '🔋';
+        
+        if (fps < 20) {
+          performanceClass = 'performance-poor';
+          batteryStatus = '🪫';
+        } else if (fps < 40) {
+          performanceClass = 'performance-warning';
+          batteryStatus = '🔋';
+        }
+        
+        performanceIndicator.className = `mobile-performance-indicator ${performanceClass}`;
+        performanceIndicator.innerHTML = `${batteryStatus} ${fps} FPS | Mobile Mode`;
+        
+        // Send performance data to server for optimization
+        if (fps < 30) {
+                     hytopia.sendData({
+             type: "mobile-performance-warning",
+             fps: fps,
+             deviceInfo: {
+               userAgent: navigator.userAgent,
+               memory: navigator['deviceMemory'] || 'unknown',
+               cores: navigator.hardwareConcurrency || 'unknown'
+             }
+           });
+        }
+      }
+    }, 100);
+    
+    console.log('📱 Mobile performance monitoring started');
+  }
+  
+  // Initialize touch gesture system
+  function initializeTouchGestureSystem() {
+    let gestureStartPos = null;
+    let gestureStartTime = null;
+    let isGesturing = false;
+    
+    // Pinch to zoom variables
+    let initialPinchDistance = 0;
+    let currentZoom = 1;
+    
+    touchGestureHandler = {
+      // Swipe gesture detection
+      handleTouchStart: function(e) {
+        if (e.touches.length === 1) {
+          gestureStartPos = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY
+          };
+          gestureStartTime = Date.now();
+          isGesturing = false;
+        } else if (e.touches.length === 2) {
+          // Pinch gesture start
+          const touch1 = e.touches[0];
+          const touch2 = e.touches[1];
+          initialPinchDistance = Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) +
+            Math.pow(touch2.clientY - touch1.clientY, 2)
+          );
+        }
+      },
+      
+      handleTouchMove: function(e) {
+        if (e.touches.length === 2 && initialPinchDistance > 0) {
+          // Handle pinch zoom gesture
+          e.preventDefault();
+          
+          const touch1 = e.touches[0];
+          const touch2 = e.touches[1];
+          const currentDistance = Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) +
+            Math.pow(touch2.clientY - touch1.clientY, 2)
+          );
+          
+          const zoomRatio = currentDistance / initialPinchDistance;
+          const newZoom = Math.max(0.5, Math.min(2.0, currentZoom * zoomRatio));
+          
+          // Send zoom data to server
+          hytopia.sendData({
+            type: "mobile-zoom-gesture",
+            zoom: newZoom,
+            center: {
+              x: (touch1.clientX + touch2.clientX) / 2,
+              y: (touch1.clientY + touch2.clientY) / 2
+            }
+          });
+          
+          updateMobileGameStatus(`🔍 Zoom: ${Math.round(newZoom * 100)}%`);
+        }
+      },
+      
+      handleTouchEnd: function(e) {
+        if (gestureStartPos && !isGesturing && e.touches.length === 0) {
+          const gestureEndPos = {
+            x: e.changedTouches[0].clientX,
+            y: e.changedTouches[0].clientY
+          };
+          const gestureTime = Date.now() - gestureStartTime;
+          
+          const deltaX = gestureEndPos.x - gestureStartPos.x;
+          const deltaY = gestureEndPos.y - gestureStartPos.y;
+          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+          
+          // Detect swipe gestures (fast movement over distance)
+          if (distance > 50 && gestureTime < 300) {
+            const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+            let direction = '';
+            
+            if (angle >= -45 && angle <= 45) direction = 'right';
+            else if (angle >= 45 && angle <= 135) direction = 'down';
+            else if (angle >= -135 && angle <= -45) direction = 'up';
+            else direction = 'left';
+            
+            // Send swipe gesture to server
+            hytopia.sendData({
+              type: "mobile-swipe-gesture",
+              direction: direction,
+              speed: distance / gestureTime,
+              distance: distance
+            });
+            
+            // Show visual feedback
+            updateMobileGameStatus(`⚡ Swipe ${direction.toUpperCase()}`);
+            setTimeout(() => updateMobileGameStatus('Ready to play!'), 1000);
+            
+            console.log(`📱 Swipe gesture detected: ${direction} (${Math.round(distance)}px in ${gestureTime}ms)`);
+          }
+        }
+        
+        // Reset gesture tracking
+        gestureStartPos = null;
+        gestureStartTime = null;
+        isGesturing = false;
+        currentZoom = 1;
+        initialPinchDistance = 0;
+      }
+    };
+    
+    // Add gesture event listeners to the entire document
+    document.addEventListener('touchstart', touchGestureHandler.handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', touchGestureHandler.handleTouchMove, { passive: false });
+    document.addEventListener('touchend', touchGestureHandler.handleTouchEnd, { passive: false });
+    
+    console.log('📱 Touch gesture system initialized');
+  }
+  
+  // Initialize mobile team selection
+  function initializeMobileTeamSelection() {
+    // This will be shown when team selection is needed
+    const mobileTeamSelection = document.createElement('div');
+    mobileTeamSelection.className = 'mobile-team-selection';
+    mobileTeamSelection.id = 'mobile-team-selection';
+    mobileTeamSelection.style.display = 'none';
+    
+    mobileTeamSelection.innerHTML = `
+      <div class="mobile-menu-title">Choose Your Team</div>
+      <button class="mobile-team-button mobile-team-red-btn" onclick="selectMobileTeam('red')">
+        🔴 Red Team
+      </button>
+      <button class="mobile-team-button mobile-team-blue-btn" onclick="selectMobileTeam('blue')">
+        🔵 Blue Team
+      </button>
+    `;
+    
+    document.body.appendChild(mobileTeamSelection);
+    console.log('📱 Mobile team selection created');
+  }
+  
+  // Initialize mobile game menu
+  function initializeMobileGameMenu() {
+    const mobileGameMenu = document.createElement('div');
+    mobileGameMenu.className = 'mobile-game-menu';
+    mobileGameMenu.id = 'mobile-game-menu';
+    mobileGameMenu.style.display = 'none';
+    
+    mobileGameMenu.innerHTML = `
+      <div class="mobile-menu-title">Game Menu</div>
+      <button class="mobile-menu-button" onclick="resumeGameMobile()">
+        ▶️ Resume Game
+      </button>
+      <button class="mobile-menu-button" onclick="showMobileSettings()">
+        ⚙️ Settings
+      </button>
+      <button class="mobile-menu-button danger" onclick="quitGameMobile()">
+        🚪 Quit Game
+      </button>
+    `;
+    
+    document.body.appendChild(mobileGameMenu);
+    console.log('📱 Mobile game menu created');
+  }
+  
+  // Mobile UI helper functions
+  function updateMobileScoreboard(redScore, blueScore, gameTime) {
+    const redScoreEl = document.getElementById('mobile-red-score');
+    const blueScoreEl = document.getElementById('mobile-blue-score');
+    const gameTimeEl = document.getElementById('mobile-game-time');
+    
+    if (redScoreEl) redScoreEl.textContent = redScore || '0';
+    if (blueScoreEl) blueScoreEl.textContent = blueScore || '0';
+    if (gameTimeEl) gameTimeEl.textContent = gameTime || 'Game Time';
+  }
+  
+  function updateMobileGameStatus(message) {
+    const gameStatus = document.getElementById('mobile-game-status');
+    if (gameStatus) {
+      gameStatus.textContent = message;
+      gameStatus.style.display = 'block';
+      
+      // Auto-hide after 3 seconds if it's a temporary message
+      if (message.includes('⚡') || message.includes('🔍')) {
+        setTimeout(() => {
+          if (gameStatus.textContent === message) {
+            gameStatus.style.display = 'none';
+          }
+        }, 3000);
+      }
+    }
+  }
+  
+  function showMobileTeamSelection() {
+    const teamSelection = document.getElementById('mobile-team-selection');
+    if (teamSelection) {
+      teamSelection.style.display = 'block';
+    }
+  }
+  
+  function hideMobileTeamSelection() {
+    const teamSelection = document.getElementById('mobile-team-selection');
+    if (teamSelection) {
+      teamSelection.style.display = 'none';
+    }
+  }
+  
+  function selectMobileTeam(team) {
+    console.log(`📱 Mobile team selected: ${team}`);
+    
+    // Send team selection to server
+    hytopia.sendData({
+      type: "mobile-team-selection",
+      team: team
+    });
+    
+    // Hide team selection
+    hideMobileTeamSelection();
+    
+    // Show confirmation
+    updateMobileGameStatus(`✅ Joined ${team.toUpperCase()} team!`);
+  }
+  
+  function showMobileGameMenu() {
+    const gameMenu = document.getElementById('mobile-game-menu');
+    if (gameMenu) {
+      gameMenu.style.display = 'block';
+    }
+  }
+  
+  function hideMobileGameMenu() {
+    const gameMenu = document.getElementById('mobile-game-menu');
+    if (gameMenu) {
+      gameMenu.style.display = 'none';
+    }
+  }
+  
+  function resumeGameMobile() {
+    hideMobileGameMenu();
+    updateMobileGameStatus('🎮 Game resumed');
+  }
+  
+  function showMobileSettings() {
+    hideMobileGameMenu();
+    updateMobileGameStatus('⚙️ Settings - Coming soon!');
+  }
+  
+  function quitGameMobile() {
+    hytopia.sendData({
+      type: "mobile-quit-game"
+    });
+    hideMobileGameMenu();
+  }
+  
+  // Auto-initialize enhanced mobile UI when basic mobile controls are ready
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+      if (isMobileDevice) {
+        initializeEnhancedMobileUI();
+      }
+    }, 1500);
+  });
+  
+  // Make Phase 2 mobile functions globally accessible
+  window.initializeEnhancedMobileUI = initializeEnhancedMobileUI;
+  window.updateMobileScoreboard = updateMobileScoreboard;
+  window.updateMobileGameStatus = updateMobileGameStatus;
+  window.showMobileTeamSelection = showMobileTeamSelection;
+  window.selectMobileTeam = selectMobileTeam;
+  window.showMobileGameMenu = showMobileGameMenu;
 
 </script>
 

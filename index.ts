@@ -1301,6 +1301,238 @@ startServer((world) => {
             }
           }
         }
+        // ===== PHASE 2 MOBILE GESTURE HANDLERS (HYTOPIA SDK COMPLIANT) =====
+        else if (data.type === "mobile-swipe-gesture") {
+          // Handle swipe gestures for special actions
+          const direction = data.direction;
+          const speed = data.speed;
+          const distance = data.distance;
+          
+          console.log(`📱 Swipe gesture: ${player.username} swiped ${direction} (${speed.toFixed(1)} px/ms)`);
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Handle swipe-based actions
+            switch (direction) {
+              case 'right':
+                // Quick pass to the right
+                if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                  const rightPassInput = {
+                    forward: false,
+                    backward: false,
+                    left: false,
+                    right: true,
+                    primaryDown: false,
+                    secondaryDown: true, // Pass
+                    tertiary: false,
+                    dodging: false
+                  };
+                  
+                  playerEntity.controller.tickWithPlayerInput(
+                    playerEntity,
+                    rightPassInput,
+                    { yaw: 90, pitch: 0 }, // Face right
+                    16
+                  );
+                }
+                break;
+                
+              case 'left':
+                // Quick pass to the left
+                if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                  const leftPassInput = {
+                    forward: false,
+                    backward: false,
+                    left: true,
+                    right: false,
+                    primaryDown: false,
+                    secondaryDown: true, // Pass
+                    tertiary: false,
+                    dodging: false
+                  };
+                  
+                  playerEntity.controller.tickWithPlayerInput(
+                    playerEntity,
+                    leftPassInput,
+                    { yaw: -90, pitch: 0 }, // Face left
+                    16
+                  );
+                }
+                break;
+                
+              case 'up':
+                // Power shot forward
+                if (speed > 1.0) { // Fast swipe = power shot
+                  if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                    const powerShotInput = {
+                      forward: true,
+                      backward: false,
+                      left: false,
+                      right: false,
+                      primaryDown: true, // Power shot
+                      secondaryDown: false,
+                      tertiary: false,
+                      dodging: false
+                    };
+                    
+                    playerEntity.controller.tickWithPlayerInput(
+                      playerEntity,
+                      powerShotInput,
+                      { yaw: 0, pitch: 0 }, // Face forward
+                      16
+                    );
+                  }
+                }
+                break;
+                
+              case 'down':
+                // Dodge/tackle
+                if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                  const dodgeInput = {
+                    forward: false,
+                    backward: false,
+                    left: false,
+                    right: false,
+                    primaryDown: false,
+                    secondaryDown: false,
+                    tertiary: true, // Tackle
+                    dodging: true
+                  };
+                  
+                  playerEntity.controller.tickWithPlayerInput(
+                    playerEntity,
+                    dodgeInput,
+                    { yaw: 0, pitch: 0 },
+                    16
+                  );
+                }
+                break;
+            }
+            
+            // Send feedback to mobile UI
+            player.ui.sendData({
+              type: "mobile-swipe-feedback",
+              direction: direction,
+              action: direction === 'up' ? 'Power Shot' : 
+                     direction === 'down' ? 'Dodge' : 
+                     `Pass ${direction.toUpperCase()}`,
+              success: true
+            });
+          }
+        }
+        else if (data.type === "mobile-zoom-gesture") {
+          // Handle pinch-to-zoom for camera control
+          const zoom = data.zoom;
+          const center = data.center;
+          
+          console.log(`📱 Zoom gesture: ${player.username} zoom ${zoom.toFixed(2)}x`);
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Store mobile zoom preference for this player
+            (player as any)._mobileZoomLevel = zoom;
+            
+            // Send zoom feedback to mobile UI
+            player.ui.sendData({
+              type: "mobile-zoom-feedback",
+              zoom: zoom,
+              success: true
+            });
+          }
+        }
+        else if (data.type === "mobile-team-selection") {
+          // Handle mobile team selection
+          const selectedTeam = data.team;
+          console.log(`📱 Mobile team selection: ${player.username} chose ${selectedTeam}`);
+          
+          // Use existing team selection logic - same as regular team-selected handler
+          if (game) {
+            // Check if player is already on a team
+            if (game.getTeamOfPlayer(player.username) !== null) {
+              console.log("📱 Player already on a team");
+              player.ui.sendData({
+                type: "mobile-team-selection-feedback",
+                team: selectedTeam,
+                success: false,
+                message: "Already on a team"
+              });
+              return;
+            }
+            
+            // Check if team is full
+            if (game.isTeamFull(selectedTeam)) {
+              console.log(`📱 Team ${selectedTeam} is full`);
+              player.ui.sendData({
+                type: "mobile-team-selection-feedback",
+                team: selectedTeam,
+                success: false,
+                message: "Team is full"
+              });
+              return;
+            }
+            
+            // Join game and team using existing methods
+            game.joinGame(player.username, player.username);
+            game.joinTeam(player.username, selectedTeam);
+            
+            // Send success feedback
+            player.ui.sendData({
+              type: "mobile-team-selection-feedback",
+              team: selectedTeam,
+              success: true
+            });
+            
+            console.log(`📱 ${player.username} successfully joined ${selectedTeam} team`);
+          }
+        }
+        else if (data.type === "mobile-performance-warning") {
+          // Handle mobile performance warnings
+          const fps = data.fps;
+          const deviceInfo = data.deviceInfo;
+          
+          console.log(`📱 Performance warning: ${player.username} FPS dropped to ${fps} (${deviceInfo?.userAgent || 'unknown device'})`);
+          
+          // Store mobile performance data for this player
+          (player as any)._mobilePerformanceData = {
+            fps: fps,
+            deviceInfo: deviceInfo,
+            timestamp: Date.now()
+          };
+          
+          // Switch to mobile-optimized performance mode if needed
+          if (fps < 25) {
+            console.log(`📱 Switching ${player.username} to mobile-optimized performance mode`);
+            
+            // Send optimized settings to mobile client
+            player.ui.sendData({
+              type: "mobile-performance-optimization",
+              optimizationLevel: "MOBILE_OPTIMIZED",
+              settings: {
+                reducedAI: true,
+                lowerPhysicsQuality: true,
+                reducedParticles: true,
+                simplifiedUI: true
+              }
+            });
+          }
+        }
+        else if (data.type === "mobile-quit-game") {
+          // Handle mobile quit game request
+          console.log(`📱 Mobile quit request: ${player.username}`);
+          
+          // Remove player from game
+          if (game) {
+            game.removePlayer(player.username);
+          }
+          
+          // Send quit confirmation
+          player.ui.sendData({
+            type: "mobile-quit-feedback",
+            success: true
+          });
+        }
 
       });
 
