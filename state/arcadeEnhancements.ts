@@ -295,7 +295,7 @@ export class ArcadeEnhancementManager {
     // Play freeze hit sound for each frozen player
     frozenPlayers.forEach(frozenPlayer => {
       const freezeHitAudio = new Audio({
-        uri: "audio/sfx/liquid/water-splash.mp3", // Using water splash as freeze hit sound
+        uri: "audio/sfx/liquid/large-splash.mp3", // Using existing splash sound for freeze hit effect
         loop: false,
         volume: 0.4,
         position: frozenPlayer.position,

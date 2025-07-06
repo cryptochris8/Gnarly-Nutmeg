@@ -23,7 +23,7 @@ import { PASS_FORCE, BALL_SPAWN_POSITION as GLOBAL_BALL_SPAWN_POSITION, FIELD_MI
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 import { isArcadeMode } from "../state/gameModes";
 
-/** Options for creating a PlayerEntityController instance. @public */
+/** Options for creating a CustomSoccerPlayer instance. @public */
 export interface PlayerEntityControllerOptions {
   /** A function allowing custom logic to determine if the entity can jump. */
   canJump?: () => boolean;
@@ -63,13 +63,13 @@ const GOALKEEPER_HEADER_FORCE = 15; // Force applied during headers
 const HIGH_BALL_THRESHOLD = 2.0; // Height threshold for considering ball "high"
 const GOALKEEPER_JUMP_BOOST = 2.0; // Extra jump velocity for goalkeepers going for headers
 
-export default class PlayerEntityController extends BaseEntityController {
+export default class CustomSoccerPlayer extends BaseEntityController {
   /**
    * A function allowing custom logic to determine if the entity can walk.
    * @param playerEntityController - The entity controller instance.
    * @returns Whether the entity of the entity controller can walk.
    */
-  public canWalk: (playerEntityController: PlayerEntityController) => boolean =
+  public canWalk: (playerEntityController: CustomSoccerPlayer) => boolean =
     () => true;
 
   /**
@@ -77,7 +77,7 @@ export default class PlayerEntityController extends BaseEntityController {
    * @param playerEntityController - The entity controller instance.
    * @returns Whether the entity of the entity controller can run.
    */
-  public canRun: (playerEntityController: PlayerEntityController) => boolean =
+  public canRun: (playerEntityController: CustomSoccerPlayer) => boolean =
     () => true;
 
   /**
@@ -85,7 +85,7 @@ export default class PlayerEntityController extends BaseEntityController {
    * @param playerEntityController - The entity controller instance.
    * @returns Whether the entity of the entity controller can jump.
    */
-  public canJump: (playerEntityController: PlayerEntityController) => boolean =
+  public canJump: (playerEntityController: CustomSoccerPlayer) => boolean =
     () => true;
 
   /** The upward velocity applied to the entity when it jumps. */
@@ -282,8 +282,8 @@ export default class PlayerEntityController extends BaseEntityController {
     });
 
     // Start ball stuck detection when first entity spawns
-    if (!PlayerEntityController._ballStuckCheckInterval) {
-      PlayerEntityController._ballStuckCheckInterval = setInterval(() => {
+    if (!CustomSoccerPlayer._ballStuckCheckInterval) {
+      CustomSoccerPlayer._ballStuckCheckInterval = setInterval(() => {
         this.checkForStuckBall(entity.world as World);
       }, BALL_STUCK_CHECK_INTERVAL);
     }
@@ -307,24 +307,29 @@ export default class PlayerEntityController extends BaseEntityController {
     try {
       // Early return if entity or world is invalid
       if (!entity?.isSpawned || !entity.world) {
+        console.log("❌ Controller: Entity not spawned or no world");
         return;
       }
 
       // Ensure input and cameraOrientation are valid before proceeding
       if (!input) {
-        // console.log("SoccerPlayerController: Input is undefined, skipping tick.");
+        console.log("❌ Controller: Input is undefined, skipping tick.");
         return;
       }
       if (!cameraOrientation) {
-        // console.log("SoccerPlayerController: cameraOrientation is undefined, skipping tick.");
+        console.log("❌ Controller: cameraOrientation is undefined, skipping tick.");
         return;
       }
 
-      if (!(entity instanceof SoccerPlayerEntity)) return;
+      if (!(entity instanceof SoccerPlayerEntity)) {
+        console.log("❌ Controller: Entity is not SoccerPlayerEntity");
+        return;
+      }
 
       // Get ball reference and check validity
       const soccerBall = sharedState.getSoccerBall();
       if (!soccerBall?.isSpawned || !soccerBall.world) {
+        console.log("❌ Controller: Soccer ball not spawned or no world");
         return;
       }
 
@@ -511,7 +516,7 @@ export default class PlayerEntityController extends BaseEntityController {
         
         // Check cooldown to prevent spam
         const currentTime = Date.now();
-        if (currentTime - this._lastPowerUpTime >= PlayerEntityController.POWER_UP_COOLDOWN_MS) {
+        if (currentTime - this._lastPowerUpTime >= CustomSoccerPlayer.POWER_UP_COOLDOWN_MS) {
           this._lastPowerUpTime = currentTime;
           this._activateRandomPowerUp(entity);
           
@@ -520,7 +525,7 @@ export default class PlayerEntityController extends BaseEntityController {
         } else {
           // Still on cooldown, cancel the input
           input["f"] = false;
-          const remainingCooldown = Math.ceil((PlayerEntityController.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
+          const remainingCooldown = Math.ceil((CustomSoccerPlayer.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
           console.log(`🎮 Power-up on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
         }
       }
@@ -792,7 +797,7 @@ export default class PlayerEntityController extends BaseEntityController {
 
       // Handle tackle
       if (mr && !this._holdingQ && !hasBall) {
-        const cooldownMap = PlayerEntityController._tackleCooldownMap;
+        const cooldownMap = CustomSoccerPlayer._tackleCooldownMap;
 
         if (cooldownMap.has(entity.player.username)) {
           const cooldown = cooldownMap.get(entity.player.username);
@@ -833,7 +838,7 @@ export default class PlayerEntityController extends BaseEntityController {
 
       if (sp && !this._holdingQ && hasBall) {
         // Dribble/dodge move when has ball
-        const cooldownMap = PlayerEntityController._tackleCooldownMap;
+        const cooldownMap = CustomSoccerPlayer._tackleCooldownMap;
 
         if (cooldownMap.has(entity.player.username)) {
           const cooldown = cooldownMap.get(entity.player.username);
@@ -1005,9 +1010,9 @@ export default class PlayerEntityController extends BaseEntityController {
 
       // Clear intervals
       this.clearChargeInterval();
-      if (PlayerEntityController._ballStuckCheckInterval) {
-        clearInterval(PlayerEntityController._ballStuckCheckInterval);
-        PlayerEntityController._ballStuckCheckInterval = null;
+      if (CustomSoccerPlayer._ballStuckCheckInterval) {
+        clearInterval(CustomSoccerPlayer._ballStuckCheckInterval);
+        CustomSoccerPlayer._ballStuckCheckInterval = null;
       }
 
       super.detach(entity);

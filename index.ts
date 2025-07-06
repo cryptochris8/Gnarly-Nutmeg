@@ -48,16 +48,7 @@ import sharedState from "./state/sharedState";
 import { getDirectionFromRotation } from "./utils/direction";
 import spectatorMode from "./utils/observerMode";
 import { soccerMap } from "./state/map";
-import { 
-  GameMode, 
-  getCurrentGameMode, 
-  setGameMode, 
-  isFIFAMode, 
-  isArcadeMode,
-  isPickupMode,
-  isTournamentMode,
-  getCurrentModeConfig 
-} from "./state/gameModes";
+import { GameMode, getCurrentGameMode, setGameMode, isFIFAMode, isArcadeMode, isPickupMode, isTournamentMode, getCurrentModeConfig } from "./state/gameModes";
 import { TournamentManager } from "./state/tournamentManager";
 import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
 import { PickupGameManager } from "./state/pickupGameManager";
@@ -173,6 +164,12 @@ startServer((world) => {
         return arcadeGameplayMusic;
       }
     };
+
+    // Store music instances on world object for access by gameState
+    (world as any)._mainMusic = mainMusic;
+    (world as any)._arcadeGameplayMusic = arcadeGameplayMusic;
+    (world as any)._fifaGameplayMusic = fifaGameplayMusic;
+    (world as any)._getCurrentGameMode = getCurrentGameMode;
 
     // Function to spawn AI players (restored to full 6v6)
     const spawnAIPlayers = async (playerTeam: "red" | "blue"): Promise<void> => {
@@ -1190,6 +1187,7 @@ startServer((world) => {
           console.log(`🎥 Spectator ${player.username} wants to leave spectator mode`);
           spectatorMode.removeSpectator(player);
         }
+
       });
 
       // Attempt to start multiplayer game (only for human players, not AI)
@@ -2303,7 +2301,7 @@ startServer((world) => {
           if (allTournaments.length === 0) {
             world.chatManager.sendPlayerMessage(
               player,
-              `❌ No active tournaments. Create one with /tournament create [name]`
+              `❌ No active tournaments. Create one with /tournament create [name] [type] [maxplayers] [mode]`
             );
           } else {
             world.chatManager.sendPlayerMessage(

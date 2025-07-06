@@ -36,7 +36,7 @@
     user-select: none;
     cursor: default;
       overflow-y: auto;
-      padding: 20px;
+      padding: 0;
       box-sizing: border-box;
     pointer-events: auto; /* Ensure UI can receive pointer events */
   }
@@ -1785,7 +1785,132 @@
     }
   }
 
-  /* Enhanced Team Selection */
+  /* ===== PAUSE SCREEN STYLES ===== */
+  #pause-stats-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    z-index: 10000;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    animation: fadeIn 0.5s ease-in;
+    pointer-events: auto;
+    cursor: default;
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #pause-stats-overlay * {
+    cursor: inherit !important;
+    pointer-events: auto !important;
+  }
+
+  #return-to-game-btn {
+    background: linear-gradient(135deg, #22c55e, #16a34a, #22c55e);
+    color: white;
+    border: 3px solid #22c55e;
+    padding: 20px 40px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 15px;
+    cursor: pointer !important;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+    font-family: 'Inter', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 10002;
+    pointer-events: auto !important;
+    min-width: 220px;
+    margin: 0 auto;
+    display: block;
+    animation: glow 2s infinite alternate;
+  }
+
+  #return-to-game-btn:hover {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(34, 197, 94, 0.6);
+  }
+</style>
+
+<!-- MAIN SCOREBOARD SYSTEM -->
+<div id="main-scoreboard" class="score-time-container">
+  <div class="team-banner red" id="red-banner">
+    <div class="team-name">Red</div>
+    <div class="team-score" id="red-score">0</div>
+  </div>
+  <div class="time-display">
+    <div class="phase-indicator" id="phase-indicator">LOBBY</div>
+    <span class="time-label" id="time-left">Waiting...</span>
+  </div>
+  <div class="team-banner blue" id="blue-banner">
+    <div class="team-name">Blue</div>
+    <div class="team-score" id="blue-score">0</div>
+  </div>
+</div>
+
+<!-- ARCADE MODE INDICATOR -->
+<div id="arcade-mode-indicator" class="arcade-mode-indicator">
+  <span>🎪</span> ARCADE MODE - ENHANCED SOCCER!
+</div>
+
+<!-- POWERUP CONTAINER -->
+<div id="powerup-container" class="powerup-container">
+  <div class="powerup-title">🎮 ARCADE POWER-UPS</div>
+  
+  <div class="powerup-button" id="freeze-blast-btn" onclick="activatePowerUp('freeze_blast')">
+    <div class="powerup-icon">🧊</div>
+    <div class="powerup-name">Freeze Blast</div>
+    <div class="powerup-cooldown" id="freeze-blast-cooldown"></div>
+  </div>
+  
+  <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')">
+    <div class="powerup-icon">🔥</div>
+    <div class="powerup-name">Fireball</div>
+    <div class="powerup-cooldown" id="fireball-cooldown"></div>
+  </div>
+  
+  <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')">
+    <div class="powerup-icon">⚽</div>
+    <div class="powerup-name">Mega Kick</div>
+    <div class="powerup-cooldown" id="mega-kick-cooldown"></div>
+  </div>
+  
+  <div class="powerup-button" id="shield-btn" onclick="activatePowerUp('shield')">
+    <div class="powerup-icon">🛡️</div>
+    <div class="powerup-name">Shield</div>
+    <div class="powerup-cooldown" id="shield-cooldown"></div>
+  </div>
+  
+  <div class="powerup-button" id="stamina-btn" onclick="activatePowerUp('stamina')">
+    <div class="powerup-icon">🧪</div>
+    <div class="powerup-name">Stamina</div>
+    <div class="powerup-cooldown" id="stamina-cooldown"></div>
+  </div>
+  
+  <div class="powerup-button" id="random-powerup-btn" onclick="activateRandomPowerUp()">
+    <div class="powerup-icon">🎲</div>
+    <div class="powerup-name">Random (F)</div>
+    <div class="powerup-cooldown" id="random-powerup-cooldown"></div>
+  </div>
+</div>
+
+<!-- POWERUP EFFECT DISPLAY -->
+<div id="powerup-effect-display" class="powerup-effect-display"></div>
+
+<!-- Enhanced Team Selection -->
+<style>
   .team-selection {
     margin: 20px 0;
     padding: 20px;
@@ -1984,7 +2109,7 @@
   .powerup-container {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    right: 120px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -2358,7 +2483,7 @@
   @media (max-width: 1024px) {
     .powerup-container {
       bottom: 15px;
-      right: 15px;
+      right: 100px;
       gap: 10px;
     }
     
@@ -2383,7 +2508,7 @@
   @media (max-width: 768px) {
     .powerup-container {
       bottom: 10px;
-      right: 10px;
+      right: 80px;
       gap: 8px;
     }
     
@@ -2518,6 +2643,48 @@
     animation-duration: 1.5s;
   }
 
+  /* ===== POWERUP EFFECT DISPLAY ===== */
+  .powerup-effect-display {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.9);
+    color: #ffd700;
+    padding: 30px 40px;
+    border-radius: 15px;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    border: 3px solid #ffd700;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+    display: none;
+    pointer-events: none;
+    animation: powerup-effect-flash 2.5s ease-out;
+  }
+
+  @keyframes powerup-effect-flash {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.5);
+    }
+    20% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+    40% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+
   /* ===== FEEDBACK ANIMATIONS ===== */
   @keyframes slideInRight {
     from {
@@ -2538,6 +2705,62 @@
     to {
       transform: translateX(100%);
       opacity: 0;
+    }
+  }
+
+  /* ===== FORCE POWERUP CONTAINER POSITIONING ===== */
+  #powerup-container.powerup-container {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 120px !important;
+    z-index: 1000 !important;
+  }
+
+  @media (max-width: 1024px) {
+    #powerup-container.powerup-container {
+      right: 100px !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    #powerup-container.powerup-container {
+      right: 80px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    #powerup-container.powerup-container {
+      flex-direction: row !important;
+      right: 50% !important;
+      transform: translateX(50%) !important;
+    }
+  }
+
+  /* ===== FORCE POWERUP CONTAINER POSITIONING ===== */
+  #powerup-container.powerup-container {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 120px !important;
+    z-index: 1000 !important;
+  }
+
+  @media (max-width: 1024px) {
+    #powerup-container.powerup-container {
+      right: 100px !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    #powerup-container.powerup-container {
+      right: 80px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    #powerup-container.powerup-container {
+      flex-direction: row !important;
+      right: 50% !important;
+      transform: translateX(50%) !important;
     }
   }
 
@@ -3730,199 +3953,6 @@
   }
 </style>
 
-<!-- MAIN SCOREBOARD SYSTEM -->
-<div id="main-scoreboard" class="score-time-container">
-  <div class="team-banner red" id="red-banner">
-    <div class="team-name">Red</div>
-    <div class="team-score" id="red-score">0</div>
-  </div>
-  <div class="time-display">
-    <div class="phase-indicator" id="phase-indicator">LOBBY</div>
-    <span class="time-label" id="time-left">Waiting...</span>
-  </div>
-  <div class="team-banner blue" id="blue-banner">
-    <div class="team-name">Blue</div>
-    <div class="team-score" id="blue-score">0</div>
-  </div>
-</div>
-
-<!-- ENHANCED PLAYER ROLE & STATUS DISPLAY -->
-<div id="player-status-hud" class="player-status-hud" style="display: none;">
-  <div class="role-indicator" id="role-indicator">
-    <div class="role-icon" id="role-icon">⚽</div>
-    <div class="role-info">
-      <div class="role-name" id="role-name">Player</div>
-      <div class="role-description" id="role-description">Ready to play</div>
-    </div>
-  </div>
-  
-  <div class="stamina-container">
-    <div class="stamina-label">Stamina</div>
-    <div class="stamina-bar">
-      <div class="stamina-fill" id="stamina-fill"></div>
-    </div>
-    <div class="stamina-percentage" id="stamina-percentage">100%</div>
-  </div>
-  
-  <div class="ball-possession-indicator" id="ball-possession" style="display: none;">
-    <div class="possession-icon">⚽</div>
-    <div class="possession-text">Ball Possession</div>
-  </div>
-</div>
-
-<!-- ENHANCED ACTION FEEDBACK SYSTEM -->
-<div id="action-feedback-container" class="action-feedback-container">
-  <!-- Action notifications will be dynamically added here -->
-</div>
-
-
-
-<!-- ENHANCED TEAM POSITIONING DISPLAY -->
-<div id="team-formation-display" class="team-formation-display" style="display: none;">
-  <div class="formation-header">
-    <div class="formation-title">Team Formation</div>
-    <div class="formation-toggle" onclick="toggleFormationDisplay()">📋</div>
-  </div>
-  <div class="formation-field">
-    <div class="field-player" id="player-gk">GK</div>
-    <div class="field-player" id="player-lb">LB</div>
-    <div class="field-player" id="player-rb">RB</div>
-    <div class="field-player" id="player-cm1">CM</div>
-    <div class="field-player" id="player-cm2">CM</div>
-    <div class="field-player" id="player-st">ST</div>
-  </div>
-</div>
-
-<!-- Control Buttons -->
-<div class="control-buttons">
-      <button class="control-btn" id="audio-toggle" onclick="toggleAudio()" title="Toggle Audio">🔊</button>
-    <button class="control-btn" id="stats-toggle" onclick="toggleStatsPanel()" title="Toggle Statistics">📊</button>
-    <button class="control-btn" id="powerup-toggle" onclick="togglePowerUpPanel()" title="Toggle Power-Ups (Arcade Mode)" style="display: none;">🎪</button>
-    <button class="control-btn" id="pass-button" onclick="forcePassToTeammate()" title="Pass to Teammate (Left Click)">⚽</button>
-</div>
-
-<!-- Statistics Panel -->
-<div class="stats-panel hidden" id="stats-panel">
-  <div class="stats-header">
-    <div class="stats-title">Match Statistics</div>
-  </div>
-  
-  <div class="stat-row">
-    <div class="stat-label">Shots</div>
-    <div class="stat-values">
-      <div class="stat-value red" id="red-shots">0</div>
-      <div class="stat-value blue" id="blue-shots">0</div>
-    </div>
-  </div>
-  
-  <div class="stat-row">
-    <div class="stat-label">Passes</div>
-    <div class="stat-values">
-      <div class="stat-value red" id="red-passes">0</div>
-      <div class="stat-value blue" id="blue-passes">0</div>
-    </div>
-  </div>
-  
-  <div class="possession-container">
-    <div class="stat-label" style="margin-bottom: 8px;">Possession</div>
-    <div class="possession-bar">
-      <div class="possession-bar-fill" id="possession-bar-fill"></div>
-    </div>
-    <div class="possession-labels">
-      <span id="red-possession">50%</span>
-      <span id="blue-possession">50%</span>
-    </div>
-  </div>
-</div>
-
-<!-- Power-Up Panel (Arcade Mode Only) -->
-<div class="powerup-panel hidden" id="powerup-panel">
-  <div class="powerup-header">
-    <div class="powerup-title">🎪 Arcade Power-Ups</div>
-  </div>
-  
-  <div class="powerup-active" id="active-powerup" style="display: none;">
-    <div class="powerup-name" id="powerup-name">No Power-Up</div>
-    <div class="powerup-description" id="powerup-description">Collect power-ups around the field!</div>
-    <div class="powerup-cooldown" id="powerup-cooldown"></div>
-  </div>
-  
-  <div class="powerup-instructions">
-    <div style="color: #ffffff; font-size: 13px; margin-bottom: 8px;">
-      <strong>Available Power-Ups:</strong>
-    </div>
-    <div style="font-size: 11px; color: #ffcccc; line-height: 1.4;">
-      🧊 <strong>Freeze Blast</strong> - Freezes nearby opponents<br>
-      ⚡ <strong>Mega Kick</strong> - Triple shot power<br>
-      🔥 <strong>Fireball</strong> - Explosive area damage<br>
-      🛡️ <strong>Shield</strong> - Temporary protection<br>
-      🧪 <strong>Stamina Potion</strong> - Instant stamina restoration
-    </div>
-    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
-      Press <span class="powerup-key">F</span> to activate power-up
-    </div>
-  </div>
-</div>
-
-<div class="goals-display" id="goals-display" style="display: none;">Goals: 0</div>
-
-<div class="game-text">GOAL!!!</div>
-<div class="goal-overlay" id="goal-overlay"></div>
-<div class="countdown-text" id="countdown-display"></div>
-<div class="cooldown-message" id="cooldown-message"></div>
-
-  <div class="ability-holder">
-    <div class="ability-key">1</div>
-    <img id="ability-icon" src="" alt="Ability">
-  </div>
-
-  <!-- ===== ARCADE MODE POWER-UP SYSTEM ===== -->
-  <div id="arcade-mode-indicator" class="arcade-mode-indicator">
-    🎪 ARCADE MODE - Enhanced Soccer!
-  </div>
-
-  <div id="powerup-container" class="powerup-container" style="display: none;">
-    <div class="powerup-button" id="freeze-blast-btn" onclick="activatePowerUp('freeze_blast')" title="Freeze Blast - Freezes nearby opponents">
-      <div class="powerup-key-hint">1</div>
-      <div class="powerup-icon">🧊</div>
-      <div class="powerup-cooldown-overlay" id="freeze-blast-cooldown"></div>
-    </div>
-    
-
-    
-    <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')" title="Fireball - Explosive area damage">
-      <div class="powerup-key-hint">2</div>
-      <div class="powerup-icon">🔥</div>
-      <div class="powerup-cooldown-overlay" id="fireball-cooldown"></div>
-    </div>
-    
-    <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')" title="Mega Kick - Triple shot power">
-      <div class="powerup-key-hint">3</div>
-      <div class="powerup-icon">⚡</div>
-      <div class="powerup-cooldown-overlay" id="mega-kick-cooldown"></div>
-    </div>
-
-    <div class="powerup-button" id="random-powerup-btn" onclick="activateRandomPowerUp()" title="Random Power-up - Surprise ability">
-      <div class="powerup-key-hint">F</div>
-      <div class="powerup-icon">🎲</div>
-      <div class="powerup-cooldown-overlay" id="random-powerup-cooldown"></div>
-    </div>
-
-    <div class="powerup-button" id="shield-btn" onclick="activatePowerUp('shield')" title="Shield - Temporary protection">
-      <div class="powerup-key-hint">4</div>
-      <div class="powerup-icon">🛡️</div>
-      <div class="powerup-cooldown-overlay" id="shield-cooldown"></div>
-    </div>
-
-    <div class="powerup-button" id="stamina-btn" onclick="activatePowerUp('stamina')" title="Stamina Potion - Instant stamina restoration">
-      <div class="powerup-key-hint">5</div>
-      <div class="powerup-icon">🧪</div>
-      <div class="powerup-cooldown-overlay" id="stamina-cooldown"></div>
-    </div>
-  </div>
-
-  <div id="powerup-effect-display" class="powerup-effect-display" style="display: none;"></div>
-
 <div class="instructions-panel" id="instructionsPanel">
   <div class="title-container">
     <img src="{{CDN_ASSETS_URL}}/ui/logos/hysports-soccer-logo.png" alt="HySports Soccer Logo" class="title-logo">
@@ -4909,12 +4939,20 @@
     
     if (gameMode === "arcade") {
       // Show power-up panel and toggle button in arcade mode
+      if (powerUpToggle) {
       powerUpToggle.style.display = "flex";
+      }
+      if (powerUpPanel) {
       powerUpPanel.classList.remove("hidden");
+      }
     } else {
       // Hide power-up panel and toggle button in FIFA mode
+      if (powerUpToggle) {
       powerUpToggle.style.display = "none";
+      }
+      if (powerUpPanel) {
       powerUpPanel.classList.add("hidden");
+      }
     }
   }
 
@@ -5877,28 +5915,6 @@
       document.getElementById("blue-team-count").textContent = `Players: ${data.blue}/${data.maxPlayers}`;
     }
 
-    // Remove this duplicate handler - we have a specific goal-scored handler below
-    // if (data.type === "goal" || data.type === "goal-scored") {
-    //   showEnhancedGoal(data.team);
-    //   playGoalCelebration(data.team);
-    //   
-    //   if (data.score) {
-    //     // Update main scoreboard immediately when goal is scored
-    //     const redScore = document.getElementById("red-score");
-    //     const blueScore = document.getElementById("blue-score");
-    //     
-    //     if (redScore && blueScore) {
-    //       redScore.textContent = data.score.red;
-    //       blueScore.textContent = data.score.blue;
-    //       console.log("✅ GOAL EVENT - Main scoreboard updated:", data.score.red, "vs", data.score.blue);
-    //     }
-    //     
-    //     // Also run the animation
-    //     animateScoreChange("red", data.score.red);
-    //     animateScoreChange("blue", data.score.blue);
-    //   }
-    // }
-
     if (data.type === "countdown") {
       showCountdown(data.count);
     }
@@ -5910,11 +5926,6 @@
 
     if (data.type === "power-bar") {
       updatePowerBar(data.percentage);
-    }
-
-    if (data.type === "goals-scored") {
-      // Goals display is now hidden - score is shown in main scoreboard
-      // document.getElementById("goals-display").textContent = `Goals: ${data.goals}`;
     }
 
     if (data.type === "cooldown") {
@@ -5948,12 +5959,6 @@
     if (data.type === "game-reset") {
       handleGameReset(data);
     }
-
-    // DISABLED: New match starting notification
-    // if (data.type === "game-starting") {
-    //   // Handle new game start with respawn notification
-    //   handleGameStarting(data);
-    // }
 
     if (data.type === "goal-scored") {
       console.log("🥅 GOAL SCORED! Team:", data.team, "Score:", data.score);
@@ -6015,6 +6020,8 @@
       console.log("🏟️ FIRST HALF COMPLETE! received:", data);
       showHalftimeStats(data);
     }
+
+
 
     // Handle loading progress updates
     if (data.type === "loading-progress") {
@@ -7286,56 +7293,6 @@
       }, 500);
     }, 3000);
     }
-    
-  // DISABLED: New match starting notification function
-  // function handleGameStarting(data) {
-  //   console.log("New game starting - handling respawn");
-  //   
-  //   // Show respawn notification for players who were in the previous game
-  //   const respawnNotification = document.createElement('div');
-  //   respawnNotification.style.cssText = `
-  //     position: fixed;
-  //     top: 50%;
-  //     left: 50%;
-  //     transform: translate(-50%, -50%);
-  //     background: linear-gradient(135deg, #6366f1, #4f46e5);
-  //     color: white;
-  //     padding: 30px 40px;
-  //     border-radius: 15px;
-  //     font-weight: bold;
-  //     z-index: 10001;
-  //     box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
-  //     border: 3px solid rgba(255, 255, 255, 0.3);
-  //     text-align: center;
-  //     animation: slideInDown 0.7s ease-out;
-  //   `;
-  //   
-  //   respawnNotification.innerHTML = `
-  //     <div style="font-size: 48px; margin-bottom: 15px;">⚽</div>
-  //     <h2 style="margin: 0 0 15px 0; font-size: 24px;">New Match Starting!</h2>
-  //     <div style="font-size: 16px; color: rgba(255, 255, 255, 0.9); margin-bottom: 20px;">
-  //       You've been respawned and repositioned
-  //     </div>
-  //     <div style="font-size: 14px; color: rgba(255, 255, 255, 0.7);">
-  //       Get ready for kickoff!
-  //     </div>
-  //   `;
-  //   
-  //   document.body.appendChild(respawnNotification);
-  //   
-  //   // Auto-remove after 4 seconds
-  //   setTimeout(() => {
-  //     respawnNotification.style.animation = 'slideOutUp 0.5s ease-in';
-  //     setTimeout(() => {
-  //       if (respawnNotification.parentNode) {
-  //         document.body.removeChild(respawnNotification);
-  //       }
-  //     }, 500);
-  //   }, 4000);
-  //   
-  //   // Play UI sound for game start
-  //   playUISound("game-start");
-  // }
 
   // ===== ARCADE MODE POWER-UP SYSTEM FUNCTIONS =====
   
@@ -7897,6 +7854,8 @@
     playUISound("button-click");
   }
 
+
+
   // Make functions globally accessible
   window.activatePowerUp = activatePowerUp;
   window.activateRandomPowerUp = activateRandomPowerUp;
@@ -7910,3 +7869,4 @@
 </body>
 </html>
 
+<!-- favicon added -->

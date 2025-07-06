@@ -410,6 +410,9 @@ export class SoccerGame {
   private beginMatch() {
     console.log("Beginning match - Starting 1st Quarter");
     
+    // Switch music from opening to gameplay theme
+    this.switchToGameplayMusic();
+    
     // Send game starting notification to UI for respawn handling - DISABLED
     // this.sendDataToAllPlayers({
     //   type: "game-starting",
@@ -491,6 +494,8 @@ export class SoccerGame {
   }
 
   private gameLoop() {
+
+    
     // Update arcade enhancements (only active in arcade mode)
     if (this.arcadeManager) {
       this.arcadeManager.update();
@@ -1134,6 +1139,9 @@ export class SoccerGame {
     // Set game status to finished
     this.state.status = "finished";
     
+    // Switch back to opening music
+    this.switchToOpeningMusic();
+    
     // Play FIFA game end announcement if in FIFA mode and crowd manager is available
     if (this.fifaCrowdManager && this.fifaCrowdManager.playGameEndAnnouncement) {
       this.fifaCrowdManager.playGameEndAnnouncement();
@@ -1371,6 +1379,35 @@ export class SoccerGame {
 
   public getState(): GameState {
     return this.state;
+  }
+
+
+
+  /**
+   * Get current player statistics for UI display
+   * @returns Array of player statistics
+   */
+  public getPlayerStatsForUI(): any[] {
+    const stats: any[] = [];
+    
+    this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+      if (entity instanceof SoccerPlayerEntity) {
+        const playerStats = entity.getPlayerStats();
+        stats.push({
+          name: entity.player.username,
+          team: entity.team,
+          role: entity.role,
+          goals: entity.getGoalsScored(),
+          tackles: playerStats.tackles,
+          passes: playerStats.passes,
+          shots: playerStats.shots,
+          saves: playerStats.saves,
+          distanceTraveled: Math.round(playerStats.distanceTraveled)
+        });
+      }
+    });
+    
+    return stats;
   }
 
   public attachBallToPlayer(player: PlayerEntity) {
@@ -1970,5 +2007,76 @@ export class SoccerGame {
       });
       console.log(`Players unfrozen, kickoff can begin`);
     }, 2000); // 2 second delay
+  }
+
+  /**
+   * Switch from opening music to gameplay music based on current game mode
+   */
+  private switchToGameplayMusic(): void {
+    console.log("🎵 Switching to gameplay music");
+    
+    // Get the music instances from the index.ts global scope
+    const mainMusic = (this.world as any)._mainMusic;
+    const arcadeGameplayMusic = (this.world as any)._arcadeGameplayMusic;
+    const fifaGameplayMusic = (this.world as any)._fifaGameplayMusic;
+    const getCurrentGameMode = (this.world as any)._getCurrentGameMode;
+    
+    if (!mainMusic || !arcadeGameplayMusic || !fifaGameplayMusic || !getCurrentGameMode) {
+      console.error("Music system not properly initialized");
+      return;
+    }
+    
+    // Stop opening music
+    mainMusic.pause();
+    console.log("🎵 Paused opening music");
+    
+    // Start appropriate gameplay music based on current mode
+    const currentMode = getCurrentGameMode();
+    console.log(`🎵 Current game mode: ${currentMode}`);
+    
+    if (currentMode === 'FIFA') {
+      fifaGameplayMusic.play(this.world);
+      console.log("🎵 Started FIFA gameplay music");
+      
+      // Start FIFA crowd atmosphere
+      if (this.fifaCrowdManager) {
+        this.fifaCrowdManager.start();
+        console.log("🏟️ Started FIFA crowd atmosphere");
+      }
+    } else {
+      arcadeGameplayMusic.play(this.world);
+      console.log("🎵 Started Arcade gameplay music");
+      
+      // Stop FIFA crowd atmosphere for non-FIFA modes
+      if (this.fifaCrowdManager) {
+        this.fifaCrowdManager.stop();
+      }
+    }
+  }
+
+  /**
+   * Switch back to opening music when game ends
+   */
+  private switchToOpeningMusic(): void {
+    console.log("🎵 Switching back to opening music");
+    
+    // Get the music instances from the index.ts global scope
+    const mainMusic = (this.world as any)._mainMusic;
+    const arcadeGameplayMusic = (this.world as any)._arcadeGameplayMusic;
+    const fifaGameplayMusic = (this.world as any)._fifaGameplayMusic;
+    
+    if (!mainMusic || !arcadeGameplayMusic || !fifaGameplayMusic) {
+      console.error("Music system not properly initialized");
+      return;
+    }
+    
+    // Stop all gameplay music
+    arcadeGameplayMusic.pause();
+    fifaGameplayMusic.pause();
+    console.log("🎵 Paused all gameplay music");
+    
+    // Start opening music
+    mainMusic.play(this.world);
+    console.log("🎵 Started opening music");
   }
 }
