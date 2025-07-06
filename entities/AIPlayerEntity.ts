@@ -4,6 +4,7 @@ import sharedState from "../state/sharedState";
 import { getDirectionFromRotation } from "../utils/direction";
 import PlayerEntityController from "../controllers/SoccerPlayerController";
 import SoccerAgent from './SoccerAgent';
+import { getCurrentModeConfig } from "../state/gameModes";
 // Import the new constants reflecting swapped X/Z
 import {
   AI_FIELD_CENTER_X, // Added new Field Center X
@@ -2959,8 +2960,19 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     }
 
     const controller = this.controller as PlayerEntityController; 
-    const maxSpeed = controller?.runVelocity || 5.5; 
+    let baseMaxSpeed = controller?.runVelocity || 5.5;
+    
+    // Apply FIFA mode speed multipliers to match human players
+    const currentModeConfig = getCurrentModeConfig();
+    const speedMultiplier = currentModeConfig.sprintMultiplier || 1.0; // Default to 1.0 if not defined
+    const maxSpeed = baseMaxSpeed * speedMultiplier;
+    
     const mass = this._mass > 0 ? this._mass : 1.0; // Ensure valid mass
+    
+    // Log speed enhancement for debugging (very occasional)
+    if (Math.random() < 0.001) { // Very rare logging
+      console.log(`🤖 AI SPEED: ${this.player.username} (${this.aiRole}) - Base: ${baseMaxSpeed.toFixed(1)}, FIFA Enhanced: ${maxSpeed.toFixed(1)} (×${speedMultiplier})`);
+    }
     
     // Calculate direction towards the target position (X and Z only)
     const direction = { 
