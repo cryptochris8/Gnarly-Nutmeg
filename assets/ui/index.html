@@ -3998,8 +3998,161 @@
       opacity: 0;
       transform: translateY(100%);
     }
-  }
-</style>
+      }
+
+    /* ===== PHASE 1 MOBILE CONTROLS (ZERO DESKTOP IMPACT) ===== */
+    
+    /* Mobile Device Detection & Base Mobile Styles */
+    .mobile-controls {
+      display: none; /* Hidden by default - only shown on mobile */
+      position: fixed;
+      z-index: 9999;
+      pointer-events: auto;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    
+    /* Virtual Joystick for Movement */
+    .virtual-joystick {
+      position: fixed;
+      bottom: 30px;
+      left: 30px;
+      width: 120px;
+      height: 120px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 3px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .joystick-knob {
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      position: relative;
+      transition: all 0.1s ease;
+    }
+    
+    /* Action Buttons */
+    .mobile-actions {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .mobile-action-btn {
+      width: 60px;
+      height: 60px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .mobile-action-btn:active {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(0.95);
+    }
+    
+    .mobile-action-btn.primary {
+      background: rgba(0, 123, 255, 0.6);
+      border-color: rgba(0, 123, 255, 0.8);
+    }
+    
+    .mobile-action-btn.secondary {
+      background: rgba(40, 167, 69, 0.6);
+      border-color: rgba(40, 167, 69, 0.8);
+    }
+    
+    /* Mobile Performance Indicator */
+    .mobile-performance-indicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 15px;
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    /* Show mobile controls only on mobile devices */
+    @media (max-width: 768px) and (pointer: coarse) {
+      .mobile-controls {
+        display: block;
+      }
+      
+      /* Hide desktop-only elements on mobile */
+      .desktop-only {
+        display: none !important;
+      }
+      
+      /* Optimize UI spacing for mobile */
+      .team-selection {
+        padding: 10px;
+      }
+      
+      .team-selection h2 {
+        font-size: 18px;
+      }
+      
+      .team-btn {
+        min-height: 50px;
+        font-size: 16px;
+      }
+      
+      /* Optimize scoreboard for mobile */
+      .scoreboard {
+        font-size: 16px;
+        padding: 8px 12px;
+      }
+      
+      .score-display {
+        font-size: 20px;
+      }
+    }
+    
+    /* Additional mobile-specific optimizations */
+    @media (max-width: 480px) {
+      .virtual-joystick {
+        width: 100px;
+        height: 100px;
+        bottom: 20px;
+        left: 20px;
+      }
+      
+      .joystick-knob {
+        width: 35px;
+        height: 35px;
+      }
+      
+      .mobile-actions {
+        bottom: 20px;
+        right: 20px;
+      }
+      
+      .mobile-action-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 14px;
+      }
+    }
+  </style>
 
 <div class="instructions-panel" id="instructionsPanel">
   <div class="title-container">
@@ -7941,6 +8094,284 @@
   window.hideArcadeModeUI = hideArcadeModeUI;
   window.showPowerupFeedback = showPowerupFeedback;
   window.forcePassToTeammate = forcePassToTeammate;
+
+  // ===== PHASE 1 MOBILE CONTROLS SYSTEM (HYTOPIA SDK COMPLIANT) =====
+  
+  // Mobile device detection and initialization
+  let isMobileDevice = false;
+  let mobileControlsInitialized = false;
+  
+  // Virtual joystick state
+  let joystickActive = false;
+  let joystickCenter = { x: 0, y: 0 };
+  let joystickInput = { x: 0, y: 0 };
+  
+  // Mobile input state
+  let mobileInputState = {
+    movement: { x: 0, y: 0 },
+    actions: {
+      shooting: false,
+      passing: false,
+      tackling: false,
+      dodging: false
+    }
+  };
+  
+  // Device detection function
+  function detectMobileDevice() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+    const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const screenWidth = window.innerWidth || document.documentElement.clientWidth;
+    
+    isMobileDevice = mobileRegex.test(userAgent) || (touchCapable && screenWidth <= 768);
+    
+    console.log('📱 Mobile device detection:', {
+      userAgent: userAgent,
+      isMobile: isMobileDevice,
+      touchCapable: touchCapable,
+      screenWidth: screenWidth
+    });
+    
+    return isMobileDevice;
+  }
+  
+  // Initialize mobile controls
+  function initializeMobileControls() {
+    if (mobileControlsInitialized || !detectMobileDevice()) {
+      return;
+    }
+    
+    console.log('📱 Initializing mobile controls...');
+    
+    // Create mobile controls container
+    const mobileControlsContainer = document.createElement('div');
+    mobileControlsContainer.id = 'mobile-controls-container';
+    mobileControlsContainer.className = 'mobile-controls';
+    
+    // Create virtual joystick
+    const virtualJoystick = document.createElement('div');
+    virtualJoystick.className = 'virtual-joystick';
+    virtualJoystick.id = 'virtual-joystick';
+    
+    const joystickKnob = document.createElement('div');
+    joystickKnob.className = 'joystick-knob';
+    joystickKnob.id = 'joystick-knob';
+    
+    virtualJoystick.appendChild(joystickKnob);
+    
+    // Create action buttons
+    const mobileActions = document.createElement('div');
+    mobileActions.className = 'mobile-actions';
+    
+    // Shoot button
+    const shootButton = document.createElement('button');
+    shootButton.className = 'mobile-action-btn primary';
+    shootButton.id = 'mobile-shoot-btn';
+    shootButton.textContent = 'KICK';
+    shootButton.setAttribute('ontouchstart', 'handleMobileAction("shoot", true)');
+    shootButton.setAttribute('ontouchend', 'handleMobileAction("shoot", false)');
+    
+    // Pass button
+    const passButton = document.createElement('button');
+    passButton.className = 'mobile-action-btn secondary';
+    passButton.id = 'mobile-pass-btn';
+    passButton.textContent = 'PASS';
+    passButton.setAttribute('ontouchstart', 'handleMobileAction("pass", true)');
+    passButton.setAttribute('ontouchend', 'handleMobileAction("pass", false)');
+    
+    // Tackle button
+    const tackleButton = document.createElement('button');
+    tackleButton.className = 'mobile-action-btn';
+    tackleButton.id = 'mobile-tackle-btn';
+    tackleButton.textContent = 'TACKLE';
+    tackleButton.setAttribute('ontouchstart', 'handleMobileAction("tackle", true)');
+    tackleButton.setAttribute('ontouchend', 'handleMobileAction("tackle", false)');
+    
+    // Dodge button
+    const dodgeButton = document.createElement('button');
+    dodgeButton.className = 'mobile-action-btn';
+    dodgeButton.id = 'mobile-dodge-btn';
+    dodgeButton.textContent = 'DODGE';
+    dodgeButton.setAttribute('ontouchstart', 'handleMobileAction("dodge", true)');
+    dodgeButton.setAttribute('ontouchend', 'handleMobileAction("dodge", false)');
+    
+    // Add buttons to actions container
+    mobileActions.appendChild(shootButton);
+    mobileActions.appendChild(passButton);
+    mobileActions.appendChild(tackleButton);
+    mobileActions.appendChild(dodgeButton);
+    
+    // Create mobile performance indicator
+    const performanceIndicator = document.createElement('div');
+    performanceIndicator.className = 'mobile-performance-indicator';
+    performanceIndicator.id = 'mobile-performance-indicator';
+    performanceIndicator.textContent = 'Mobile Mode';
+    
+    // Add all elements to container
+    mobileControlsContainer.appendChild(virtualJoystick);
+    mobileControlsContainer.appendChild(mobileActions);
+    mobileControlsContainer.appendChild(performanceIndicator);
+    
+    // Add container to document
+    document.body.appendChild(mobileControlsContainer);
+    
+    // Initialize joystick event handling
+    initializeJoystickEvents();
+    
+    // Notify server about mobile mode
+    hytopia.sendData({
+      type: "mobile-mode-enabled",
+      deviceInfo: {
+        userAgent: navigator.userAgent,
+        screenWidth: window.innerWidth,
+        screenHeight: window.innerHeight,
+        touchCapable: 'ontouchstart' in window,
+        devicePixelRatio: window.devicePixelRatio || 1
+      }
+    });
+    
+    mobileControlsInitialized = true;
+    console.log('✅ Mobile controls initialized successfully');
+  }
+  
+  // Initialize joystick touch events
+  function initializeJoystickEvents() {
+    const joystick = document.getElementById('virtual-joystick');
+    const knob = document.getElementById('joystick-knob');
+    
+    if (!joystick || !knob) return;
+    
+    // Store joystick center position
+    const joystickRect = joystick.getBoundingClientRect();
+    joystickCenter = {
+      x: joystickRect.left + joystickRect.width / 2,
+      y: joystickRect.top + joystickRect.height / 2
+    };
+    
+    // Touch start
+    joystick.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      joystickActive = true;
+      updateJoystickPosition(e.touches[0]);
+    });
+    
+    // Touch move
+    joystick.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      if (joystickActive) {
+        updateJoystickPosition(e.touches[0]);
+      }
+    });
+    
+    // Touch end
+    joystick.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      joystickActive = false;
+      resetJoystick();
+    });
+    
+    // Update joystick center on window resize
+    window.addEventListener('resize', function() {
+      const joystickRect = joystick.getBoundingClientRect();
+      joystickCenter = {
+        x: joystickRect.left + joystickRect.width / 2,
+        y: joystickRect.top + joystickRect.height / 2
+      };
+    });
+  }
+  
+  // Update joystick position and input
+  function updateJoystickPosition(touch) {
+    const knob = document.getElementById('joystick-knob');
+    if (!knob) return;
+    
+    const deltaX = touch.clientX - joystickCenter.x;
+    const deltaY = touch.clientY - joystickCenter.y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const maxDistance = 40; // Max knob movement distance
+    
+    if (distance <= maxDistance) {
+      knob.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+      joystickInput.x = deltaX / maxDistance;
+      joystickInput.y = deltaY / maxDistance;
+    } else {
+      const angle = Math.atan2(deltaY, deltaX);
+      const limitedX = Math.cos(angle) * maxDistance;
+      const limitedY = Math.sin(angle) * maxDistance;
+      
+      knob.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
+      joystickInput.x = limitedX / maxDistance;
+      joystickInput.y = limitedY / maxDistance;
+    }
+    
+    // Update mobile input state
+    mobileInputState.movement.x = joystickInput.x;
+    mobileInputState.movement.y = -joystickInput.y; // Invert Y for game coordinates
+    
+    // Send movement data to server
+    hytopia.sendData({
+      type: "mobile-movement-input",
+      movement: mobileInputState.movement
+    });
+  }
+  
+  // Reset joystick to center
+  function resetJoystick() {
+    const knob = document.getElementById('joystick-knob');
+    if (knob) {
+      knob.style.transform = 'translate(0px, 0px)';
+    }
+    
+    joystickInput.x = 0;
+    joystickInput.y = 0;
+    mobileInputState.movement.x = 0;
+    mobileInputState.movement.y = 0;
+    
+    // Send stop movement to server
+    hytopia.sendData({
+      type: "mobile-movement-input",
+      movement: { x: 0, y: 0 }
+    });
+  }
+  
+  // Handle mobile action button presses
+  function handleMobileAction(action, pressed) {
+    console.log(`📱 Mobile action: ${action} ${pressed ? 'pressed' : 'released'}`);
+    
+    // Update input state
+    mobileInputState.actions[action === 'shoot' ? 'shooting' : 
+                           action === 'pass' ? 'passing' : 
+                           action === 'tackle' ? 'tackling' : 'dodging'] = pressed;
+    
+    // Send action to server
+    hytopia.sendData({
+      type: "mobile-action-input",
+      action: action,
+      pressed: pressed
+    });
+    
+    // Visual feedback
+    if (pressed) {
+      playUISound('button-click');
+    }
+  }
+  
+  // Auto-initialize mobile controls when page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    // Wait a bit for Hytopia to initialize
+    setTimeout(initializeMobileControls, 1000);
+  });
+  
+  // Also try to initialize on window load
+  window.addEventListener('load', function() {
+    setTimeout(initializeMobileControls, 500);
+  });
+  
+  // Make mobile functions globally accessible
+  window.initializeMobileControls = initializeMobileControls;
+  window.handleMobileAction = handleMobileAction;
+  window.detectMobileDevice = detectMobileDevice;
 
 </script>
 

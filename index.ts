@@ -1187,6 +1187,120 @@ startServer((world) => {
           console.log(`🎥 Spectator ${player.username} wants to leave spectator mode`);
           spectatorMode.removeSpectator(player);
         }
+        // ===== PHASE 1 MOBILE INPUT HANDLING (HYTOPIA SDK COMPLIANT) =====
+        else if (data.type === "mobile-mode-enabled") {
+          // Handle mobile mode initialization
+          console.log(`📱 Player ${player.username} enabled mobile mode`);
+          console.log(`📱 Device info:`, data.deviceInfo);
+          
+          // Store mobile mode preference for this player
+          (player as any)._isMobilePlayer = true;
+          
+          // Send mobile-optimized game state if game is active
+          if (game && game.inProgress()) {
+            player.ui.sendData({
+              type: "mobile-game-state",
+              gameState: game.getState(),
+              optimizedForMobile: true
+            });
+          }
+          
+          // Notify all other players about mobile player
+          PlayerManager.instance.getConnectedPlayers().forEach((p) => {
+            if (p.username !== player.username) {
+              p.ui.sendData({
+                type: "mobile-player-joined",
+                playerName: player.username,
+                deviceInfo: data.deviceInfo
+              });
+            }
+          });
+          
+          console.log(`✅ Mobile mode enabled for ${player.username}`);
+        }
+        else if (data.type === "mobile-movement-input") {
+          // Handle mobile virtual joystick movement
+          const movementInput = data.movement;
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Convert joystick input to player controller format
+            const controllerInput = {
+              forward: movementInput.y > 0,
+              backward: movementInput.y < 0,
+              left: movementInput.x < 0,
+              right: movementInput.x > 0,
+              primaryDown: false,
+              secondaryDown: false,
+              tertiary: false,
+              dodging: false
+            };
+            
+            // Apply movement through the player controller
+            if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+              // Use current camera orientation for mobile movement
+              const cameraOrientation = {
+                yaw: 0, // Can be enhanced to use actual camera rotation later
+                pitch: 0
+              };
+              
+              playerEntity.controller.tickWithPlayerInput(
+                playerEntity,
+                controllerInput,
+                cameraOrientation,
+                16 // 16ms delta time (roughly 60fps)
+              );
+            }
+          }
+        }
+        else if (data.type === "mobile-action-input") {
+          // Handle mobile action button presses
+          const action = data.action;
+          const pressed = data.pressed;
+          
+          console.log(`📱 Mobile action: ${player.username} ${action} ${pressed ? 'pressed' : 'released'}`);
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Create input state for the specific action
+            const actionInput = {
+              forward: false,
+              backward: false,
+              left: false,
+              right: false,
+              primaryDown: action === 'shoot' && pressed,
+              secondaryDown: action === 'pass' && pressed,
+              tertiary: action === 'tackle' && pressed,
+              dodging: action === 'dodge' && pressed
+            };
+            
+            // Apply action through the player controller
+            if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+              const cameraOrientation = {
+                yaw: 0, // Can be enhanced later
+                pitch: 0
+              };
+              
+              playerEntity.controller.tickWithPlayerInput(
+                playerEntity,
+                actionInput,
+                cameraOrientation,
+                16 // 16ms delta time
+              );
+            }
+            
+            // Send feedback for successful action registration
+            if (pressed) {
+              player.ui.sendData({
+                type: "mobile-action-feedback",
+                action: action,
+                success: true
+              });
+            }
+          }
+        }
 
       });
 

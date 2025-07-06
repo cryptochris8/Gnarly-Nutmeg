@@ -74,6 +74,41 @@ export const OPTIMIZATION_LEVELS = {
     raycastDebuggingEnabled: true,
     ballPhysicsQuality: "normal",
     entityUpdateFrequency: "normal"
+  },
+
+  // ===== PHASE 1 MOBILE PERFORMANCE MODE =====
+  MOBILE_OPTIMIZED: {
+    name: "Mobile Optimized",
+    description: "Optimized for mobile devices with touch controls",
+    aiDecisionInterval: 750, // Slower AI decisions to save battery
+    maxAIPlayers: 8, // Fewer AI players for better mobile performance
+    debugRenderingEnabled: false,
+    raycastDebuggingEnabled: false,
+    ballPhysicsQuality: "mobile", // New mobile physics quality
+    entityUpdateFrequency: "mobile", // New mobile update frequency
+    
+    // Mobile-specific optimizations
+    mobileOptimizations: {
+      reducedParticleEffects: true, // Reduce particle effects for battery
+      simplifiedLighting: true, // Simpler lighting calculations
+      reducedShadowQuality: true, // Lower shadow quality
+      optimizedAudio: true, // Optimized audio for mobile
+      touchInputOptimized: true, // Optimized for touch input
+      batteryOptimized: true, // General battery optimization
+      reducedNetworkUpdates: true, // Fewer network updates
+      compressedTextures: true, // Use compressed textures
+      lowerPolyModels: true, // Use lower polygon count models
+      reducedViewDistance: true // Reduced rendering distance
+    },
+    
+    // Performance targets for mobile
+    mobileTargets: {
+      targetFPS: 30, // Target 30 FPS for mobile devices
+      maxFrameTime: 33.33, // 33ms for 30 FPS
+      batteryEfficient: true, // Prioritize battery life
+      thermalThrottling: true, // Handle thermal throttling
+      memoryOptimized: true // Optimize for limited mobile memory
+    }
   }
 };
 
@@ -245,6 +280,110 @@ export class PerformanceOptimizer {
         console.log(`📈 Auto-adjusted from BALANCED to HIGH_QUALITY due to excellent performance (${avgFrameTime.toFixed(1)}ms avg frame time)`);
       }
     }
+  }
+
+  // ===== PHASE 1 MOBILE PERFORMANCE METHODS =====
+  
+  /**
+   * Automatically detect if mobile optimization should be enabled
+   * @param deviceInfo Device information from client
+   * @returns Whether mobile optimization should be used
+   */
+  public shouldUseMobileOptimization(deviceInfo: any): boolean {
+    if (!deviceInfo) return false;
+    
+    // Check for mobile user agents
+    const userAgent = deviceInfo.userAgent || '';
+    const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    
+    // Check for touch capability and small screen
+    const isTouchDevice = deviceInfo.touchCapable;
+    const isSmallScreen = deviceInfo.screenWidth <= 768;
+    
+    // Check device pixel ratio (high DPI mobile devices)
+    const isHighDPI = deviceInfo.devicePixelRatio > 1.5;
+    
+    console.log(`📱 Mobile detection: UserAgent=${isMobileUserAgent}, Touch=${isTouchDevice}, SmallScreen=${isSmallScreen}, HighDPI=${isHighDPI}`);
+    
+    return isMobileUserAgent || (isTouchDevice && isSmallScreen);
+  }
+  
+  /**
+   * Switch to mobile optimized performance mode
+   */
+  public enableMobileOptimization(): void {
+    this.setOptimizationLevel('MOBILE_OPTIMIZED');
+    console.log('📱 Mobile performance mode enabled');
+    console.log('📱 Battery optimization, reduced effects, and touch-optimized performance active');
+  }
+  
+  /**
+   * Get mobile-specific performance recommendations
+   */
+  public getMobileRecommendations(report: any): string[] {
+    const recommendations: string[] = [];
+    const config = this.getCurrentConfig();
+    
+    if (config.name !== 'Mobile Optimized') {
+      recommendations.push('📱 Consider enabling Mobile Optimized mode for better battery life and performance');
+      return recommendations;
+    }
+    
+    // Mobile-specific performance analysis
+    const mobileTargets = (config as any).mobileTargets;
+    if (mobileTargets) {
+      // Frame time analysis for mobile (30 FPS target)
+      if (report.averageStats.avgFrameTime > mobileTargets.maxFrameTime * 1.5) {
+        recommendations.push(`📱 CRITICAL: Frame time (${report.averageStats.avgFrameTime.toFixed(1)}ms) exceeds mobile target. Consider reducing AI count or effects.`);
+      } else if (report.averageStats.avgFrameTime > mobileTargets.maxFrameTime) {
+        recommendations.push(`📱 Warning: Frame time (${report.averageStats.avgFrameTime.toFixed(1)}ms) above optimal mobile performance.`);
+      }
+      
+      // Battery optimization recommendations
+      if (report.averageStats.avgAIDecisionTime > 40) {
+        recommendations.push('🔋 AI decision time high - consider increasing decision interval for better battery life');
+      }
+      
+      if (report.activeAICount > 6) {
+        recommendations.push('🔋 High AI count detected - reducing to 6 or fewer AI players recommended for mobile devices');
+      }
+    }
+    
+    // Positive feedback for good mobile performance
+    if (report.averageStats.avgFrameTime <= (mobileTargets?.maxFrameTime || 33.33)) {
+      recommendations.push('✅ Excellent mobile performance! Battery-optimized gameplay active.');
+    }
+    
+    return recommendations;
+  }
+  
+  /**
+   * Check if current configuration is mobile-optimized
+   */
+  public isMobileOptimized(): boolean {
+    return this.settings.currentLevel === 'MOBILE_OPTIMIZED';
+  }
+  
+  /**
+   * Get mobile performance metrics and status
+   */
+  public getMobilePerformanceStatus(): any {
+    const config = this.getCurrentConfig();
+    const isMobile = this.isMobileOptimized();
+    
+    return {
+      isMobileMode: isMobile,
+      optimizationLevel: config.name,
+      mobileFeatures: isMobile ? {
+        batteryOptimized: (config as any).mobileOptimizations?.batteryOptimized || false,
+        touchOptimized: (config as any).mobileOptimizations?.touchInputOptimized || false,
+        reducedEffects: (config as any).mobileOptimizations?.reducedParticleEffects || false,
+        targetFPS: (config as any).mobileTargets?.targetFPS || 30
+      } : null,
+      recommendations: this.isMobileOptimized() ? 
+        ['Mobile optimization active - optimized for battery life and touch controls'] :
+        ['Consider enabling mobile optimization for better mobile device performance']
+    };
   }
 }
 
