@@ -1895,32 +1895,50 @@
   
   <div class="powerup-button" id="freeze-blast-btn" onclick="activatePowerUp('freeze_blast')">
     <div class="powerup-icon">🧊</div>
-    <div class="powerup-name">Freeze Blast</div>
+    <div class="powerup-name">Freeze Blast (1)</div>
     <div class="powerup-cooldown" id="freeze-blast-cooldown"></div>
+  </div>
+  
+  <div class="powerup-button" id="speed-btn" onclick="activatePowerUp('speed')">
+    <div class="powerup-icon">⚡</div>
+    <div class="powerup-name">Speed Boost (2)</div>
+    <div class="powerup-cooldown" id="speed-cooldown"></div>
   </div>
   
   <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')">
     <div class="powerup-icon">🔥</div>
-    <div class="powerup-name">Fireball</div>
+    <div class="powerup-name">Fireball (3)</div>
     <div class="powerup-cooldown" id="fireball-cooldown"></div>
   </div>
   
   <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')">
     <div class="powerup-icon">⚽</div>
-    <div class="powerup-name">Mega Kick</div>
+    <div class="powerup-name">Mega Kick (4)</div>
     <div class="powerup-cooldown" id="mega-kick-cooldown"></div>
   </div>
   
-  <div class="powerup-button" id="shield-btn" onclick="activatePowerUp('shield')">
-    <div class="powerup-icon">🛡️</div>
-    <div class="powerup-name">Shield</div>
-    <div class="powerup-cooldown" id="shield-cooldown"></div>
+  <div class="powerup-button" id="power-btn" onclick="activatePowerUp('power')">
+    <div class="powerup-icon">💥</div>
+    <div class="powerup-name">Power Boost (5)</div>
+    <div class="powerup-cooldown" id="power-cooldown"></div>
+  </div>
+  
+  <div class="powerup-button" id="precision-btn" onclick="activatePowerUp('precision')">
+    <div class="powerup-icon">🎯</div>
+    <div class="powerup-name">Precision (6)</div>
+    <div class="powerup-cooldown" id="precision-cooldown"></div>
   </div>
   
   <div class="powerup-button" id="stamina-btn" onclick="activatePowerUp('stamina')">
     <div class="powerup-icon">🧪</div>
-    <div class="powerup-name">Stamina</div>
+    <div class="powerup-name">Stamina (7)</div>
     <div class="powerup-cooldown" id="stamina-cooldown"></div>
+  </div>
+  
+  <div class="powerup-button" id="shield-btn" onclick="activatePowerUp('shield')">
+    <div class="powerup-icon">🛡️</div>
+    <div class="powerup-name">Shield (U)</div>
+    <div class="powerup-cooldown" id="shield-cooldown"></div>
   </div>
   
   <div class="powerup-button" id="random-powerup-btn" onclick="activateRandomPowerUp()">
@@ -7622,7 +7640,7 @@
           break;
         case '2':
           event.preventDefault();
-          
+          activatePowerUp('speed');
           break;
         case '3':
           event.preventDefault();
@@ -7632,12 +7650,25 @@
           event.preventDefault();
           activatePowerUp('mega_kick');
           break;
+        case '5':
+          event.preventDefault();
+          activatePowerUp('power');
+          break;
+        case '6':
+          event.preventDefault();
+          activatePowerUp('precision');
+          break;
+        case '7':
+          event.preventDefault();
+          activatePowerUp('stamina');
+          break;
         case 'f':
         case 'F':
           event.preventDefault();
           activateRandomPowerUp();
           break;
-        case 'KeyU':
+        case 'u':
+        case 'U':
           event.preventDefault();
           activatePowerUp('shield');
           break;
@@ -7714,7 +7745,10 @@
       'mega_kick': 'mega-kick-btn',
       'random_powerup': 'random-powerup-btn',
       'shield': 'shield-btn',
-      'stamina': 'stamina-btn'
+      'stamina': 'stamina-btn',
+      'speed': 'speed-btn',
+      'power': 'power-btn',
+      'precision': 'precision-btn'
     };
     return buttonMap[powerUpType] || 'random-powerup-btn';
   }
@@ -7727,7 +7761,10 @@
       'mega_kick': 'Mega Kick',
       'random_powerup': 'Random Power-up',
       'shield': 'Shield',
-      'stamina': 'Stamina Potion'
+      'stamina': 'Stamina Potion',
+      'speed': 'Speed Boost',
+      'power': 'Power Enhancement',
+      'precision': 'Precision Boost'
     };
     return nameMap[powerUpType] || 'Unknown Power-up';
   }
@@ -7793,7 +7830,10 @@
       'mega_kick': '⚽',
       'random_powerup': '🎲',
       'shield': '🛡️',
-      'stamina': '🧪'
+      'stamina': '🧪',
+      'speed': '⚡',
+      'power': '💥',
+      'precision': '🎯'
     };
     return iconMap[powerUpType] || '⚡';
   }
