@@ -26,6 +26,7 @@ import {
   TOTAL_HALVES,
   HALFTIME_DURATION
 } from "./gameConfig";
+import { getCurrentGameMode, GameMode } from "./gameModes";
 import sharedState from "./sharedState";
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 import AIPlayerEntity from "../entities/AIPlayerEntity";
@@ -2007,9 +2008,8 @@ export class SoccerGame {
     const mainMusic = (this.world as any)._mainMusic;
     const arcadeGameplayMusic = (this.world as any)._arcadeGameplayMusic;
     const fifaGameplayMusic = (this.world as any)._fifaGameplayMusic;
-    const getCurrentGameMode = (this.world as any)._getCurrentGameMode;
     
-    if (!mainMusic || !arcadeGameplayMusic || !fifaGameplayMusic || !getCurrentGameMode) {
+    if (!mainMusic || !arcadeGameplayMusic || !fifaGameplayMusic) {
       console.error("Music system not properly initialized");
       return;
     }
@@ -2022,7 +2022,7 @@ export class SoccerGame {
     const currentMode = getCurrentGameMode();
     console.log(`🎵 Current game mode: ${currentMode}`);
     
-    if (currentMode === 'FIFA') {
+    if (currentMode === GameMode.FIFA) {
       fifaGameplayMusic.play(this.world);
       console.log("🎵 Started FIFA gameplay music");
       
@@ -2030,6 +2030,12 @@ export class SoccerGame {
       if (this.fifaCrowdManager) {
         this.fifaCrowdManager.start();
         console.log("🏟️ Started FIFA crowd atmosphere");
+        
+        // Play game start announcement
+        if (this.fifaCrowdManager.playGameStart) {
+          this.fifaCrowdManager.playGameStart();
+          console.log("🎙️ Playing FIFA game start announcement");
+        }
       }
     } else {
       arcadeGameplayMusic.play(this.world);
