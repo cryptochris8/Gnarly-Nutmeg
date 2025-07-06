@@ -3453,6 +3453,55 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     // At this point we've verified the ball is truly loose (not possessed by anyone)
     
+    // SPECIAL CASE: Stuck balls in corners/boundaries
+    // Check if ball is near boundaries and stationary
+    const BOUNDARY_THRESHOLD = 12;
+    const nearMinX = Math.abs(ballPosition.x - FIELD_MIN_X) < BOUNDARY_THRESHOLD;
+    const nearMaxX = Math.abs(ballPosition.x - FIELD_MAX_X) < BOUNDARY_THRESHOLD;
+    const nearMinZ = Math.abs(ballPosition.z - FIELD_MIN_Z) < BOUNDARY_THRESHOLD;
+    const nearMaxZ = Math.abs(ballPosition.z - FIELD_MAX_Z) < BOUNDARY_THRESHOLD;
+    
+    const isNearBoundary = nearMinX || nearMaxX || nearMinZ || nearMaxZ;
+    const isInCorner = (nearMinX || nearMaxX) && (nearMinZ || nearMaxZ);
+    
+    // Check if ball is stationary (indicating it's stuck)
+    const ball = sharedState.getSoccerBall();
+    const isStuck = ball && ball.linearVelocity ? 
+      Math.sqrt(ball.linearVelocity.x * ball.linearVelocity.x + ball.linearVelocity.z * ball.linearVelocity.z) < 0.5 :
+      false;
+    
+    // For stuck balls near boundaries, be much more aggressive
+    if (isNearBoundary && isStuck) {
+      const distanceToBall = this.distanceBetween(this.position, ballPosition);
+      
+      // Allow much larger pursuit distances for stuck balls
+      let maxStuckBallDistance = 35; // Base distance for boundary balls
+      if (isInCorner) {
+        maxStuckBallDistance = 45; // Even more aggressive for corner balls
+      }
+      
+      // Be one of the closest players to the stuck ball
+      const teammates = this.getVisibleTeammates();
+      let playersCloser = 0;
+      
+      for (const teammate of teammates) {
+        if (teammate instanceof AIPlayerEntity && teammate.isSpawned) {
+          const teammateDistance = this.distanceBetween(teammate.position, ballPosition);
+          if (teammateDistance < distanceToBall) {
+            playersCloser++;
+          }
+        }
+      }
+      
+      // Allow up to 2 players to pursue stuck balls (closest 2)
+      const shouldPursueStuck = playersCloser < 2 && distanceToBall < maxStuckBallDistance;
+      
+      if (shouldPursueStuck) {
+        console.log(`${this.player.username} (${this.aiRole}) recognizing stuck ball in ${isInCorner ? 'corner' : 'boundary'} as loose ball in area (distance: ${distanceToBall.toFixed(1)})`);
+        return true;
+      }
+    }
+    
     // Check if the ball is within this player's preferred area
     const inPreferredArea = this.isPositionInPreferredArea(ballPosition, this.aiRole);
     

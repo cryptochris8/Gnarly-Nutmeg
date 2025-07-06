@@ -307,6 +307,83 @@ export function createBehaviorTree(agent: AIPlayerEntity): BehaviorNode {
             return false;
           })
         ]),
+        // SPECIAL CASE: Retrieve Stuck Ball from Corners/Boundaries
+        new Sequence([
+          new Condition((agent: AIPlayerEntity) => {
+            // Check if ball is stuck in corner/boundary area
+            const ball = sharedState.getSoccerBall();
+            if (!ball) return false;
+            
+            const ballPosition = ball.position;
+            const ballVelocity = ball.linearVelocity;
+            
+            // Check if ball is near boundaries
+            const BOUNDARY_THRESHOLD = 12; // Distance from field edge to consider "near boundary"
+            const nearMinX = Math.abs(ballPosition.x - FIELD_MIN_X) < BOUNDARY_THRESHOLD;
+            const nearMaxX = Math.abs(ballPosition.x - FIELD_MAX_X) < BOUNDARY_THRESHOLD;
+            const nearMinZ = Math.abs(ballPosition.z - FIELD_MIN_Z) < BOUNDARY_THRESHOLD;
+            const nearMaxZ = Math.abs(ballPosition.z - FIELD_MAX_Z) < BOUNDARY_THRESHOLD;
+            
+            const isNearBoundary = nearMinX || nearMaxX || nearMinZ || nearMaxZ;
+            const isInCorner = (nearMinX || nearMaxX) && (nearMinZ || nearMaxZ);
+            
+            // Check if ball is stationary or nearly stationary
+            const ballSpeed = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
+            const isStuck = ballSpeed < 0.5; // Very slow movement indicates stuck ball
+            
+            // Check if no one has the ball (it's loose)
+            const ballIsLoose = !sharedState.getAttachedPlayer();
+            
+            // Special condition: Ball is stuck near boundary and no one has it
+            if (isNearBoundary && isStuck && ballIsLoose) {
+              const distanceToBall = agent.distanceBetween(agent.position, ballPosition);
+              
+              // Allow much more aggressive pursuit for stuck balls
+              let maxRetrievalDistance = 35; // Base distance for boundary balls
+              if (isInCorner) {
+                maxRetrievalDistance = 45; // Even more aggressive for corner balls
+              }
+              
+              // Be one of the closest players to the stuck ball
+              const teammates = agent.getVisibleTeammates();
+              let playersCloser = 0;
+              
+              for (const teammate of teammates) {
+                if (teammate instanceof AIPlayerEntity && teammate.isSpawned) {
+                  const teammateDistance = agent.distanceBetween(teammate.position, ballPosition);
+                  if (teammateDistance < distanceToBall) {
+                    playersCloser++;
+                  }
+                }
+              }
+              
+              // Allow up to 2 players to go after stuck balls (closest 2)
+              const shouldPursue = playersCloser < 2 && distanceToBall < maxRetrievalDistance;
+              
+              if (shouldPursue) {
+                console.log(`${agent.player.username} (${agent.aiRole}) pursuing stuck ball in ${isInCorner ? 'corner' : 'boundary'} area (distance: ${distanceToBall.toFixed(1)})`);
+                return true;
+              }
+            }
+            
+            return false;
+          }),
+          new Action((agent: AIPlayerEntity) => {
+            // Retrieve Stuck Ball action
+            const ball = sharedState.getSoccerBall();
+            if (!ball) return false;
+            
+            // Go directly to the ball position with no anticipation since it's stuck
+            agent.targetPosition = {
+              x: ball.position.x,
+              y: agent.position.y,
+              z: ball.position.z
+            };
+            
+            console.log(`${agent.player.username} retrieving stuck ball at (${ball.position.x.toFixed(1)}, ${ball.position.z.toFixed(1)})`);
+            return true;
+          })
+        ]),
         // Intercept Ball (In Reach?)
         new Sequence([
           new Condition((agent: AIPlayerEntity) => {
