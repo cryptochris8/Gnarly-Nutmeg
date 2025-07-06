@@ -3694,6 +3694,40 @@
       transform: scale(1.05);
     }
   }
+
+  /* Spectator Mode Animations */
+  @keyframes slideInLeft {
+    0% {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideOutLeft {
+    0% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes slideOutDown {
+    0% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
 </style>
 
 <!-- MAIN SCOREBOARD SYSTEM -->
@@ -6001,6 +6035,12 @@
       showLoadingError(data.message);
     }
 
+    // Handle spectator mode activation
+    if (data.type === "spectator-mode-active") {
+      console.log("Spectator mode activated:", data.message);
+      showSpectatorMode(data.message);
+    }
+
     // Handle background loading started (Phase 2)
     if (data.type === "background-loading-started") {
       console.log("Background loading started:", data.message);
@@ -6489,6 +6529,142 @@
 
   // Make function globally accessible
   window.showPlayerTab = showPlayerTab;
+
+  // ===== SPECTATOR MODE FUNCTIONS =====
+  function showSpectatorMode(message) {
+    console.log("🎥 Spectator mode activated:", message);
+    
+    // Create spectator mode overlay
+    const spectatorOverlay = document.createElement('div');
+    spectatorOverlay.id = 'spectator-mode-overlay';
+    spectatorOverlay.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      padding: 15px 20px;
+      background: linear-gradient(135deg, rgba(147, 51, 234, 0.9), rgba(79, 70, 229, 0.9));
+      color: white;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      z-index: 9999;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      animation: slideInLeft 0.5s ease-out;
+    `;
+    
+    spectatorOverlay.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-size: 20px;">🎥</div>
+        <div>
+          <div style="font-size: 14px; margin-bottom: 2px;">SPECTATOR MODE</div>
+          <div style="font-size: 12px; color: rgba(255, 255, 255, 0.8);">${message}</div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(spectatorOverlay);
+    
+    // Add spectator controls
+    showSpectatorControls();
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      spectatorOverlay.style.animation = 'slideOutLeft 0.5s ease-in';
+      setTimeout(() => {
+        if (spectatorOverlay.parentNode) {
+          spectatorOverlay.parentNode.removeChild(spectatorOverlay);
+        }
+      }, 500);
+    }, 5000);
+    
+    playUISound("notification");
+  }
+
+  function showSpectatorControls() {
+    // Remove existing controls if they exist
+    const existingControls = document.getElementById('spectator-controls');
+    if (existingControls) {
+      existingControls.remove();
+    }
+    
+    // Create spectator controls panel
+    const controlsPanel = document.createElement('div');
+    controlsPanel.id = 'spectator-controls';
+    controlsPanel.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      z-index: 9998;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      animation: slideInUp 0.5s ease-out;
+    `;
+    
+    controlsPanel.innerHTML = `
+      <div style="display: flex; gap: 15px; align-items: center;">
+        <div style="color: #9333ea; font-weight: 600;">🎥 SPECTATOR</div>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="spectateNext()" style="background: rgba(59, 130, 246, 0.8); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.3s;">Next Player</button>
+          <button onclick="spectateCamera()" style="background: rgba(16, 185, 129, 0.8); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.3s;">Camera View</button>
+          <button onclick="leaveSpectator()" style="background: rgba(239, 68, 68, 0.8); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.3s;">Leave</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(controlsPanel);
+  }
+
+  function spectateNext() {
+    console.log("🎥 Spectator: Switch to next player");
+    hytopia.sendData({
+      type: "spectator-next-player"
+    });
+    playUISound("button-click");
+  }
+
+  function spectateCamera() {
+    console.log("🎥 Spectator: Switch camera view");
+    hytopia.sendData({
+      type: "spectator-next-camera"
+    });
+    playUISound("button-click");
+  }
+
+  function leaveSpectator() {
+    console.log("🎥 Spectator: Leave spectator mode");
+    hytopia.sendData({
+      type: "spectator-leave"
+    });
+    
+    // Remove spectator controls
+    const controls = document.getElementById('spectator-controls');
+    if (controls) {
+      controls.style.animation = 'slideOutDown 0.5s ease-in';
+      setTimeout(() => {
+        if (controls.parentNode) {
+          controls.parentNode.removeChild(controls);
+        }
+      }, 500);
+    }
+    
+    playUISound("button-click");
+  }
+
+  // Make spectator functions globally accessible
+  window.spectateNext = spectateNext;
+  window.spectateCamera = spectateCamera;
+  window.leaveSpectator = leaveSpectator;
 
   function closeGameOverScreen() {
     const panel = document.getElementById("instructionsPanel");

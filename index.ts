@@ -46,7 +46,7 @@ import SoccerPlayerEntity from "./entities/SoccerPlayerEntity";
 import AIPlayerEntity, { type SoccerAIRole } from "./entities/AIPlayerEntity";
 import sharedState from "./state/sharedState";
 import { getDirectionFromRotation } from "./utils/direction";
-import observerMode from "./utils/observerMode";
+import spectatorMode from "./utils/observerMode";
 import { soccerMap } from "./state/map";
 import { 
   GameMode, 
@@ -337,16 +337,11 @@ startServer((world) => {
     world.on(PlayerEvent.JOINED_WORLD, ({ player }) => {
       console.log(`Player ${player.username} joined world`);
       
-      // Check if this player is a developer and should auto-enable observer mode
-      if (observerMode.isDeveloper(player.username)) {
-        // Only auto-enable observer if no game is in progress
-        if (!game || !game.inProgress()) {
-          world.chatManager.sendPlayerMessage(
-            player,
-            "Developer detected. Use /observer to enable observer mode or /aitraining to start AI training match."
-          );
-        }
-      }
+      // Welcome message for new players
+      world.chatManager.sendPlayerMessage(
+        player,
+        "🎮 Welcome to Hytopia Soccer! Use /spectate to watch games when teams are full."
+      );
       
       // Load UI first before any game state checks
       player.ui.load("ui/index.html");
@@ -426,10 +421,12 @@ startServer((world) => {
           }
 
           if(game.isTeamFull(data.team)) {
+            // Offer spectator mode when team is full
+            spectatorMode.joinAsSpectator(player, world);
             player.ui.sendData({
-              type: "focus-on-instructions",
+              type: "spectator-mode-active",
+              message: "Team is full - you've joined as a spectator! Use /leavespectator to exit spectator mode."
             });
-            world.chatManager.sendPlayerMessage(player, "Team is full");
             return;
           }
           
@@ -1180,6 +1177,19 @@ startServer((world) => {
             }))
           });
         }
+        // Spectator mode event handlers
+        else if (data.type === "spectator-next-player") {
+          console.log(`🎥 Spectator ${player.username} wants to switch to next player`);
+          spectatorMode.nextPlayer(player);
+        }
+        else if (data.type === "spectator-next-camera") {
+          console.log(`🎥 Spectator ${player.username} wants to switch camera mode`);
+          spectatorMode.nextCameraMode(player);
+        }
+        else if (data.type === "spectator-leave") {
+          console.log(`🎥 Spectator ${player.username} wants to leave spectator mode`);
+          spectatorMode.removeSpectator(player);
+        }
       });
 
       // Attempt to start multiplayer game (only for human players, not AI)
@@ -1489,65 +1499,105 @@ startServer((world) => {
       }
     });
 
-    // Register observer mode commands
-    world.chatManager.registerCommand("/observer", (player, message) => {
-      if (!observerMode.isDeveloper(player.username)) {
+    // Register spectator mode commands
+    world.chatManager.registerCommand("/spectate", (player, message) => {
+      if (spectatorMode.isSpectator(player)) {
         world.chatManager.sendPlayerMessage(
           player,
-          "You don't have permission to use this command"
+          "You are already in spectator mode!"
         );
         return;
       }
       
-      observerMode.enable();
-      observerMode.setupObserver(player);
-      world.chatManager.sendPlayerMessage(
-        player,
-        "Observer mode enabled. Use /nextplayer and /nextcamera commands to change views."
-      );
+      spectatorMode.joinAsSpectator(player, world);
     });
 
     world.chatManager.registerCommand("/nextplayer", (player, message) => {
-      if (!observerMode.isEnabled() || !observerMode.isDeveloper(player.username)) {
+      if (!spectatorMode.isSpectator(player)) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Observer mode is not enabled or you don't have permission"
+          "You must be in spectator mode to use this command. Use /spectate to join."
         );
         return;
       }
       
-      observerMode.cycleNextPlayer(player);
+      spectatorMode.cycleNextTarget(player);
+    });
+
+    world.chatManager.registerCommand("/prevplayer", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "You must be in spectator mode to use this command. Use /spectate to join."
+        );
+        return;
+      }
+      
+      spectatorMode.cycleNextTarget(player); // For now, same as next (can be improved)
     });
 
     world.chatManager.registerCommand("/nextcamera", (player, message) => {
-      if (!observerMode.isEnabled() || !observerMode.isDeveloper(player.username)) {
+      if (!spectatorMode.isSpectator(player)) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Observer mode is not enabled or you don't have permission"
+          "You must be in spectator mode to use this command. Use /spectate to join."
         );
         return;
       }
       
-      observerMode.cycleCameraMode(player);
+      spectatorMode.cycleCameraMode(player);
     });
 
-    // Add command to start AI training match (AI vs AI)
-    world.chatManager.registerCommand("/aitraining", async (player, message) => {
-      if (!observerMode.isDeveloper(player.username)) {
+    world.chatManager.registerCommand("/prevcamera", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
         world.chatManager.sendPlayerMessage(
           player,
-          "You don't have permission to use this command"
+          "You must be in spectator mode to use this command. Use /spectate to join."
         );
         return;
       }
       
+      spectatorMode.cycleCameraMode(player); // For now, same as next (can be improved)
+    });
+
+    world.chatManager.registerCommand("/ballcam", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "You must be in spectator mode to use this command. Use /spectate to join."
+        );
+        return;
+      }
+      
+      spectatorMode.switchToBallCam(player);
+    });
+
+    world.chatManager.registerCommand("/stadium", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "You must be in spectator mode to use this command. Use /spectate to join."
+        );
+        return;
+      }
+      
+      spectatorMode.switchToStadiumView(player);
+    });
+
+    world.chatManager.registerCommand("/leavespectator", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "You are not in spectator mode."
+        );
+        return;
+      }
+      
+      spectatorMode.removeSpectator(player);
       world.chatManager.sendPlayerMessage(
         player,
-        "Starting AI training match (all AI players)..."
+        "You have left spectator mode. You can now join a team if available."
       );
-      
-      // Setup for the AI-only match
-      await observerMode.startAITrainingMatch(world, player, game);
     });
 
     // Add a debug command to test goal detection

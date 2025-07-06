@@ -478,6 +478,12 @@ export class SoccerGame {
     
     console.log(`🏟️ Starting 1st Half - ${HALF_DURATION} seconds per half, ${MATCH_DURATION} seconds total`);
     
+    // Update spectator cameras for game start
+    const spectatorMode = require("../utils/observerMode").default;
+    if (spectatorMode && typeof spectatorMode.updateSpectatorsForGameEvent === 'function') {
+      spectatorMode.updateSpectatorsForGameEvent("game-start");
+    }
+
     // Start the game loop for time tracking
     this.gameLoopInterval = setInterval(() => {
       this.gameLoop();
@@ -731,6 +737,12 @@ export class SoccerGame {
       playerStats,
       half: this.state.currentHalf
     });
+
+    // Update spectator cameras for halftime
+    const spectatorMode = require("../utils/observerMode").default;
+    if (spectatorMode && typeof spectatorMode.updateSpectatorsForGameEvent === 'function') {
+      spectatorMode.updateSpectatorsForGameEvent("half-end");
+    }
 
     // DON'T restart the game loop - wait for manual button click
     console.log("🏟️ Halftime started - waiting for manual 'Start Second Half' button click");
@@ -1001,6 +1013,12 @@ export class SoccerGame {
       score: this.state.score,
       kickoffTeam: this.state.kickoffTeam, // Also send kickoff team to UI
     });
+
+    // Update spectator cameras for goal events
+    const spectatorMode = require("../utils/observerMode").default;
+    if (spectatorMode && typeof spectatorMode.updateSpectatorsForGameEvent === 'function') {
+      spectatorMode.updateSpectatorsForGameEvent("goal-scored", { team, score: this.state.score });
+    }
     
     // Play goal celebration sounds
     new Audio({
