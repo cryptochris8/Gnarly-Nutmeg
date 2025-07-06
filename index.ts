@@ -2374,6 +2374,71 @@ startServer((world) => {
       );
     });
 
+    // Add comprehensive speed test command
+    world.chatManager.registerCommand("/speedtest", (player, args) => {
+      const currentMode = getCurrentGameMode();
+      const config = getCurrentModeConfig();
+      
+      world.chatManager.sendPlayerMessage(
+        player,
+        `=== SPEED ENHANCEMENT TEST ===`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Current Mode: ${config.name}`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Base Player Speed: ${config.playerSpeed}x`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Sprint Multiplier: ${config.sprintMultiplier}x`
+      );
+      
+      if (isArcadeMode()) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `🎮 ARCADE MODE ACTIVE - Enhanced speed enabled!`
+        );
+        world.chatManager.sendPlayerMessage(
+          player,
+          `Use /speed to get temporary speed boost (1.8x for 15s)`
+        );
+        world.chatManager.sendPlayerMessage(
+          player,
+          `Use F key for random power-ups (including speed)`
+        );
+        
+        // Check if player has active speed enhancement
+        const hasEnhancement = arcadeManager.hasActiveEnhancement(player.id);
+        if (hasEnhancement) {
+          const enhancement = arcadeManager.getPlayerEnhancement(player.id);
+          if (enhancement) {
+            const timeLeft = Math.max(0, enhancement.endTime - Date.now());
+            world.chatManager.sendPlayerMessage(
+              player,
+              `⚡ Active Enhancement: ${enhancement.type} (${Math.ceil(timeLeft/1000)}s remaining)`
+            );
+          }
+        } else {
+          world.chatManager.sendPlayerMessage(
+            player,
+            `No active speed enhancements`
+          );
+        }
+      } else {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `🏆 FIFA MODE - Realistic speed (no enhancements)`
+        );
+        world.chatManager.sendPlayerMessage(
+          player,
+          `Switch to /arcade to test speed enhancements`
+        );
+      }
+    });
+
     world.chatManager.registerCommand("/power", (player, args) => {
       if (!isArcadeMode()) {
         world.chatManager.sendPlayerMessage(

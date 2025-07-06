@@ -21,7 +21,8 @@ import {
 } from "../utils/direction";
 import { PASS_FORCE, BALL_SPAWN_POSITION as GLOBAL_BALL_SPAWN_POSITION, FIELD_MIN_X, FIELD_MAX_X, FIELD_MIN_Z, FIELD_MAX_Z, FIELD_MIN_Y, FIELD_MAX_Y, AI_GOAL_LINE_X_RED, AI_GOAL_LINE_X_BLUE } from "../state/gameConfig";
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
-import { isArcadeMode } from "../state/gameModes";
+import { isArcadeMode, getCurrentModeConfig } from "../state/gameModes";
+import { getArcadePlayerSpeed } from "../state/arcadeEnhancements";
 
 /** Options for creating a CustomSoccerPlayer instance. @public */
 export interface PlayerEntityControllerOptions {
@@ -573,6 +574,24 @@ export default class CustomSoccerPlayer extends BaseEntityController {
       ) {
         let velocity = isRunning ? this.runVelocity : this.walkVelocity;
         velocity += entity.getSpeedAmplifier();
+        
+        // Apply arcade mode and game mode speed enhancements
+        const currentModeConfig = getCurrentModeConfig();
+        const baseSpeedMultiplier = isRunning ? currentModeConfig.sprintMultiplier : currentModeConfig.playerSpeed;
+        velocity *= baseSpeedMultiplier;
+        
+        // Apply arcade-specific speed enhancements if in arcade mode
+        if (isArcadeMode()) {
+          // Get arcade enhancement manager from the world
+          const arcadeManager = (entity.world as any)._arcadeManager;
+          const enhancedVelocity = getArcadePlayerSpeed(velocity, entity.player.username, arcadeManager);
+          velocity = enhancedVelocity;
+          
+          // Log speed enhancement for debugging
+          if (Math.random() < 0.001) { // Very occasional logging
+            console.log(`🏃 ARCADE SPEED: ${entity.player.username} - Base: ${(isRunning ? this.runVelocity : this.walkVelocity).toFixed(1)}, Enhanced: ${velocity.toFixed(1)}`);
+          }
+        }
         if (w) {
           targetVelocities.x -= velocity * Math.sin(yaw);
           targetVelocities.z -= velocity * Math.cos(yaw);
@@ -1025,34 +1044,34 @@ export default class CustomSoccerPlayer extends BaseEntityController {
     try {
       const soccerBall = sharedState.getSoccerBall();
       if (!soccerBall?.isSpawned) {
-        PlayerEntityController._ballStuckStartTime = 0; 
+        CustomSoccerPlayer._ballStuckStartTime = 0; 
         return;
       }
 
       const currentTime = Date.now();
 
-      if (PlayerEntityController._ballStuckCheckInterval === null && typeof setInterval === 'function') {
+      if (CustomSoccerPlayer._ballStuckCheckInterval === null && typeof setInterval === 'function') {
         // Initialize the interval if it hasn't been, and if setInterval is available (node environment)
         // This static interval might be better handled outside or passed in, but for now, let's try to make it work.
-        // @ts-ignore: setInterval might not be available in all Hytopia environments directly on PlayerEntityController static side.
-        PlayerEntityController._ballStuckCheckInterval = setInterval(() => {
+        // @ts-ignore: setInterval might not be available in all Hytopia environments directly on CustomSoccerPlayer static side.
+        CustomSoccerPlayer._ballStuckCheckInterval = setInterval(() => {
             // This function will be called by the interval, 
             // but the main logic is outside. This interval setup is likely flawed for a static method.
             // The original call to checkForStuckBall should be driven by a game loop or tick.
-            // For now, the check below `currentTime - PlayerEntityController._lastBallCheckTime` manages frequency.
+            // For now, the check below `currentTime - CustomSoccerPlayer._lastBallCheckTime` manages frequency.
         }, BALL_STUCK_CHECK_INTERVAL);
       }
 
-      if (currentTime - PlayerEntityController._lastBallCheckTime < BALL_STUCK_CHECK_INTERVAL) {
+      if (currentTime - CustomSoccerPlayer._lastBallCheckTime < BALL_STUCK_CHECK_INTERVAL) {
           return;
       }
-      PlayerEntityController._lastBallCheckTime = currentTime;
+      CustomSoccerPlayer._lastBallCheckTime = currentTime;
       
       const currentPosition = soccerBall.position;
       const currentVelocity = soccerBall.linearVelocity; 
 
       if (!currentVelocity) {
-        PlayerEntityController._ballStuckStartTime = 0;
+        CustomSoccerPlayer._ballStuckStartTime = 0;
         return;
       }
       // This threshold should be validated against actual goal trigger zone X boundaries.
@@ -1067,16 +1086,16 @@ export default class CustomSoccerPlayer extends BaseEntityController {
       const isPotentiallyStuck = (isAboveGoalHeight || isInGoalArea) && isEffectivelyStationary;
 
       if (isPotentiallyStuck) {
-        if (PlayerEntityController._ballStuckStartTime === 0) {
-          PlayerEntityController._ballStuckStartTime = currentTime;
-        } else if (currentTime - PlayerEntityController._ballStuckStartTime > BALL_STUCK_TIME_THRESHOLD) { 
+        if (CustomSoccerPlayer._ballStuckStartTime === 0) {
+          CustomSoccerPlayer._ballStuckStartTime = currentTime;
+        } else if (currentTime - CustomSoccerPlayer._ballStuckStartTime > BALL_STUCK_TIME_THRESHOLD) { 
           console.log("Ball stuck detected - resetting position to global spawn.");
           soccerBall.despawn();
           sharedState.setAttachedPlayer(null); 
           soccerBall.spawn(world, GLOBAL_BALL_SPAWN_POSITION); 
           soccerBall.setLinearVelocity({ x: 0, y: 0, z: 0 });
           soccerBall.setAngularVelocity({ x: 0, y: 0, z: 0 });
-          PlayerEntityController._ballStuckStartTime = 0; 
+          CustomSoccerPlayer._ballStuckStartTime = 0; 
           
           new Audio({
             uri: "audio/sfx/soccer/whistle.mp3",
@@ -1085,14 +1104,14 @@ export default class CustomSoccerPlayer extends BaseEntityController {
           }).play(world);
         }
       } else {
-        PlayerEntityController._ballStuckStartTime = 0; 
+        CustomSoccerPlayer._ballStuckStartTime = 0; 
       }
 
-      PlayerEntityController._lastBallPosition = { ...currentPosition };
+      CustomSoccerPlayer._lastBallPosition = { ...currentPosition };
 
     } catch (error) {
       console.warn("Error in checkForStuckBall:", error);
-      PlayerEntityController._ballStuckStartTime = 0; 
+      CustomSoccerPlayer._ballStuckStartTime = 0; 
     }
   }
 
