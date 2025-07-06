@@ -20,6 +20,30 @@
   </div>
 </div>
 
+<!-- Player Status HUD -->
+<div id="player-status-hud" class="player-status-hud" style="display: none;">
+  <div class="role-indicator">
+    <div class="role-icon" id="role-icon">⚽</div>
+    <div class="role-info">
+      <div class="role-name" id="role-name">Player</div>
+      <div class="role-description" id="role-description">Ready to play</div>
+    </div>
+  </div>
+  
+  <div class="stamina-container">
+    <div class="stamina-label">Stamina</div>
+    <div class="stamina-bar">
+      <div class="stamina-fill" id="stamina-fill"></div>
+    </div>
+    <div class="stamina-percentage" id="stamina-percentage">100%</div>
+  </div>
+  
+  <div class="ball-possession-indicator" id="ball-possession" style="display: none;">
+    <div class="possession-icon">⚽</div>
+    <div class="possession-text">Ball Possession</div>
+  </div>
+</div>
+
 <style>
   @import url('{{CDN_ASSETS_URL}}/ui/fonts/trebuchet-ms.css');
 
