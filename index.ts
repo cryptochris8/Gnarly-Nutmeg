@@ -55,8 +55,10 @@ import {
   isFIFAMode, 
   isArcadeMode,
   isPickupMode,
+  isTournamentMode,
   getCurrentModeConfig 
 } from "./state/gameModes";
+import { TournamentManager } from "./state/tournamentManager";
 import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
 import { PickupGameManager } from "./state/pickupGameManager";
 import { FIFACrowdManager } from "./utils/fifaCrowdManager";
@@ -97,6 +99,11 @@ startServer((world) => {
     const pickupManager = new PickupGameManager(world);
     (world as any)._pickupManager = pickupManager;
     game.setPickupManager(pickupManager);
+    
+    // Initialize tournament system
+    const tournamentManager = new TournamentManager(world);
+    (world as any)._tournamentManager = tournamentManager;
+    game.setTournamentManager(tournamentManager);
     
     // Initialize FIFA crowd atmosphere system
     const fifaCrowdManager = new FIFACrowdManager(world);
@@ -877,6 +884,274 @@ startServer((world) => {
               message: "Second half can only be started during halftime"
             });
           }
+        }
+        // Tournament Event Handlers
+        else if (data.type === "tournament-create") {
+          console.log(`🏆 Player ${player.username} creating tournament:`, data);
+          
+          try {
+            const tournament = tournamentManager.createTournament(
+              data.name,
+              data.tournamentType,
+              data.gameMode,
+              data.maxPlayers,
+              data.registrationTime,
+              player.username
+            );
+            
+            player.ui.sendData({
+              type: "tournament-created",
+              tournament: {
+                id: tournament.id,
+                name: tournament.name,
+                type: tournament.type,
+                gameMode: tournament.gameMode,
+                maxPlayers: tournament.maxPlayers,
+                status: tournament.status,
+                players: Object.keys(tournament.players).length
+              }
+            });
+            
+            // Broadcast tournament creation to all players
+            const allPlayers = PlayerManager.instance.getConnectedPlayers();
+            allPlayers.forEach(p => {
+              p.ui.sendData({
+                type: "tournament-list-updated",
+                tournaments: tournamentManager.getActiveTournaments().map(t => ({
+                  id: t.id,
+                  name: t.name,
+                  type: t.type,
+                  gameMode: t.gameMode,
+                  maxPlayers: t.maxPlayers,
+                  status: t.status,
+                  players: Object.keys(t.players).length
+                }))
+              });
+            });
+            
+            console.log(`✅ Tournament "${tournament.name}" created successfully`);
+          } catch (error: any) {
+            console.error("Tournament creation error:", error);
+            player.ui.sendData({
+              type: "tournament-error",
+              message: `Failed to create tournament: ${error.message}`
+            });
+          }
+        }
+        else if (data.type === "tournament-join") {
+          console.log(`🏆 Player ${player.username} joining tournament: ${data.tournamentId}`);
+          
+          try {
+            const success = tournamentManager.registerPlayer(data.tournamentId, player.username, player.username);
+            
+            if (success) {
+              const tournament = tournamentManager.getTournament(data.tournamentId);
+              
+              player.ui.sendData({
+                type: "tournament-joined",
+                tournament: tournament ? {
+                  id: tournament.id,
+                  name: tournament.name,
+                  type: tournament.type,
+                  gameMode: tournament.gameMode,
+                  maxPlayers: tournament.maxPlayers,
+                  status: tournament.status,
+                  players: Object.keys(tournament.players),
+                  playerCount: Object.keys(tournament.players).length
+                } : null
+              });
+              
+              // Update all players with new tournament data
+              const allPlayers = PlayerManager.instance.getConnectedPlayers();
+              allPlayers.forEach(p => {
+                p.ui.sendData({
+                  type: "tournament-list-updated",
+                  tournaments: tournamentManager.getActiveTournaments().map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    type: t.type,
+                    gameMode: t.gameMode,
+                    maxPlayers: t.maxPlayers,
+                    status: t.status,
+                    players: Object.keys(t.players).length
+                  }))
+                });
+              });
+              
+              console.log(`✅ Player ${player.username} joined tournament successfully`);
+            } else {
+              player.ui.sendData({
+                type: "tournament-error",
+                message: "Failed to join tournament. It may be full or already started."
+              });
+            }
+          } catch (error: any) {
+            console.error("Tournament join error:", error);
+            player.ui.sendData({
+              type: "tournament-error",
+              message: `Failed to join tournament: ${error.message}`
+            });
+          }
+        }
+        else if (data.type === "tournament-leave") {
+          console.log(`🏆 Player ${player.username} leaving tournament`);
+          
+          const activeTournaments = tournamentManager.getPlayerActiveTournaments(player.username);
+          if (activeTournaments.length > 0) {
+            const tournament = activeTournaments[0];
+            
+            try {
+              const success = tournamentManager.unregisterPlayer(tournament.id, player.username);
+              
+              if (success) {
+                player.ui.sendData({
+                  type: "tournament-left",
+                  message: `Left tournament "${tournament.name}"`
+                });
+                
+                // Update all players with new tournament data
+                const allPlayers = PlayerManager.instance.getConnectedPlayers();
+                allPlayers.forEach(p => {
+                  p.ui.sendData({
+                    type: "tournament-list-updated",
+                    tournaments: tournamentManager.getActiveTournaments().map(t => ({
+                      id: t.id,
+                      name: t.name,
+                      type: t.type,
+                      gameMode: t.gameMode,
+                      maxPlayers: t.maxPlayers,
+                      status: t.status,
+                      players: Object.keys(t.players).length
+                    }))
+                  });
+                });
+                
+                console.log(`✅ Player ${player.username} left tournament successfully`);
+              } else {
+                player.ui.sendData({
+                  type: "tournament-error",
+                  message: "Failed to leave tournament"
+                });
+              }
+            } catch (error: any) {
+              console.error("Tournament leave error:", error);
+              player.ui.sendData({
+                type: "tournament-error",
+                message: `Failed to leave tournament: ${error.message}`
+              });
+            }
+          } else {
+            player.ui.sendData({
+              type: "tournament-error",
+              message: "You are not in any tournaments"
+            });
+          }
+        }
+        else if (data.type === "tournament-ready") {
+          console.log(`🏆 Player ${player.username} marking ready for tournament match`);
+          
+          const match = tournamentManager.getMatchForPlayer(player.username);
+          if (match) {
+            try {
+              // Find the tournament this match belongs to
+              const tournament = tournamentManager.getActiveTournaments().find(t => 
+                t.bracket.some(m => m.id === match.id)
+              );
+              
+              if (tournament) {
+                const success = tournamentManager.setPlayerReady(tournament.id, match.id, player.username, true);
+                
+                if (success) {
+                  player.ui.sendData({
+                    type: "tournament-ready-updated",
+                    isReady: true,
+                    message: "Marked as ready for match!"
+                  });
+                  
+                  console.log(`✅ Player ${player.username} marked as ready for match`);
+                } else {
+                  player.ui.sendData({
+                    type: "tournament-error",
+                    message: "Failed to mark as ready"
+                  });
+                }
+              } else {
+                player.ui.sendData({
+                  type: "tournament-error",
+                  message: "Tournament not found for match"
+                });
+              }
+            } catch (error: any) {
+              console.error("Tournament ready error:", error);
+              player.ui.sendData({
+                type: "tournament-error",
+                message: `Failed to set ready status: ${error.message}`
+              });
+            }
+          } else {
+            player.ui.sendData({
+              type: "tournament-error",
+              message: "You don't have any upcoming matches"
+            });
+          }
+        }
+        else if (data.type === "tournament-get-status") {
+          console.log(`🏆 Player ${player.username} requesting tournament status`);
+          
+          const activeTournaments = tournamentManager.getPlayerActiveTournaments(player.username);
+          
+          if (activeTournaments.length > 0) {
+            const tournament = activeTournaments[0];
+            const match = tournamentManager.getMatchForPlayer(player.username);
+            
+            player.ui.sendData({
+              type: "tournament-status",
+              tournament: {
+                id: tournament.id,
+                name: tournament.name,
+                type: tournament.type,
+                gameMode: tournament.gameMode,
+                maxPlayers: tournament.maxPlayers,
+                status: tournament.status,
+                players: Object.keys(tournament.players),
+                playerCount: Object.keys(tournament.players).length,
+                bracket: tournament.bracket
+              },
+              playerMatch: match ? {
+                id: match.id,
+                opponent: match.player1 === player.username ? match.player2 : match.player1,
+                status: match.status,
+                roundNumber: match.roundNumber,
+                scheduledTime: match.scheduledTime
+              } : null
+            });
+          } else {
+            player.ui.sendData({
+              type: "tournament-status",
+              tournament: null,
+              playerMatch: null
+            });
+          }
+        }
+        else if (data.type === "tournament-get-list") {
+          console.log(`🏆 Player ${player.username} requesting tournament list`);
+          
+          const tournaments = tournamentManager.getActiveTournaments();
+          
+          player.ui.sendData({
+            type: "tournament-list",
+            tournaments: tournaments.map(t => ({
+              id: t.id,
+              name: t.name,
+              type: t.type,
+              gameMode: t.gameMode,
+              maxPlayers: t.maxPlayers,
+              status: t.status,
+              players: Object.keys(t.players).length,
+              createdBy: t.createdBy,
+              registrationDeadline: t.registrationDeadline
+            }))
+          });
         }
       });
 
@@ -1723,6 +1998,256 @@ startServer((world) => {
       );
     });
 
+    // Tournament Commands
+    world.chatManager.registerCommand("/tournament", (player, args) => {
+      const subCommand = args[0]?.toLowerCase();
+      
+      switch (subCommand) {
+        case "create":
+          const tournamentName = args[1] || `Tournament ${Date.now()}`;
+          const tournamentType = args[2] || "single-elimination";
+          const maxPlayers = parseInt(args[3]) || 8;
+          const gameMode = args[4] || "fifa";
+          
+          // Validate tournament type
+          if (!["single-elimination", "double-elimination", "round-robin"].includes(tournamentType)) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ Invalid tournament type. Use: single-elimination, double-elimination, or round-robin`
+            );
+            return;
+          }
+          
+          // Validate max players
+          if (![4, 8, 16, 32].includes(maxPlayers)) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ Invalid player count. Use: 4, 8, 16, or 32 players`
+            );
+            return;
+          }
+          
+          // Validate game mode
+          if (!["fifa", "arcade"].includes(gameMode)) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ Invalid game mode. Use: fifa or arcade`
+            );
+            return;
+          }
+          
+          try {
+            const tournament = tournamentManager.createTournament(
+              tournamentName,
+              tournamentType as any,
+              gameMode as any,
+              maxPlayers,
+              10, // 10 minutes registration time
+              player.username
+            );
+            
+            world.chatManager.sendPlayerMessage(
+              player,
+              `🏆 Tournament "${tournamentName}" created successfully!`
+            );
+            world.chatManager.sendPlayerMessage(
+              player,
+              `Type: ${tournamentType} | Players: ${maxPlayers} | Mode: ${gameMode}`
+            );
+            world.chatManager.sendBroadcastMessage(
+              `🏆 New tournament "${tournamentName}" created by ${player.username}! Join with /tournament join`
+            );
+          } catch (error: any) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ Failed to create tournament: ${error.message}`
+            );
+          }
+          break;
+          
+        case "join":
+          const tournamentId = args[1];
+          if (!tournamentId) {
+            // Show available tournaments
+            const tournaments = tournamentManager.getActiveTournaments();
+            if (tournaments.length === 0) {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `❌ No active tournaments available. Create one with /tournament create`
+              );
+            } else {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `🏆 Active Tournaments:`
+              );
+              tournaments.forEach(tournament => {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `• ${tournament.name} (${tournament.id}) - ${Object.keys(tournament.players).length}/${tournament.maxPlayers} players`
+                );
+              });
+              world.chatManager.sendPlayerMessage(
+                player,
+                `Use /tournament join [tournament-id] to join`
+              );
+            }
+          } else {
+            // Join specific tournament
+            try {
+              const success = tournamentManager.registerPlayer(tournamentId, player.username, player.username);
+              if (success) {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `✅ Successfully joined tournament!`
+                );
+                world.chatManager.sendBroadcastMessage(
+                  `🏆 ${player.username} joined the tournament!`
+                );
+              } else {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `❌ Failed to join tournament. It may be full or already started.`
+                );
+              }
+            } catch (error: any) {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `❌ Error joining tournament: ${error.message}`
+              );
+            }
+          }
+          break;
+          
+        case "leave":
+          const activeTournaments = tournamentManager.getPlayerActiveTournaments(player.username);
+          if (activeTournaments.length === 0) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ You are not in any tournaments`
+            );
+          } else {
+            const tournament = activeTournaments[0]; // Leave first active tournament
+            try {
+              const success = tournamentManager.unregisterPlayer(tournament.id, player.username);
+              if (success) {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `✅ Left tournament "${tournament.name}"`
+                );
+                world.chatManager.sendBroadcastMessage(
+                  `🏆 ${player.username} left the tournament`
+                );
+              } else {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `❌ Failed to leave tournament`
+                );
+              }
+            } catch (error: any) {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `❌ Error leaving tournament: ${error.message}`
+              );
+            }
+          }
+          break;
+          
+        case "ready":
+          const match = tournamentManager.getMatchForPlayer(player.username);
+          if (!match) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ You don't have any upcoming matches`
+            );
+          } else {
+            try {
+              const success = tournamentManager.setPlayerReady(
+                match.id.split('_')[0], // Extract tournament ID from match ID
+                match.id,
+                player.username,
+                true
+              );
+              if (success) {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `✅ Marked as ready for match!`
+                );
+              } else {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `❌ Failed to mark as ready`
+                );
+              }
+            } catch (error: any) {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `❌ Error setting ready status: ${error.message}`
+              );
+            }
+          }
+          break;
+          
+        case "status":
+          const playerTournaments = tournamentManager.getPlayerActiveTournaments(player.username);
+          if (playerTournaments.length === 0) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ You are not in any tournaments`
+            );
+          } else {
+            const tournament = playerTournaments[0];
+            world.chatManager.sendPlayerMessage(
+              player,
+              `🏆 Tournament Status: ${tournament.name}`
+            );
+            world.chatManager.sendPlayerMessage(
+              player,
+              `Status: ${tournament.status} | Players: ${Object.keys(tournament.players).length}/${tournament.maxPlayers}`
+            );
+            world.chatManager.sendPlayerMessage(
+              player,
+              `Type: ${tournament.type} | Mode: ${tournament.gameMode}`
+            );
+            
+            const playerMatch = tournamentManager.getMatchForPlayer(player.username);
+            if (playerMatch) {
+              const opponent = playerMatch.player1 === player.username ? playerMatch.player2 : playerMatch.player1;
+              world.chatManager.sendPlayerMessage(
+                player,
+                `Next Match: vs ${opponent} | Status: ${playerMatch.status}`
+              );
+            }
+          }
+          break;
+          
+        case "list":
+        default:
+          const allTournaments = tournamentManager.getActiveTournaments();
+          if (allTournaments.length === 0) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ No active tournaments. Create one with /tournament create [name]`
+            );
+          } else {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `🏆 Active Tournaments:`
+            );
+            allTournaments.forEach(tournament => {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `• ${tournament.name} - ${Object.keys(tournament.players).length}/${tournament.maxPlayers} players (${tournament.status})`
+              );
+            });
+          }
+          world.chatManager.sendPlayerMessage(
+            player,
+            `Commands: /tournament create [name] [type] [maxplayers] [mode] | /tournament join [id] | /tournament leave | /tournament ready | /tournament status`
+          );
+          break;
+      }
+    });
+
     world.chatManager.registerCommand("/mode", (player, args) => {
       const currentMode = getCurrentGameMode();
       const config = getCurrentModeConfig();
@@ -1753,7 +2278,7 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Commands: /fifa (realistic) | /arcade (unlimited F-key)`
+        `Commands: /fifa (realistic) | /arcade (unlimited F-key) | /tournament (competitive brackets)`
       );
     });
 

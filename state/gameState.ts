@@ -410,11 +410,11 @@ export class SoccerGame {
   private beginMatch() {
     console.log("Beginning match - Starting 1st Quarter");
     
-    // Send game starting notification to UI for respawn handling
-    this.sendDataToAllPlayers({
-      type: "game-starting",
-      message: "New match starting - 1st Quarter begins!"
-    });
+    // Send game starting notification to UI for respawn handling - DISABLED
+    // this.sendDataToAllPlayers({
+    //   type: "game-starting",
+    //   message: "New match starting - 1st Quarter begins!"
+    // });
     
     // First reset ball position - check and ensure proper spawn
     console.log("Ball position before reset:", this.soccerBall.isSpawned ? 
@@ -1387,6 +1387,11 @@ export class SoccerGame {
   public setFIFACrowdManager(fifaCrowdManager: any): void {
     this.fifaCrowdManager = fifaCrowdManager;
     console.log("FIFA crowd manager set for SoccerGame");
+  }
+
+  public setTournamentManager(tournamentManager: any): void {
+    (this as any).tournamentManager = tournamentManager;
+    console.log("🏆 Tournament manager set for SoccerGame");
   }
 
   /**
