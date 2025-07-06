@@ -4298,6 +4298,71 @@
 
 <!-- Phase 1: Enhanced Scripts with Modern Features -->
 <script>
+  // ===== GPU MEMORY MANAGEMENT =====
+  // Client-side GPU memory management and WebGL context recovery
+  function setupGPUMemoryManagement() {
+    // Monitor WebGL context loss
+    const checkCanvas = () => {
+      const canvas = document.querySelector('canvas');
+      if (canvas) {
+        canvas.addEventListener('webglcontextlost', (event) => {
+          event.preventDefault();
+          console.error("🚨 WebGL context lost - GPU memory exhausted!");
+          console.log("💡 To recover: Refresh the page or restart the browser");
+          
+          // Show user-friendly error message
+          const errorMessage = document.createElement('div');
+          errorMessage.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 68, 68, 0.95);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10000;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+          `;
+          errorMessage.innerHTML = `
+            🚨 GPU Memory Exhausted<br>
+            <span style="font-size: 14px; font-weight: normal;">
+              Please refresh the page or restart your browser
+            </span>
+          `;
+          document.body.appendChild(errorMessage);
+          
+          // Auto-refresh after 5 seconds
+          setTimeout(() => {
+            window.location.reload();
+          }, 5000);
+        });
+        
+        canvas.addEventListener('webglcontextrestored', () => {
+          console.log("✅ WebGL context restored");
+        });
+        
+        console.log("🛡️ Client-side GPU memory monitoring enabled");
+      } else {
+        // If canvas not found, try again after a delay
+        setTimeout(checkCanvas, 1000);
+      }
+    };
+    
+    checkCanvas();
+  }
+  
+  // Start GPU memory management when page loads
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupGPUMemoryManagement);
+  } else {
+    setupGPUMemoryManagement();
+  }
+  
   // ===== SCENE UI REGISTRATIONS =====
   // Register the power-bar SceneUI template to prevent "template power-bar not registered" errors
   hytopia.registerSceneUITemplate('power-bar', (id, onState) => {

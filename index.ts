@@ -109,49 +109,76 @@ startServer((world) => {
     const fifaCrowdManager = new FIFACrowdManager(world);
     game.setFIFACrowdManager(fifaCrowdManager);
     
-    // Initialize performance systems
+    // Initialize performance systems for GPU memory optimization
     const performanceProfiler = new PerformanceProfiler(world, {
-      enabled: false,
-      sampleInterval: 1000,
-      maxSamples: 60, // Reduced for memory efficiency
-      logInterval: 30000,
+      enabled: true, // Enable for GPU memory monitoring
+      sampleInterval: 2000, // Less frequent sampling to reduce overhead
+      maxSamples: 30, // Smaller buffer for memory efficiency
+      logInterval: 60000, // Log every minute
       trackMemory: true
     });
     (world as any)._performanceProfiler = performanceProfiler;
+    performanceProfiler.start(); // Start profiling immediately
     
     const performanceOptimizer = new PerformanceOptimizer('HIGH_PERFORMANCE'); // Start with high performance mode
+    console.log("🚀 Performance optimizer initialized in HIGH_PERFORMANCE mode for GPU memory conservation");
     
-    console.log("✅ Game initialized successfully!");
+    // Server-side Memory Management
+    const setupServerMemoryManagement = () => {
+      // Force garbage collection every 30 seconds to free up server memory
+      setInterval(() => {
+        if (typeof global.gc === 'function') {
+          global.gc();
+          console.log("🧹 Forced server garbage collection to free memory");
+        }
+      }, 30000);
+      
+      console.log("🛡️ Server memory management enabled");
+    };
+    
+    // Setup server memory management immediately
+    setupServerMemoryManagement();
+    
+    console.log("✅ Game initialized successfully with GPU memory optimizations!");
 
-    // Music setup
+    // Music setup - restored to original audio behavior
+    console.log("🎵 Loading audio system...");
     const mainMusic = new Audio({
       uri: "audio/music/Ian Post - 8 Bit Samba - No FX.mp3",
       loop: true,
-      volume: 0.1,
+      volume: 0.1, // Restored to original volume
     });
+    
+    // Start music immediately (removed delay)
     mainMusic.play(world);
+    console.log("🎵 Main music started");
 
+    // Create gameplay music objects immediately (removed lazy-loading)
     const arcadeGameplayMusic = new Audio({
       uri: "audio/music/always-win.mp3",
       loop: true,
-      volume: 0.1,
+      volume: 0.1, // Restored to original volume
     });
 
     const fifaGameplayMusic = new Audio({
       uri: "audio/music/Vettore - Silk.mp3",
       loop: true,
-      volume: 0.1,
+      volume: 0.1, // Restored to original volume
     });
 
     const getGameplayMusic = (): Audio => {
-      return isFIFAMode() ? fifaGameplayMusic : arcadeGameplayMusic;
+      if (isFIFAMode()) {
+        return fifaGameplayMusic;
+      } else {
+        return arcadeGameplayMusic;
+      }
     };
 
-    // Function to spawn AI players (simplified)
+    // Function to spawn AI players (restored to full 6v6)
     const spawnAIPlayers = async (playerTeam: "red" | "blue"): Promise<void> => {
       console.log(`🤖 Spawning AI players for team ${playerTeam}...`);
       
-      // Define full team roles
+      // Define full team roles for 6v6 gameplay
       const fullTeamRoles: SoccerAIRole[] = [
         'goalkeeper',
         'left-back',
@@ -1314,8 +1341,8 @@ startServer((world) => {
       if (musicType === "opening") {
         console.log("Manual switch to opening music");
         // Pause both gameplay tracks
-        arcadeGameplayMusic.pause();
-        fifaGameplayMusic.pause();
+        arcadeGameplayMusic?.pause();
+        fifaGameplayMusic?.pause();
         mainMusic.play(world);
         world.chatManager.sendPlayerMessage(player, "Switched to opening music");
       } else if (musicType === "gameplay") {
@@ -1906,8 +1933,8 @@ startServer((world) => {
       // Switch music if game is in progress and mode actually changed
       if (previousMode !== GameMode.FIFA && game && game.inProgress()) {
         console.log("Switching to FIFA mode music during active game");
-        arcadeGameplayMusic.pause();
-        fifaGameplayMusic.play(world);
+        arcadeGameplayMusic?.pause();
+        fifaGameplayMusic?.play(world);
         
         // Start FIFA crowd atmosphere when switching to FIFA during active game
         fifaCrowdManager.start();
@@ -1939,8 +1966,8 @@ startServer((world) => {
       // Switch music if game is in progress and mode actually changed
       if (previousMode !== GameMode.ARCADE && game && game.inProgress()) {
         console.log("Switching to Arcade mode music during active game");
-        fifaGameplayMusic.pause();
-        arcadeGameplayMusic.play(world);
+        fifaGameplayMusic?.pause();
+        arcadeGameplayMusic?.play(world);
         
         // Stop FIFA crowd atmosphere when switching to arcade
         fifaCrowdManager.stop();
@@ -1972,8 +1999,8 @@ startServer((world) => {
       // Switch music if game is in progress and mode actually changed
       if (previousMode !== GameMode.PICKUP && game && game.inProgress()) {
         console.log("Switching to Pickup mode music during active game");
-        fifaGameplayMusic.pause();
-        arcadeGameplayMusic.play(world); // Use arcade music for pickup mode
+        fifaGameplayMusic?.pause();
+        arcadeGameplayMusic?.play(world); // Use arcade music for pickup mode
         
         // Stop FIFA crowd atmosphere when switching to pickup
         fifaCrowdManager.stop();
