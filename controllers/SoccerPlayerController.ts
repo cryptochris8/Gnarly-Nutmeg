@@ -199,12 +199,20 @@ export default class PlayerEntityController extends BaseEntityController {
     });
 
     entity.lockAllRotations(); // prevent physics from applying rotation to the entity, we can still explicitly set it.
-    this._powerBarUI = new SceneUI({
-      templateId: "power-bar",
-      attachedToEntity: entity,
-      state: { isCharging: false, startTime: 0 },
-      offset: { x: 0, y: 1.05, z: 0 },
-    });
+    
+    // Create power bar UI with error handling to prevent player freezing
+    try {
+      this._powerBarUI = new SceneUI({
+        templateId: "power-bar",
+        attachedToEntity: entity,
+        state: { percentage: 0 },
+        offset: { x: 0, y: 1.05, z: 0 },
+      });
+    } catch (error) {
+      console.error("Failed to create power-bar SceneUI:", error);
+      console.log("Game will continue without power-bar display");
+      this._powerBarUI = undefined;
+    }
   }
 
   /**

@@ -4298,6 +4298,24 @@
 
 <!-- Phase 1: Enhanced Scripts with Modern Features -->
 <script>
+  // ===== SCENE UI REGISTRATIONS =====
+  // Register the power-bar SceneUI template to prevent "template power-bar not registered" errors
+  hytopia.registerSceneUITemplate('power-bar', (id, onState) => {
+    const powerBarTemplate = document.getElementById('power-bar-template');
+    const powerBarClone = powerBarTemplate.content.cloneNode(true);
+    const powerBarElement = powerBarClone.querySelector('div');
+    const powerBarFill = powerBarElement.querySelector('div');
+    
+    // Update power bar fill based on state
+    onState(state => {
+      if (state && typeof state.percentage === 'number') {
+        powerBarFill.style.width = `${Math.max(0, Math.min(100, state.percentage))}%`;
+      }
+    });
+    
+    return powerBarClone;
+  });
+
   // ===== PHASE 1: MODERN HUD VARIABLES =====
   let powerBarInterval = null;
   let powerBarPercentage = 0;

@@ -29,7 +29,6 @@ export class FIFACrowdManager {
   private crowdSounds = {
     ambient: [
       "audio/sfx/crowd/ambient/Stringer Sound - Soccer Game - Football Stadium Ambience Crowd Chanting Cheering Applause.wav",
-      "audio/sfx/crowd/ambient/Stringer Sound - Ultras - Football Fans Cheering Angry Distant Drums.wav", 
       "audio/sfx/crowd/ambient/Echoto Sound - English Sports Crowd - Liverpool Football Stadium Ambience Cheering Clapping Chanting.wav",
       "audio/sfx/crowd/ambient/Sonic Bat - Soccer Stadium - Crowd Chanting Clapping Rhythmically.wav"
     ],
