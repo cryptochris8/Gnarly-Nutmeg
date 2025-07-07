@@ -257,7 +257,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   public targetPosition: Vector3Like = { x: 0, y: 0, z: 0 }; // Changed to public for behavior tree
   private updateInterval: Timer | null = null;
   public aiRole: SoccerAIRole; // Changed to public for behavior tree access
-  private decisionInterval: number = 500; // milliseconds between AI decisions
+  private decisionInterval: number = 500; // milliseconds between AI decisions (reduced for goalkeepers in constructor)
   public isKickoffActive: boolean = true; // Changed to public for out-of-bounds reset
   // Track last position for animation state detection
   private lastAIPosition: Vector3Like | null = null;
@@ -321,6 +321,11 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     // This initializes the base SoccerPlayerEntity with the SDK's Entity systems
     super(aiPlayer, team, role);
     this.aiRole = role;
+    
+    // **GOALKEEPER ENHANCEMENT**: Much faster decision-making for goalkeepers
+    if (this.aiRole === 'goalkeeper') {
+      this.decisionInterval = 150; // 3x faster than field players for quick shot reactions
+    }
     
     // Create controller instance but don't attach it immediately
     // This avoids the stopModelAnimations error when the entity isn't spawned yet
@@ -695,47 +700,120 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
 
   /**
    * Check if ball is heading towards goal based on velocity
+   * **ENHANCED**: Improved shot detection with lower thresholds and prediction
    */
   private isBallHeadingTowardsGoal(ballPosition: Vector3Like, ballVelocity: Vector3Like): boolean {
     const goalCenterX = this.team === 'red' ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
     const goalCenterZ = AI_FIELD_CENTER_Z;
     
-    // Check if ball is moving towards goal X coordinate
-    const isMovingTowardsGoalX = this.team === 'red' ? ballVelocity.x < -2 : ballVelocity.x > 2;
+    // **ENHANCED SHOT DETECTION**: Lowered thresholds for better coverage
+    const isMovingTowardsGoalX = this.team === 'red' ? ballVelocity.x < -1.0 : ballVelocity.x > 1.0; // Reduced from ±2 to ±1
     
-    // Check if ball is within goal Z range or moving towards it
-    const goalZMin = goalCenterZ - 6;
-    const goalZMax = goalCenterZ + 6;
-    const isInGoalZRange = ballPosition.z >= goalZMin && ballPosition.z <= goalZMax;
+    // **PREDICTIVE POSITIONING**: Check where ball will be in 0.3 seconds
+    const predictionTime = 0.3;
+    const predictedZ = ballPosition.z + (ballVelocity.z * predictionTime);
+    
+    // **EXPANDED GOAL RANGE**: Larger detection area for better coverage
+    const goalZMin = goalCenterZ - 12; // Increased from 6 to 12
+    const goalZMax = goalCenterZ + 12; // Increased from 6 to 12
+    const isInGoalZRange = predictedZ >= goalZMin && predictedZ <= goalZMax;
     
     return isMovingTowardsGoalX && isInGoalZRange;
   }
 
   /**
+   * **NEW METHOD**: Calculate where goalkeeper should position to intercept ball
+   * This is the core of improved goalkeeper AI
+   */
+  private calculateBallInterceptionPoint(ballPosition: Vector3Like, ballVelocity: Vector3Like): Vector3Like | null {
+    const goalCenterX = this.team === 'red' ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+    const goalCenterZ = AI_FIELD_CENTER_Z;
+    const currentPos = this.position;
+    
+    // **BALL TRAJECTORY PREDICTION**: Calculate where ball will cross goal line
+    const goalLineX = goalCenterX;
+    const timeToGoalLine = Math.abs((goalLineX - ballPosition.x) / ballVelocity.x);
+    
+    // **IGNORE UNREALISTIC TRAJECTORIES**: Don't chase balls going away or too slow
+    if (timeToGoalLine <= 0 || timeToGoalLine > 3.0) return null;
+    
+    // **PREDICTED BALL POSITION**: Where ball will be when it reaches goal line
+    const predictedGoalZ = ballPosition.z + (ballVelocity.z * timeToGoalLine);
+    
+    // **GOALKEEPER REACH CALCULATION**: Can the goalkeeper get there in time?
+    const goalkeeperSpeed = 8.0; // Goalkeeper movement speed
+    const maxReachableDistance = goalkeeperSpeed * timeToGoalLine;
+    
+    // **INTERCEPTION POINT**: Position slightly in front of goal line
+    const interceptX = goalLineX + (this.team === 'red' ? 2 : -2); // 2 units in front
+    const interceptZ = Math.max(goalCenterZ - 8, Math.min(goalCenterZ + 8, predictedGoalZ)); // Clamp to goal width
+    
+    // **REACHABILITY CHECK**: Only attempt saves within reach
+    const distanceToIntercept = Math.sqrt(
+      (interceptX - currentPos.x) ** 2 + (interceptZ - currentPos.z) ** 2
+    );
+    
+    if (distanceToIntercept <= maxReachableDistance) {
+      return { x: interceptX, y: currentPos.y, z: interceptZ };
+    }
+    
+    return null; // Ball is unreachable
+  }
+
+  /**
    * Apply rapid response movement for fast incoming shots
+   * **COMPLETELY REWRITTEN**: Now uses direct ball interception with explosive movement
    */
   private applyRapidResponse(ballVelocity: Vector3Like): void {
+    const ball = sharedState.getSoccerBall();
+    if (!ball) return;
+    
     const ballSpeed = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
     
-    if (ballSpeed > 8.0) { // Fast shot incoming
-      // Temporarily boost movement speed for urgent response
-      const currentVelocity = this.linearVelocity;
-      this.setLinearVelocity({
-        x: currentVelocity.x * 1.4,
-        y: currentVelocity.y,
-        z: currentVelocity.z * 1.4
-      });
+    // **ENHANCED SHOT DETECTION**: React to medium-speed shots too
+    if (ballSpeed > 2.0) { // Reduced from 8.0 to 2.0 for much better coverage
+      // **DIRECT BALL INTERCEPTION**: Calculate exact interception point
+      const interceptionPoint = this.calculateBallInterceptionPoint(ball.position, ballVelocity);
       
-      // Play diving animation (using kick as substitute)
-      if (this.isSpawned) {
-        this.startModelOneshotAnimations(['kick']);
+      if (interceptionPoint) {
+        // **IMMEDIATE GOALKEEPER POSITIONING**: Set target directly to interception point
+        this.targetPosition = interceptionPoint;
         
-        // Stop the animation after a short duration
-        setTimeout(() => {
+        // **EXPLOSIVE GOALKEEPER MOVEMENT**: Apply immediate velocity toward interception
+        const currentPos = this.position;
+        const directionToIntercept = {
+          x: interceptionPoint.x - currentPos.x,
+          z: interceptionPoint.z - currentPos.z
+        };
+        
+        const distanceToIntercept = Math.sqrt(directionToIntercept.x * directionToIntercept.x + directionToIntercept.z * directionToIntercept.z);
+        
+        if (distanceToIntercept > 0.5) {
+          // **GOALKEEPER DIVE MECHANICS**: Apply explosive movement
+          const urgentSpeed = 10.0; // Much faster than normal movement
+          const normalizedX = directionToIntercept.x / distanceToIntercept;
+          const normalizedZ = directionToIntercept.z / distanceToIntercept;
+          
+          // **DIRECT VELOCITY APPLICATION**: Bypass gradual physics for urgent saves
+          this.setLinearVelocity({
+            x: normalizedX * urgentSpeed,
+            y: this.linearVelocity?.y || 0,
+            z: normalizedZ * urgentSpeed
+          });
+          
+          console.log(`🥅 GOALKEEPER DIVE: ${this.player.username} diving to intercept (speed: ${urgentSpeed.toFixed(1)})`);
+          
+          // **GOALKEEPER SAVE ANIMATION**: Visual feedback
           if (this.isSpawned) {
-            this.stopModelAnimations(['kick']);
+            this.startModelOneshotAnimations(['kick']); // Using kick as diving animation
+            
+            setTimeout(() => {
+              if (this.isSpawned) {
+                this.stopModelAnimations(['kick']);
+              }
+            }, 800);
           }
-        }, 800);
+        }
       }
     }
   }
@@ -765,14 +843,26 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     // Distance from goalkeeper to ball
     const distanceToBall = this.distanceBetween(ballPosition, myPosition);
     
-    // Enhanced shot detection
+    // **ENHANCED SHOT DETECTION**: Lower thresholds for better coverage
     const isShotOnGoal = this.isBallHeadingTowardsGoal(ballPosition, ballVelocity);
-    const isFastShot = ballSpeed > 8.0;
-    const isMediumShot = ballSpeed > 5.0;
+    const isFastShot = ballSpeed > 5.0; // Reduced from 8.0
+    const isMediumShot = ballSpeed > 2.0; // Reduced from 5.0
     
-    // Apply rapid response for fast shots
-    if (isFastShot && isShotOnGoal) {
+    // **PRIORITY 1: URGENT SHOT RESPONSE**
+    if (isShotOnGoal && (isFastShot || isMediumShot)) {
+      console.log(`🥅 URGENT SAVE: ${this.player.username} responding to shot (speed: ${ballSpeed.toFixed(1)})`);
       this.applyRapidResponse(ballVelocity);
+      return; // Skip normal positioning logic
+    }
+    
+    // **PRIORITY 2: BALL INTERCEPTION**
+    if (ballSpeed > 1.0 && distanceToBall < 15) {
+      const interceptionPoint = this.calculateBallInterceptionPoint(ballPosition, ballVelocity);
+      if (interceptionPoint) {
+        console.log(`🎯 INTERCEPTION: ${this.player.username} moving to intercept ball`);
+        this.targetPosition = interceptionPoint;
+        return;
+      }
     }
     
     // New: Check if the ball is in a corner
@@ -2970,6 +3060,11 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
 
     const controller = this.controller as PlayerEntityController; 
     let baseMaxSpeed = controller?.runVelocity || 5.5;
+    
+    // **GOALKEEPER ENHANCEMENT**: Boost base speed for goalkeepers
+    if (this.aiRole === 'goalkeeper') {
+      baseMaxSpeed = 6.5; // 18% faster than field players for quick reactions
+    }
     
     // Apply FIFA mode speed multipliers to match human players
     const currentModeConfig = getCurrentModeConfig();
