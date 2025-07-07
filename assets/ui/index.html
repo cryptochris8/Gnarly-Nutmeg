@@ -4012,6 +4012,11 @@
     -webkit-user-select: none;
     touch-action: manipulation;
   }
+
+  /* Force mobile controls to show when mobile is detected by JavaScript */
+  .mobile-controls.mobile-active {
+    display: block !important;
+  }
   
   /* Virtual Joystick for Movement */
   .virtual-joystick {
@@ -4050,17 +4055,18 @@
   .mobile-action-btn {
     width: 60px;
     height: 60px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 2px solid rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.8);
     border-radius: 50%;
     color: white;
-    font-size: 16px;
+    font-size: 10px;
     font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   }
   
   .mobile-action-btn:active {
@@ -4069,13 +4075,13 @@
   }
   
   .mobile-action-btn.primary {
-    background: rgba(0, 123, 255, 0.6);
-    border-color: rgba(0, 123, 255, 0.8);
+    background: rgba(0, 123, 255, 0.8);
+    border-color: rgba(0, 123, 255, 1);
   }
   
   .mobile-action-btn.secondary {
-    background: rgba(40, 167, 69, 0.6);
-    border-color: rgba(40, 167, 69, 0.8);
+    background: rgba(40, 167, 69, 0.8);
+    border-color: rgba(40, 167, 69, 1);
   }
   
   /* Mobile Performance Indicator */
@@ -4091,8 +4097,8 @@
     font-family: 'Inter', sans-serif;
   }
   
-  /* Show mobile controls only on mobile devices */
-  @media (max-width: 768px) and (pointer: coarse) {
+  /* Improved mobile detection - more reliable than pointer: coarse */
+  @media (max-width: 768px) {
     .mobile-controls {
       display: block;
     }
@@ -4149,7 +4155,7 @@
     .mobile-action-btn {
       width: 50px;
       height: 50px;
-      font-size: 14px;
+      font-size: 9px;
     }
   }
 
@@ -4324,7 +4330,7 @@
   }
   
   /* Enhanced Mobile Controls Layout - Override Phase 1 */
-  @media (max-width: 768px) and (pointer: coarse) {
+  @media (max-width: 768px) {
     .enhanced-mobile-scoreboard,
     .mobile-game-status {
       display: block !important;
@@ -8395,20 +8401,30 @@
     }
   };
   
-  // Device detection function
+  // Enhanced device detection function
   function detectMobileDevice() {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
     const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const screenWidth = window.innerWidth || document.documentElement.clientWidth;
     
-    isMobileDevice = mobileRegex.test(userAgent) || (touchCapable && screenWidth <= 768);
+    // Multiple detection methods for better reliability
+    const isMobileUA = mobileRegex.test(userAgent.toLowerCase());
+    const isMobileScreen = screenWidth <= 768;
+    const isTouchDevice = touchCapable;
+    const isSmallScreen = screenWidth <= 1024 && window.innerHeight <= 768;
     
-    console.log('📱 Mobile device detection:', {
+    // Consider it mobile if any of these conditions are true
+    isMobileDevice = isMobileUA || (isTouchDevice && isMobileScreen) || (isTouchDevice && isSmallScreen);
+    
+    console.log('📱 Enhanced mobile device detection:', {
       userAgent: userAgent,
       isMobile: isMobileDevice,
-      touchCapable: touchCapable,
-      screenWidth: screenWidth
+      isMobileUA: isMobileUA,
+      touchCapable: isTouchDevice,
+      screenWidth: screenWidth,
+      screenHeight: window.innerHeight,
+      reason: isMobileUA ? 'User Agent' : isTouchDevice && isMobileScreen ? 'Touch + Screen Size' : isTouchDevice && isSmallScreen ? 'Touch + Small Screen' : 'Not Mobile'
     });
     
     return isMobileDevice;
@@ -8425,7 +8441,11 @@
     // Create mobile controls container
     const mobileControlsContainer = document.createElement('div');
     mobileControlsContainer.id = 'mobile-controls-container';
-    mobileControlsContainer.className = 'mobile-controls';
+    mobileControlsContainer.className = 'mobile-controls mobile-active';
+    
+    // Force visibility for mobile devices
+    mobileControlsContainer.style.display = 'block';
+    mobileControlsContainer.style.visibility = 'visible';
     
     // Create virtual joystick
     const virtualJoystick = document.createElement('div');
@@ -8613,43 +8633,154 @@
     });
   }
   
-  // Handle mobile action button presses
+  // Handle mobile action button presses with enhanced error handling
   function handleMobileAction(action, pressed) {
-    console.log(`📱 Mobile action: ${action} ${pressed ? 'pressed' : 'released'}`);
-    
-    // Update input state
-    mobileInputState.actions[action === 'shoot' ? 'shooting' : 
-                           action === 'pass' ? 'passing' : 
-                           action === 'tackle' ? 'tackling' : 'dodging'] = pressed;
-    
-    // Send action to server
-    hytopia.sendData({
-      type: "mobile-action-input",
-      action: action,
-      pressed: pressed
-    });
-    
-    // Visual feedback
-    if (pressed) {
-      playUISound('button-click');
+    try {
+      console.log(`📱 Mobile action: ${action} ${pressed ? 'pressed' : 'released'}`);
+      
+      // Update input state
+      const actionKey = action === 'shoot' ? 'shooting' : 
+                       action === 'pass' ? 'passing' : 
+                       action === 'tackle' ? 'tackling' : 'dodging';
+      
+      if (mobileInputState && mobileInputState.actions) {
+        mobileInputState.actions[actionKey] = pressed;
+      }
+      
+      // Send action to server with error handling
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        hytopia.sendData({
+          type: "mobile-action-input",
+          action: action,
+          pressed: pressed,
+          timestamp: Date.now()
+        });
+      } else {
+        console.warn('📱 Hytopia not available for mobile action:', action);
+      }
+      
+      // Visual feedback with error handling
+      if (pressed) {
+        try {
+          if (typeof playUISound === 'function') {
+            playUISound('button-click');
+          }
+        } catch (soundError) {
+          console.warn('📱 Sound error:', soundError);
+        }
+        
+        // Add visual feedback to button
+        const button = document.getElementById(`mobile-${action}-btn`);
+        if (button) {
+          button.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+          setTimeout(() => {
+            if (action === 'shoot') {
+              button.style.backgroundColor = 'rgba(0, 123, 255, 0.8)';
+            } else if (action === 'pass') {
+              button.style.backgroundColor = 'rgba(40, 167, 69, 0.8)';
+            } else {
+              button.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+            }
+          }, 200);
+        }
+      }
+      
+      console.log(`📱 Mobile action processed successfully: ${action}`);
+      
+    } catch (error) {
+      console.error('📱 Error handling mobile action:', error);
     }
   }
   
-  // Auto-initialize mobile controls when page loads
+  // Auto-initialize mobile controls when page loads (Multiple attempts for reliability)
   document.addEventListener('DOMContentLoaded', function() {
-    // Wait a bit for Hytopia to initialize
+    console.log('📱 DOM loaded - attempting mobile controls initialization');
+    setTimeout(initializeMobileControls, 500);
     setTimeout(initializeMobileControls, 1000);
+    setTimeout(initializeMobileControls, 2000);
   });
   
   // Also try to initialize on window load
   window.addEventListener('load', function() {
-    setTimeout(initializeMobileControls, 500);
+    console.log('📱 Window loaded - attempting mobile controls initialization');
+    setTimeout(initializeMobileControls, 100);
+    setTimeout(initializeMobileControls, 1000);
   });
+  
+  // Additional backup initialization after Hytopia connects
+  setTimeout(function() {
+    console.log('📱 Backup initialization attempt');
+    if (!mobileControlsInitialized && detectMobileDevice()) {
+      initializeMobileControls();
+    }
+  }, 3000);
+  
+  // Force initialization for mobile devices - emergency backup
+  setInterval(function() {
+    if (!mobileControlsInitialized && detectMobileDevice()) {
+      console.log('📱 Emergency backup initialization triggered');
+      initializeMobileControls();
+    }
+  }, 5000);
+  
+  // Test mobile controls function (for debugging)
+  function testMobileControls() {
+    console.log('📱 Testing mobile controls...');
+    
+    // Force mobile detection
+    isMobileDevice = true;
+    
+    // Force initialization
+    mobileControlsInitialized = false;
+    initializeMobileControls();
+    
+    // Test button visibility
+    const controls = document.getElementById('mobile-controls-container');
+    if (controls) {
+      controls.style.display = 'block';
+      controls.style.visibility = 'visible';
+      controls.style.zIndex = '99999';
+      console.log('📱 Mobile controls forced visible');
+      
+      // Add red debug border
+      controls.style.border = '3px solid red';
+      setTimeout(() => {
+        controls.style.border = 'none';
+      }, 3000);
+      
+      return 'Mobile controls test completed - should be visible now';
+    } else {
+      console.error('📱 Mobile controls container not found');
+      return 'Mobile controls container not found';
+    }
+  }
+  
+  // Check mobile controls status
+  function checkMobileControlsStatus() {
+    const status = {
+      isMobileDevice: isMobileDevice,
+      controlsInitialized: mobileControlsInitialized,
+      controlsContainer: !!document.getElementById('mobile-controls-container'),
+      joystick: !!document.getElementById('virtual-joystick'),
+      shootButton: !!document.getElementById('mobile-shoot-btn'),
+      passButton: !!document.getElementById('mobile-pass-btn'),
+      tackleButton: !!document.getElementById('mobile-tackle-btn'),
+      dodgeButton: !!document.getElementById('mobile-dodge-btn'),
+      screenWidth: window.innerWidth,
+      screenHeight: window.innerHeight,
+      touchCapable: 'ontouchstart' in window
+    };
+    
+    console.log('📱 Mobile Controls Status:', status);
+    return status;
+  }
   
   // Make mobile functions globally accessible
   window.initializeMobileControls = initializeMobileControls;
   window.handleMobileAction = handleMobileAction;
   window.detectMobileDevice = detectMobileDevice;
+  window.testMobileControls = testMobileControls;
+  window.checkMobileControlsStatus = checkMobileControlsStatus;
 
   // ===== PHASE 2 ENHANCED MOBILE UI (HYTOPIA SDK COMPLIANT) =====
   
