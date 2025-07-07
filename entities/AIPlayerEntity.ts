@@ -1997,7 +1997,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
         else if (distanceToOpponent < 10) spaceScore -= 2;
       }
       
-      // ENHANCED SAFETY CHECK: Verify pass direction is safe and won't go out of bounds
+      // SAFETY CHECK: Verify pass direction is safe before considering this teammate
       const passDirection = {
         x: teammate.position.x - this.position.x,
         y: 0,
@@ -2013,24 +2013,6 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
           console.log(`${this.aiRole} ${this.player.username} skipping unsafe pass to ${teammate.player.username}`);
           continue; // Skip this teammate if pass would be unsafe
         }
-        
-        // NEW: Check if pass would go out of bounds
-        const preliminaryTarget = {
-          x: teammate.position.x,
-          y: teammate.position.y,
-          z: teammate.position.z
-        };
-        const boundaryAdjustedTarget = this.adjustPassForBoundaries(preliminaryTarget, this.position);
-        const boundaryAdjustment = Math.sqrt(
-          Math.pow(boundaryAdjustedTarget.x - preliminaryTarget.x, 2) + 
-          Math.pow(boundaryAdjustedTarget.z - preliminaryTarget.z, 2)
-        );
-        
-        // If target needed significant boundary adjustment, reduce its score
-        if (boundaryAdjustment > 2.0) {
-          spaceScore -= 3; // Penalty for passes that would go out of bounds
-          console.log(`${this.aiRole} ${this.player.username} penalizing pass to ${teammate.player.username} due to boundary adjustment`);
-        }
       }
       
       // Calculate forward progression bonus
@@ -2044,31 +2026,54 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
       
       // Role-based scoring adjustments
       let roleBonus = 0;
-      if (teammate instanceof AIPlayerEntity) {
-        const teammateRole = teammate.aiRole;
-        if (teammateRole === 'striker') roleBonus = 3;
-        else if (teammateRole === 'central-midfielder-1' || teammateRole === 'central-midfielder-2') roleBonus = 2;
-        else if (teammateRole === 'left-back' || teammateRole === 'right-back') roleBonus = -1;
+      
+      // HUMAN PLAYER PRIORITY: Give human players massive bonus to ensure they always receive passes
+      if (!(teammate instanceof AIPlayerEntity)) {
+        roleBonus = 50; // Huge bonus for human players - this ensures they're always prioritized
+        console.log(`${this.aiRole} ${this.player.username} prioritizing human player ${teammate.player.username} for pass`);
+      } else {
+        // AI player role bonuses (much smaller than human bonus)
+        switch (teammate.aiRole) {
+          case 'striker':
+            roleBonus = 10; // Prefer passing to strikers 
+            break;
+          case 'central-midfielder-1':
+          case 'central-midfielder-2':
+            roleBonus = 5; // Midfielders are good pass targets
+            break;
+          case 'left-back':
+          case 'right-back':
+            roleBonus = isForward ? 3 : 0; // Only prefer backs when they're forward
+            break;
+          case 'goalkeeper':
+            roleBonus = -15; // Avoid passing back to goalkeeper unless no other options
+            break;
+        }
       }
       
-      // Calculate final score
-      const finalScore = spaceScore + forwardPositionBonus + goalProximityBonus + roleBonus;
+      // Final score calculation
+      const score = (30 - Math.min(30, distanceToTeammate)) + // Closer is better, but capped
+                  spaceScore * 2 + // Open space is important
+                  forwardPositionBonus + // Bonus for forward positions
+                  goalProximityBonus + // Bonus for proximity to goal
+                  roleBonus + // Role-specific adjustments
+                  (Math.random() * 2); // Tiny random factor to break ties
       
-      if (finalScore > bestScore) {
-        bestScore = finalScore;
+      if (score > bestScore) {
+        bestScore = score;
         bestTargetPlayer = teammate;
       }
     }
 
     // Now determine the target position based on the best teammate
     if (bestTargetPlayer) {
-      // Enhanced leading calculation with boundary awareness
+      // Lead the pass based on distance - longer passes need more lead
       const passDirectionX = bestTargetPlayer.position.x - this.position.x;
       const passDirectionZ = bestTargetPlayer.position.z - this.position.z;
       const passDist = Math.sqrt(passDirectionX * passDirectionX + passDirectionZ * passDirectionZ);
       
-      // Improved lead factor calculation
-      const leadFactor = this.calculateOptimalLeadFactor(passDist, bestTargetPlayer);
+      // Adjust lead factor based on distance
+      const leadFactor = Math.min(4.0, 2.0 + (passDist / 10));
       
       if (passDist > 0) {
         const normDx = passDirectionX / passDist;
@@ -2082,70 +2087,55 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
         passTargetPosition = bestTargetPlayer.position;
       }
       
-      // BOUNDARY AWARENESS: Adjust target to stay in bounds
-      passTargetPosition = this.adjustPassForBoundaries(passTargetPosition, this.position);
-      
       // Log the passing decision
       console.log(`${this.aiRole} ${this.player.username} passing to ${bestTargetPlayer.player.username} with score ${bestScore.toFixed(1)}`);
+    } else {
+      // No suitable teammate found, make a general forward pass
+      console.log(`${this.aiRole} ${this.player.username} - no specific teammate target, making a general forward pass`);
+      
+      // Make a more controlled forward pass based on field position
+      const forwardDirection = this.team === 'red' ? 1 : -1;
+      const currentX = this.position.x;
+      const fieldCenter = (AI_GOAL_LINE_X_RED + AI_GOAL_LINE_X_BLUE) / 2;
+      
+      // Adjust pass distance based on field position
+      let passDistance = 12;
+      
+      // If on own half, make a longer pass
+      if ((this.team === 'red' && currentX < fieldCenter) || 
+          (this.team === 'blue' && currentX > fieldCenter)) {
+        passDistance = 18;
+      }
+      
+      passTargetPosition = {
+        x: this.position.x + (forwardDirection * passDistance),
+        y: this.position.y,
+        z: this.position.z + ((Math.random() * 10) - 5) // Small random Z offset
+      };
     }
 
-    // Execute the pass with enhanced mechanics
-    if (bestTargetPlayer) {
-      return this.forcePass(bestTargetPlayer, passTargetPosition, 1.0);
+    // Use a power multiplier based on the distance to the target
+    const distanceToTarget = this.distanceBetween(this.position, passTargetPosition);
+    
+    // More conservative power calculation to prevent out-of-bounds passes
+    let powerMultiplier = Math.min(0.8, 0.4 + (distanceToTarget / 50)); // Reduced max from 1.0 to 0.8
+    
+    // Additional safety check: reduce power if target is near field boundaries
+    const fieldCenterX = (AI_GOAL_LINE_X_RED + AI_GOAL_LINE_X_BLUE) / 2;
+    const fieldCenterZ = AI_FIELD_CENTER_Z;
+    const distanceFromCenterX = Math.abs(passTargetPosition.x - fieldCenterX);
+    const distanceFromCenterZ = Math.abs(passTargetPosition.z - fieldCenterZ);
+    const fieldWidthX = Math.abs(FIELD_MAX_X - FIELD_MIN_X);
+    const fieldWidthZ = Math.abs(FIELD_MAX_Z - FIELD_MIN_Z);
+    
+    // If target is in outer 30% of field, reduce power significantly
+    if (distanceFromCenterX > fieldWidthX * 0.35 || distanceFromCenterZ > fieldWidthZ * 0.35) {
+      powerMultiplier *= 0.7; // Reduce power by 30% for edge passes
+      console.log(`${this.aiRole} ${this.player.username} reducing pass power for edge target`);
     }
     
-    return false;
-  }
-
-  /**
-   * Calculate optimal lead factor based on distance and target player
-   */
-  private calculateOptimalLeadFactor(passDistance: number, targetPlayer: PlayerEntity): number {
-    // Base lead factor
-    let baseLead = Math.min(3.0, 1.5 + (passDistance / 15));
-    
-    // Adjust for target player's velocity
-    const targetVelocity = targetPlayer.linearVelocity || { x: 0, y: 0, z: 0 };
-    const velocityMagnitude = Math.sqrt(targetVelocity.x * targetVelocity.x + targetVelocity.z * targetVelocity.z);
-    
-    if (velocityMagnitude > 2.0) {
-      baseLead *= 1.3; // Increase lead for fast-moving players
-    } else if (velocityMagnitude < 0.5) {
-      baseLead *= 0.7; // Reduce lead for stationary players
-    }
-    
-    return baseLead;
-  }
-
-  /**
-   * Adjust pass target to keep it in bounds
-   */
-  private adjustPassForBoundaries(targetPosition: Vector3Like, playerPosition: Vector3Like): Vector3Like {
-    const BOUNDARY_BUFFER = 4.0; // Keep AI passes this far from boundaries (slightly more conservative)
-    
-    // Field boundaries
-    const FIELD_MIN_X = -37;
-    const FIELD_MAX_X = 52;
-    const FIELD_MIN_Z = -33;
-    const FIELD_MAX_Z = 26;
-    
-    let adjustedPosition = { ...targetPosition };
-    
-    // Check X boundaries (goal lines)
-    if (adjustedPosition.x < FIELD_MIN_X + BOUNDARY_BUFFER) {
-      adjustedPosition.x = FIELD_MIN_X + BOUNDARY_BUFFER;
-    } else if (adjustedPosition.x > FIELD_MAX_X - BOUNDARY_BUFFER) {
-      adjustedPosition.x = FIELD_MAX_X - BOUNDARY_BUFFER;
-    }
-    
-    // Check Z boundaries (sidelines)
-    if (adjustedPosition.z < FIELD_MIN_Z + BOUNDARY_BUFFER) {
-      adjustedPosition.z = FIELD_MIN_Z + BOUNDARY_BUFFER;
-    } else if (adjustedPosition.z > FIELD_MAX_Z - BOUNDARY_BUFFER) {
-      adjustedPosition.z = FIELD_MAX_Z - BOUNDARY_BUFFER;
-    }
-    
-    return adjustedPosition;
+    // Execute the pass
+    return this.forcePass(bestTargetPlayer, passTargetPosition, powerMultiplier);
   }
   
   /**
@@ -2850,54 +2840,81 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
    * @returns True if the pass was attempted, false otherwise.
    */
   public forcePass(targetPlayer: PlayerEntity | null, passToPoint: Vector3Like, powerMultiplier: number = 1.0): boolean {
+    // Validate ball and player state using SDK interfaces
     const ball = sharedState.getSoccerBall();
-    if (!ball || sharedState.getAttachedPlayer() !== this) {
+    const playerWithBall = sharedState.getAttachedPlayer();
+    
+    // Verify we have the necessary objects from the SDK
+    if (!ball || playerWithBall !== this) { 
+      console.warn(`AI ${this.player.username} (${this.aiRole}): forcePass failed - ball not found or not attached to this player`);
+      return false; 
+    }
+
+    // Reset the ball possession timer for any player type
+    this.ballPossessionStartTime = null;
+    console.log(`${this.aiRole} ${this.player.username} resetting possession timer in forcePass`);
+
+    // Ensure we have valid position data 
+    if (!this.position || !passToPoint) {
+      console.warn(`AI ${this.player.username} (${this.aiRole}): forcePass failed - invalid position data`);
       return false;
     }
 
-    // Ensure pass target is within field boundaries
-    const safePassTarget = this.adjustPassForBoundaries(passToPoint, this.position);
-    
-    // Calculate direction to the safe target
+    // ADDED SAFETY: Ensure the pass target is within field boundaries
+    const safePassTarget = this.ensureTargetInBounds(passToPoint);
+
+    // Calculate direction components towards the passToPoint
+    const dx = safePassTarget.x - this.position.x;
+    const dz = safePassTarget.z - this.position.z;
+
+    const distanceHorizontal = Math.sqrt(dx * dx + dz * dz);
+    // Ensure PASS_ARC_FACTOR is defined, if not, use a sensible default or log an error
+    const arcFactor = typeof PASS_ARC_FACTOR === 'number' ? PASS_ARC_FACTOR : 0.08;
+    const calculatedY = distanceHorizontal * arcFactor;
+
     const direction = {
-      x: safePassTarget.x - this.position.x,
-      y: 0,
-      z: safePassTarget.z - this.position.z
+      x: dx,
+      y: calculatedY,
+      z: dz
     };
-    
-    const distance = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
-    
-    if (distance < 0.1) {
-      console.log(`AI ${this.player.username} (${this.aiRole}): Force pass target too close, skipping`);
-      return false;
+
+    const length = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+    if (length < 0.001) {
+      console.warn(`AI ${this.player.username} (${this.aiRole}): forcePass failed - zero direction length`);
+      return false; // Avoid division by zero if already at target
     }
-    
-    // Normalize direction
-    direction.x /= distance;
-    direction.z /= distance;
-    
-    // ENHANCED POWER CALCULATION: Use optimal power based on distance
-    const optimalPower = this.calculateOptimalAIPassPower(distance, targetPlayer);
-    const effectivePassForce = optimalPower * powerMultiplier;
-    
-    // Calculate vertical component for slight arc
-    const verticalComponent = Math.max(0.1, Math.min(0.3, distance / 60)); // Subtle arc
-    const finalVerticalForce = verticalComponent;
-    
-    // Clear the attached player before passing
+
+    // Normalize the direction vector for SDK physics
+    direction.x /= length;
+    direction.y /= length;
+    direction.z /= length;
+
+    // Release ball attachment using SDK API
     sharedState.setAttachedPlayer(null);
     
-    // More aggressive velocity clearing for cleaner passes
-    const currentVelocity = ball.linearVelocity;
-    if (currentVelocity) {
-      ball.setLinearVelocity({
-        x: currentVelocity.x * 0.05, // Very aggressive clearing
-        y: currentVelocity.y * 0.05,
-        z: currentVelocity.z * 0.05
-      });
+    // Apply powerMultiplier to the base PASS_FORCE
+    // Ensure PASS_FORCE is defined, if not, use a sensible default
+    const baseForce = typeof PASS_FORCE === 'number' ? PASS_FORCE : 10;
+    
+    // SAFETY: Cap the maximum multiplier for all players to avoid extreme forces
+    let effectiveMultiplier = Math.min(powerMultiplier, 1.0);
+    
+    // Additional cap for different roles to prevent flying balls
+    if (this.aiRole === 'goalkeeper') {
+      effectiveMultiplier = Math.min(effectiveMultiplier, 0.8); // Goalkeeper passes are safest
+    } else if (this.aiRole === 'striker') {
+      effectiveMultiplier = Math.min(effectiveMultiplier, 0.9); // Strikers slightly stronger
     } else {
-      ball.setLinearVelocity({ x: 0, y: 0, z: 0 });
+      effectiveMultiplier = Math.min(effectiveMultiplier, 0.85); // Other players moderate
     }
+    
+    // Calculate the final force, with an absolute maximum cap
+    const effectivePassForce = Math.min(baseForce * effectiveMultiplier, 8);  // Reduced hard cap from 12 to 8
+    
+    // Add vertical dampening to prevent high arcs for longer distances
+    const verticalComponent = direction.y * effectivePassForce;
+    const maxVerticalForce = 2.5; // Cap vertical force component
+    const finalVerticalForce = Math.min(verticalComponent, maxVerticalForce);
     
     try {
       // Apply impulse with controlled vertical component using SDK physics
@@ -2907,12 +2924,13 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
         z: direction.z * effectivePassForce 
       });
       
-      // Enhanced angular velocity control
+      // Reset angular velocity immediately and continue resetting for a short period
+      // This prevents unwanted spinning/backwards movement from ground collisions
       ball.setAngularVelocity({ x: 0, y: 0, z: 0 });
       
-      // More frequent resets for better pass control
+      // Continue resetting angular velocity for 300ms for passes (shorter than shots)
       let resetCount = 0;
-      const maxResets = 12; // Increased for AI passes
+      const maxResets = 6; // Reset 6 times over 300ms
       const resetInterval = setInterval(() => {
         if (resetCount >= maxResets || !ball.isSpawned) {
           clearInterval(resetInterval);
@@ -2920,56 +2938,23 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
         }
         ball.setAngularVelocity({ x: 0, y: 0, z: 0 });
         resetCount++;
-      }, 25); // Reset every 25ms
+      }, 50); // Reset every 50ms
       
       // Play pass animation using SDK model animation system
       this.startModelOneshotAnimations(["kick"]);
       
-      // Enhanced logging with power and safety info
+      // Log the pass details
       if (targetPlayer) {
-        console.log(`AI ${this.player.username} (${this.aiRole}) forcePassing to ${targetPlayer.player.username} - Power: ${effectivePassForce.toFixed(1)}, Distance: ${distance.toFixed(1)}`);
+        console.log(`AI ${this.player.username} (${this.aiRole}) forcePassing to ${targetPlayer.player.username} at (${safePassTarget.x.toFixed(1)}, ${safePassTarget.z.toFixed(1)}) with force ${effectivePassForce.toFixed(1)}`);
       } else {
-        console.log(`AI ${this.player.username} (${this.aiRole}) forcePassing to space - Power: ${effectivePassForce.toFixed(1)}, Distance: ${distance.toFixed(1)}`);
+        console.log(`AI ${this.player.username} (${this.aiRole}) forcePassing to space at (${safePassTarget.x.toFixed(1)}, ${safePassTarget.z.toFixed(1)}) with force ${effectivePassForce.toFixed(1)}`);
       }
       return true;
     } catch (error) {
       // Handle any SDK errors that might occur during physics operations
-      console.error(`AI ${this.player.username} (${this.aiRole}): Error in enhanced forcePass - ${error}`);
+      console.error(`AI ${this.player.username} (${this.aiRole}): Error in forcePass - ${error}`);
       return false;
     }
-  }
-
-  /**
-   * Calculate optimal pass power for AI players
-   */
-  private calculateOptimalAIPassPower(passDistance: number, targetPlayer: PlayerEntity | null): number {
-    // Base power optimized for AI passing
-    const basePower = 5.0; // Slightly higher than human base power
-    
-    // Distance-based scaling with AI-specific adjustments
-    let distanceMultiplier = 1.0;
-    
-    if (passDistance <= 6) {
-      // Very short passes: gentle power to ensure accuracy
-      distanceMultiplier = 0.7 + (passDistance / 6) * 0.3; // 0.7 to 1.0
-    } else if (passDistance <= 12) {
-      // Short passes: gradually increase power
-      distanceMultiplier = 1.0 + ((passDistance - 6) / 6) * 0.4; // 1.0 to 1.4
-    } else if (passDistance <= 25) {
-      // Medium passes: linear scaling
-      distanceMultiplier = 1.4 + ((passDistance - 12) / 13) * 0.5; // 1.4 to 1.9
-    } else {
-      // Long passes: capped scaling to prevent overpowering
-      distanceMultiplier = 1.9 + Math.min(0.3, (passDistance - 25) / 20); // 1.9 to 2.2 max
-    }
-    
-    // Adjust for target player type
-    if (targetPlayer && !(targetPlayer instanceof AIPlayerEntity)) {
-      // Human player target: slightly reduce power for better reception
-      distanceMultiplier *= 0.9;
-    }
-    
-    return basePower * distanceMultiplier;
   }
   
   /**
