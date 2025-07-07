@@ -5747,6 +5747,63 @@
     } else {
       console.error("Could not find tournament mode button!"); // Debug log
     }
+
+    // ===== TOURNAMENT CREATION & MANAGEMENT EVENT HANDLERS =====
+    
+    // Tournament Creation Button Handler
+    const createTournamentBtn = document.getElementById("createTournamentBtn");
+    if (createTournamentBtn) {
+      createTournamentBtn.addEventListener("click", (e) => {
+        handleButtonClick(e, () => handleTournamentCreation(e));
+      });
+      console.log("✅ Tournament creation event listener added successfully");
+    } else {
+      console.error("❌ Could not find tournament creation button!");
+    }
+
+    // Tournament Join Button Handler
+    const joinTournamentBtn = document.getElementById("joinTournamentBtn");
+    if (joinTournamentBtn) {
+      joinTournamentBtn.addEventListener("click", (e) => {
+        handleButtonClick(e, () => handleTournamentJoin(e));
+      });
+      console.log("✅ Tournament join event listener added successfully");
+    } else {
+      console.error("❌ Could not find tournament join button!");
+    }
+
+    // Tournament Leave Button Handler
+    const leaveTournamentBtn = document.getElementById("leaveTournamentBtn");
+    if (leaveTournamentBtn) {
+      leaveTournamentBtn.addEventListener("click", (e) => {
+        handleButtonClick(e, () => handleTournamentLeave(e));
+      });
+      console.log("✅ Tournament leave event listener added successfully");
+    } else {
+      console.error("❌ Could not find tournament leave button!");
+    }
+
+    // Ready Check Button Handler
+    const confirmReadyBtn = document.getElementById("confirmReadyBtn");
+    if (confirmReadyBtn) {
+      confirmReadyBtn.addEventListener("click", (e) => {
+        handleButtonClick(e, () => handleReadyConfirm(e));
+      });
+      console.log("✅ Ready confirm event listener added successfully");
+    } else {
+      console.error("❌ Could not find ready confirm button!");
+    }
+
+    // Back to Lobby Button Handler
+    const backToLobbyBtn = document.getElementById("backToLobbyBtn");
+    if (backToLobbyBtn) {
+      backToLobbyBtn.addEventListener("click", (e) => {
+        handleButtonClick(e, () => handleBackToLobby(e));
+      });
+      console.log("✅ Back to lobby event listener added successfully");
+    } else {
+      console.error("❌ Could not find back to lobby button!");
+    }
     
     // PICKUP MODE EVENT LISTENER DISABLED
     // pickupModeBtn.addEventListener("click", (e) => {
@@ -5939,7 +5996,206 @@
           }, 500);
         }, 3000);
       }
+      // ===== TOURNAMENT MESSAGE HANDLERS =====
+      else if (data.type === "tournament-created") {
+        console.log("✅ Tournament created successfully:", data.tournament);
+        
+        // Show success message
+        showTournamentSuccess(`Tournament "${data.tournament.name}" created successfully!`);
+        
+        // Re-enable create button
+        const button = document.getElementById("createTournamentBtn");
+        if (button) {
+          button.disabled = false;
+          button.textContent = "🏆 Create Tournament";
+        }
+        
+        // Clear form
+        document.getElementById("tournamentName").value = "";
+        
+        // Store tournament ID for future reference
+        window.currentTournamentId = data.tournament.id;
+        
+        // Switch to tournament lobby view
+        const tournamentSelection = document.getElementById("tournamentSelection");
+        const tournamentLobby = document.getElementById("tournamentLobby");
+        
+        if (tournamentSelection) tournamentSelection.style.display = "none";
+        if (tournamentLobby) {
+          tournamentLobby.style.display = "block";
+          
+          // Update lobby information
+          const lobbyName = document.getElementById("tournamentLobbyName");
+          const lobbyDetails = document.getElementById("tournamentLobbyDetails");
+          const lobbyStatus = document.getElementById("tournamentLobbyStatus");
+          
+          if (lobbyName) lobbyName.textContent = data.tournament.name;
+          if (lobbyDetails) lobbyDetails.textContent = `${data.tournament.maxPlayers} Players • ${data.tournament.type} • ${data.tournament.gameMode.toUpperCase()} Mode`;
+          if (lobbyStatus) lobbyStatus.textContent = "Registration Open";
+        }
+      }
+      else if (data.type === "tournament-error") {
+        console.error("❌ Tournament error:", data.message);
+        showTournamentError(data.message);
+        
+        // Re-enable create button
+        const button = document.getElementById("createTournamentBtn");
+        if (button) {
+          button.disabled = false;
+          button.textContent = "🏆 Create Tournament";
+        }
+      }
+      else if (data.type === "tournament-joined") {
+        console.log("✅ Successfully joined tournament");
+        showTournamentSuccess("Successfully joined tournament!");
+        
+        // Store tournament ID
+        window.currentTournamentId = data.tournamentId;
+        
+        // Update UI to show joined state
+        const joinBtn = document.getElementById("joinTournamentBtn");
+        const leaveBtn = document.getElementById("leaveTournamentBtn");
+        
+        if (joinBtn) joinBtn.style.display = "none";
+        if (leaveBtn) leaveBtn.style.display = "block";
+      }
+      else if (data.type === "tournament-left") {
+        console.log("✅ Successfully left tournament");
+        showTournamentSuccess("Left tournament");
+        
+        // Clear tournament ID
+        window.currentTournamentId = null;
+        
+        // Update UI to show left state
+        const joinBtn = document.getElementById("joinTournamentBtn");
+        const leaveBtn = document.getElementById("leaveTournamentBtn");
+        
+        if (joinBtn) joinBtn.style.display = "block";
+        if (leaveBtn) leaveBtn.style.display = "none";
+      }
+      else if (data.type === "tournament-list-updated") {
+        console.log("🏆 Tournament list updated:", data.tournaments);
+        
+        // Update the active tournaments display
+        const activeTournaments = document.getElementById("activeTournaments");
+        if (activeTournaments) {
+          if (data.tournaments && data.tournaments.length > 0) {
+            activeTournaments.innerHTML = "";
+            
+            data.tournaments.forEach(tournament => {
+              const tournamentDiv = document.createElement('div');
+              tournamentDiv.className = 'tournament-item';
+              tournamentDiv.style.cssText = `
+                background: rgba(255, 255, 255, 0.1);
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                padding: 15px;
+                margin: 10px 0;
+                cursor: pointer;
+                transition: all 0.3s ease;
+              `;
+              
+              tournamentDiv.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 5px;">${tournament.name}</div>
+                <div style="font-size: 14px; color: #ccc;">
+                  ${tournament.players}/${tournament.maxPlayers} players • ${tournament.type} • ${tournament.gameMode.toUpperCase()}
+                </div>
+                <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                  Status: ${tournament.status}
+                </div>
+              `;
+              
+              // Add click handler to join tournament
+              tournamentDiv.onclick = () => {
+                window.selectedTournamentId = tournament.id;
+                console.log("Selected tournament:", tournament.id);
+                
+                // Visual feedback
+                document.querySelectorAll('.tournament-item').forEach(item => {
+                  item.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                });
+                tournamentDiv.style.borderColor = '#FFD700';
+                
+                showTournamentSuccess(`Selected: ${tournament.name}`);
+              };
+              
+              activeTournaments.appendChild(tournamentDiv);
+            });
+          } else {
+            activeTournaments.innerHTML = '<div class="no-tournaments">No active tournaments available</div>';
+          }
+        }
+      }
+      else if (data.type === "tournament-started") {
+        console.log("🏆 Tournament started!");
+        showTournamentSuccess("Tournament has started! Get ready for your matches.");
+        
+        // Update tournament status
+        const lobbyStatus = document.getElementById("tournamentLobbyStatus");
+        if (lobbyStatus) lobbyStatus.textContent = "Tournament In Progress";
+        
+        // Show bracket if available
+        const bracket = document.getElementById("tournamentBracket");
+        if (bracket) bracket.style.display = "block";
+      }
+      else if (data.type === "tournament-match-ready-check") {
+        console.log("🔔 Match ready check started");
+        
+        // Store match information
+        window.currentMatchId = data.matchId;
+        
+        // Show ready check UI
+        const readyCheck = document.getElementById("tournamentReadyCheck");
+        const opponent = document.getElementById("readyCheckOpponent");
+        const matchInfo = document.getElementById("readyCheckMatchInfo");
+        
+        if (readyCheck) readyCheck.style.display = "block";
+        if (opponent) opponent.textContent = data.opponent || "Unknown";
+        if (matchInfo) matchInfo.textContent = `Round ${data.round || 1} • ${data.gameMode?.toUpperCase() || 'FIFA'} Mode`;
+        
+        // Start countdown timer
+        startReadyCheckTimer(data.timeLimit || 300); // 5 minutes default
+      }
+      else if (data.type === "tournament-match-start") {
+        console.log("🏆 Tournament match starting!");
+        showTournamentSuccess("Your tournament match is starting!");
+        
+        // Hide ready check UI
+        const readyCheck = document.getElementById("tournamentReadyCheck");
+        if (readyCheck) readyCheck.style.display = "none";
+      }
     });
+  }
+
+  // Ready Check Timer Function
+  function startReadyCheckTimer(seconds) {
+    const timerElement = document.getElementById("readyCheckTimer");
+    let timeLeft = seconds;
+    
+    const timer = setInterval(() => {
+      const minutes = Math.floor(timeLeft / 60);
+      const secs = timeLeft % 60;
+      
+      if (timerElement) {
+        timerElement.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+      }
+      
+      timeLeft--;
+      
+      if (timeLeft < 0) {
+        clearInterval(timer);
+        if (timerElement) timerElement.textContent = "0:00";
+        
+        // Hide ready check UI if time runs out
+        const readyCheck = document.getElementById("tournamentReadyCheck");
+        if (readyCheck) readyCheck.style.display = "none";
+        
+        showTournamentError("Ready check timed out");
+      }
+    }, 1000);
+    
+    // Store timer reference for cleanup
+    window.readyCheckTimer = timer;
   }
   
   // Add debugging function to test score visibility
@@ -8781,6 +9037,297 @@
   window.detectMobileDevice = detectMobileDevice;
   window.testMobileControls = testMobileControls;
   window.checkMobileControlsStatus = checkMobileControlsStatus;
+
+  // ===== TOURNAMENT SYSTEM FUNCTIONS =====
+
+  // Tournament Creation Handler
+  function handleTournamentCreation(e) {
+    try {
+      console.log('🏆 Creating tournament...');
+      
+      // Get form values
+      const tournamentName = document.getElementById("tournamentName").value.trim();
+      const tournamentType = document.getElementById("tournamentType").value;
+      const maxPlayers = parseInt(document.getElementById("tournamentMaxPlayers").value);
+      const gameMode = document.getElementById("tournamentGameMode").value;
+      const registrationTime = parseInt(document.getElementById("tournamentRegistrationTime").value);
+
+      // Validate form data
+      if (!tournamentName) {
+        showTournamentError("Please enter a tournament name");
+        return;
+      }
+
+      if (tournamentName.length < 3) {
+        showTournamentError("Tournament name must be at least 3 characters");
+        return;
+      }
+
+      if (tournamentName.length > 30) {
+        showTournamentError("Tournament name must be 30 characters or less");
+        return;
+      }
+
+      // Disable button to prevent double submission
+      const button = document.getElementById("createTournamentBtn");
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Creating...";
+      }
+
+      // Send tournament creation request to server
+      const tournamentData = {
+        type: "tournament-create",
+        name: tournamentName,
+        tournamentType: tournamentType,
+        maxPlayers: maxPlayers,
+        gameMode: gameMode,
+        registrationTime: registrationTime
+      };
+
+      console.log('🏆 Sending tournament creation data:', tournamentData);
+
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        hytopia.sendData(tournamentData);
+      } else {
+        console.error('❌ Hytopia not available for tournament creation');
+        showTournamentError("Connection error - please try again");
+        
+        // Re-enable button
+        if (button) {
+          button.disabled = false;
+          button.textContent = "🏆 Create Tournament";
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Tournament creation error:', error);
+      showTournamentError("Failed to create tournament - please try again");
+      
+      // Re-enable button
+      const button = document.getElementById("createTournamentBtn");
+      if (button) {
+        button.disabled = false;
+        button.textContent = "🏆 Create Tournament";
+      }
+    }
+  }
+
+  // Tournament Join Handler
+  function handleTournamentJoin(e) {
+    try {
+      console.log('🏆 Joining tournament...');
+      
+      // Get the active tournament ID (would be set when tournament list is displayed)
+      const selectedTournamentId = window.selectedTournamentId;
+      
+      if (!selectedTournamentId) {
+        showTournamentError("No tournament selected");
+        return;
+      }
+
+      // Send join request to server
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        hytopia.sendData({
+          type: "tournament-join",
+          tournamentId: selectedTournamentId
+        });
+      } else {
+        console.error('❌ Hytopia not available for tournament join');
+        showTournamentError("Connection error - please try again");
+      }
+
+    } catch (error) {
+      console.error('❌ Tournament join error:', error);
+      showTournamentError("Failed to join tournament - please try again");
+    }
+  }
+
+  // Tournament Leave Handler
+  function handleTournamentLeave(e) {
+    try {
+      console.log('🏆 Leaving tournament...');
+      
+      // Get the current tournament ID
+      const currentTournamentId = window.currentTournamentId;
+      
+      if (!currentTournamentId) {
+        showTournamentError("No tournament to leave");
+        return;
+      }
+
+      // Send leave request to server
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        hytopia.sendData({
+          type: "tournament-leave",
+          tournamentId: currentTournamentId
+        });
+      } else {
+        console.error('❌ Hytopia not available for tournament leave');
+        showTournamentError("Connection error - please try again");
+      }
+
+    } catch (error) {
+      console.error('❌ Tournament leave error:', error);
+      showTournamentError("Failed to leave tournament - please try again");
+    }
+  }
+
+  // Ready Check Confirm Handler
+  function handleReadyConfirm(e) {
+    try {
+      console.log('🏆 Confirming ready for match...');
+      
+      // Get the current tournament and match info
+      const currentTournamentId = window.currentTournamentId;
+      const currentMatchId = window.currentMatchId;
+      
+      if (!currentTournamentId || !currentMatchId) {
+        showTournamentError("No active match found");
+        return;
+      }
+
+      // Send ready confirmation to server
+      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+        hytopia.sendData({
+          type: "tournament-ready",
+          tournamentId: currentTournamentId,
+          matchId: currentMatchId,
+          ready: true
+        });
+      } else {
+        console.error('❌ Hytopia not available for ready check');
+        showTournamentError("Connection error - please try again");
+      }
+
+    } catch (error) {
+      console.error('❌ Ready check error:', error);
+      showTournamentError("Failed to confirm ready - please try again");
+    }
+  }
+
+  // Back to Lobby Handler
+  function handleBackToLobby(e) {
+    try {
+      console.log('🏆 Returning to lobby...');
+      
+      // Hide tournament UI and show main lobby
+      const tournamentSelection = document.getElementById("tournamentSelection");
+      const tournamentLobby = document.getElementById("tournamentLobby");
+      const mainGameModes = document.getElementById("game-modes");
+      
+      if (tournamentSelection) tournamentSelection.style.display = "none";
+      if (tournamentLobby) tournamentLobby.style.display = "none";
+      if (mainGameModes) mainGameModes.style.display = "block";
+      
+      // Clear tournament state
+      window.selectedTournamentId = null;
+      window.currentTournamentId = null;
+      window.currentMatchId = null;
+      
+      console.log('✅ Returned to main lobby');
+
+    } catch (error) {
+      console.error('❌ Back to lobby error:', error);
+    }
+  }
+
+  // Tournament Error Display
+  function showTournamentError(message) {
+    console.error('🏆 Tournament Error:', message);
+    
+    // Create error notification
+    const errorNotification = document.createElement('div');
+    errorNotification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      z-index: 10001;
+      box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      animation: slideInRight 0.5s ease-out;
+      max-width: 300px;
+    `;
+    
+    errorNotification.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 20px;">❌</span>
+        <span>${message}</span>
+      </div>
+    `;
+    
+    document.body.appendChild(errorNotification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      if (errorNotification.parentNode) {
+        errorNotification.style.animation = 'slideOutRight 0.5s ease-in';
+        setTimeout(() => {
+          if (errorNotification.parentNode) {
+            errorNotification.parentNode.removeChild(errorNotification);
+          }
+        }, 500);
+      }
+    }, 5000);
+  }
+
+  // Tournament Success Display
+  function showTournamentSuccess(message) {
+    console.log('🏆 Tournament Success:', message);
+    
+    // Create success notification
+    const successNotification = document.createElement('div');
+    successNotification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #059669, #047857);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      z-index: 10001;
+      box-shadow: 0 4px 20px rgba(5, 150, 105, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      animation: slideInRight 0.5s ease-out;
+      max-width: 300px;
+    `;
+    
+    successNotification.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 20px;">✅</span>
+        <span>${message}</span>
+      </div>
+    `;
+    
+    document.body.appendChild(successNotification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      if (successNotification.parentNode) {
+        successNotification.style.animation = 'slideOutRight 0.5s ease-in';
+        setTimeout(() => {
+          if (successNotification.parentNode) {
+            successNotification.parentNode.removeChild(successNotification);
+          }
+        }, 500);
+      }
+    }, 3000);
+  }
+
+  // Make tournament functions globally accessible
+  window.handleTournamentCreation = handleTournamentCreation;
+  window.handleTournamentJoin = handleTournamentJoin;
+  window.handleTournamentLeave = handleTournamentLeave;
+  window.handleReadyConfirm = handleReadyConfirm;
+  window.handleBackToLobby = handleBackToLobby;
+  window.showTournamentError = showTournamentError;
+  window.showTournamentSuccess = showTournamentSuccess;
 
   // ===== PHASE 2 ENHANCED MOBILE UI (HYTOPIA SDK COMPLIANT) =====
   
