@@ -1262,43 +1262,45 @@ export default class CustomSoccerPlayer extends BaseEntityController {
   private _executeTargetedPass(entity: PlayerEntity, target: PlayerEntity, ball: Entity | null): { success: boolean; distance: number } {
     if (!ball) return { success: false, distance: 0 };
 
-    // Calculate distance to target
+    // Calculate target position with improved leading
     const distanceToTarget = Math.sqrt(
       Math.pow(target.position.x - entity.position.x, 2) + 
       Math.pow(target.position.z - entity.position.z, 2)
     );
-
-    // Calculate leading based on target's movement
-    const leadFactor = Math.min(4.0, 2.0 + (distanceToTarget / 15)); // More lead for longer passes
-    
-    // Get target's current velocity for leading calculation
     const targetVelocity = target.linearVelocity || { x: 0, y: 0, z: 0 };
-    const velocityMagnitude = Math.sqrt(targetVelocity.x * targetVelocity.x + targetVelocity.z * targetVelocity.z);
     
-    // Calculate lead position
-    let leadPosition = { ...target.position };
-    if (velocityMagnitude > 0.5) { // Only lead if target is moving significantly
-      const normalizedVelocity = {
-        x: targetVelocity.x / velocityMagnitude,
-        z: targetVelocity.z / velocityMagnitude
-      };
-      
-      leadPosition = {
-        x: target.position.x + normalizedVelocity.x * leadFactor,
+    // Enhanced leading calculation based on target movement and pass distance
+    const leadTime = Math.max(0.3, Math.min(1.2, distanceToTarget / 15)); // More dynamic lead time
+    const leadDistance = Math.sqrt(targetVelocity.x * targetVelocity.x + targetVelocity.z * targetVelocity.z) * leadTime;
+    
+    // Calculate optimal pass target position
+    let passTargetPosition = { x: target.position.x, y: target.position.y, z: target.position.z };
+    
+    if (leadDistance > 0.1) {
+      const velocityMagnitude = Math.sqrt(targetVelocity.x * targetVelocity.x + targetVelocity.z * targetVelocity.z);
+      passTargetPosition = {
+        x: target.position.x + (targetVelocity.x / velocityMagnitude) * leadDistance,
         y: target.position.y,
-        z: target.position.z + normalizedVelocity.z * leadFactor
+        z: target.position.z + (targetVelocity.z / velocityMagnitude) * leadDistance
       };
     }
-
+    
+    // BOUNDARY AWARENESS: Check if pass target is out of bounds and adjust
+    const adjustedTarget = this._adjustPassForBoundaries(passTargetPosition, entity.position);
+    
     // Calculate pass direction
     const passDirection = {
-      x: leadPosition.x - entity.position.x,
+      x: adjustedTarget.x - entity.position.x,
       y: 0,
-      z: leadPosition.z - entity.position.z
+      z: adjustedTarget.z - entity.position.z
     };
     
     const passDistance = Math.sqrt(passDirection.x * passDirection.x + passDirection.z * passDirection.z);
-    if (passDistance === 0) return { success: false, distance: 0 };
+    
+    if (passDistance < 0.5) {
+      console.log("Pass target too close, skipping pass");
+      return { success: false, distance: distanceToTarget };
+    }
     
     // Normalize direction
     const normalizedDirection = {
@@ -1307,40 +1309,38 @@ export default class CustomSoccerPlayer extends BaseEntityController {
       z: passDirection.z / passDistance
     };
 
-    // Calculate optimal pass power based on distance
-    // Simplified power calculation for more consistent passes
-    const basePower = 5.0; // Use consistent base power
-    const distanceMultiplier = Math.max(0.9, Math.min(1.8, passDistance / 15)); // More conservative scaling
-    const finalPassPower = basePower * distanceMultiplier;
-
-    // Clear ball's current velocity for clean pass
+    // IMPROVED PASS POWER CALCULATION
+    // Use more consistent and distance-appropriate power scaling
+    const optimalPower = this._calculateOptimalPassPower(passDistance, distanceToTarget);
+    
+    // Clear ball's current velocity for cleaner pass
     const currentVelocity = ball.linearVelocity;
     if (currentVelocity) {
       ball.setLinearVelocity({
-        x: currentVelocity.x * 0.3, // Less aggressive velocity clearing for more responsive passes
-        y: currentVelocity.y * 0.3,
-        z: currentVelocity.z * 0.3
+        x: currentVelocity.x * 0.1, // More aggressive clearing for better control
+        y: currentVelocity.y * 0.1,
+        z: currentVelocity.z * 0.1
       });
     } else {
       ball.setLinearVelocity({ x: 0, y: 0, z: 0 });
     }
 
     try {
-      // Apply pass impulse with controlled vertical component
-      const verticalComponent = Math.min(0.2, 0.1 + (passDistance / 100)); // Slight arc for longer passes
+      // Apply pass impulse with optimal power and slight arc
+      const verticalComponent = Math.max(0.1, Math.min(0.4, passDistance / 50)); // Subtle arc based on distance
       
       ball.applyImpulse({
-        x: normalizedDirection.x * finalPassPower,
+        x: normalizedDirection.x * optimalPower,
         y: verticalComponent,
-        z: normalizedDirection.z * finalPassPower
+        z: normalizedDirection.z * optimalPower
       });
 
-      // Reset angular velocity to prevent spinning
+      // Enhanced angular velocity control for consistent ball behavior
       ball.setAngularVelocity({ x: 0, y: 0, z: 0 });
 
-      // Continue resetting angular velocity for a short period
+      // More frequent angular velocity resets for better pass control
       let resetCount = 0;
-      const maxResets = 8; // More resets for better control
+      const maxResets = 10; // Increased resets for better control
       const resetInterval = setInterval(() => {
         if (resetCount >= maxResets || !ball.isSpawned) {
           clearInterval(resetInterval);
@@ -1348,13 +1348,78 @@ export default class CustomSoccerPlayer extends BaseEntityController {
         }
         ball.setAngularVelocity({ x: 0, y: 0, z: 0 });
         resetCount++;
-      }, 40); // Reset every 40ms
+      }, 30); // Reset every 30ms for smoother control
 
+      console.log(`✅ ENHANCED PASS: Power ${optimalPower.toFixed(1)}, Distance ${passDistance.toFixed(1)}, Target adjusted for boundaries`);
       return { success: true, distance: distanceToTarget };
     } catch (error) {
-      console.error(`Error in targeted pass: ${error}`);
+      console.error(`Error in enhanced targeted pass: ${error}`);
       return { success: false, distance: distanceToTarget };
     }
+  }
+
+  /**
+   * Calculate optimal pass power based on distance and target type
+   */
+  private _calculateOptimalPassPower(passDistance: number, targetDistance: number): number {
+    // Base power formula: more consistent scaling
+    const basePower = 4.5; // Slightly reduced base power for better control
+    
+    // Distance-based scaling with smooth progression
+    let distanceMultiplier = 1.0;
+    if (passDistance <= 8) {
+      // Short passes: gentle power
+      distanceMultiplier = 0.8 + (passDistance / 8) * 0.4; // 0.8 to 1.2
+    } else if (passDistance <= 20) {
+      // Medium passes: linear scaling
+      distanceMultiplier = 1.2 + ((passDistance - 8) / 12) * 0.6; // 1.2 to 1.8
+    } else {
+      // Long passes: capped scaling to prevent overpowering
+      distanceMultiplier = 1.8 + Math.min(0.4, (passDistance - 20) / 25); // 1.8 to 2.2 max
+    }
+    
+    return basePower * distanceMultiplier;
+  }
+
+  /**
+   * Adjust pass target to keep it in bounds
+   */
+  private _adjustPassForBoundaries(targetPosition: Vector3Like, playerPosition: Vector3Like): Vector3Like {
+    const BOUNDARY_BUFFER = 3.0; // Keep passes this far from boundaries
+    
+    // Import field boundaries from game config
+    const FIELD_MIN_X = -37;
+    const FIELD_MAX_X = 52;
+    const FIELD_MIN_Z = -33;
+    const FIELD_MAX_Z = 26;
+    
+    let adjustedPosition = { ...targetPosition };
+    
+    // Check X boundaries (goal lines)
+    if (adjustedPosition.x < FIELD_MIN_X + BOUNDARY_BUFFER) {
+      adjustedPosition.x = FIELD_MIN_X + BOUNDARY_BUFFER;
+    } else if (adjustedPosition.x > FIELD_MAX_X - BOUNDARY_BUFFER) {
+      adjustedPosition.x = FIELD_MAX_X - BOUNDARY_BUFFER;
+    }
+    
+    // Check Z boundaries (sidelines)
+    if (adjustedPosition.z < FIELD_MIN_Z + BOUNDARY_BUFFER) {
+      adjustedPosition.z = FIELD_MIN_Z + BOUNDARY_BUFFER;
+    } else if (adjustedPosition.z > FIELD_MAX_Z - BOUNDARY_BUFFER) {
+      adjustedPosition.z = FIELD_MAX_Z - BOUNDARY_BUFFER;
+    }
+    
+    // If we had to adjust significantly, log it
+    const adjustment = Math.sqrt(
+      Math.pow(adjustedPosition.x - targetPosition.x, 2) + 
+      Math.pow(adjustedPosition.z - targetPosition.z, 2)
+    );
+    
+    if (adjustment > 1.0) {
+      console.log(`🛡️ BOUNDARY ADJUSTMENT: Pass target adjusted by ${adjustment.toFixed(1)} units to stay in bounds`);
+    }
+    
+    return adjustedPosition;
   }
 
   /**
@@ -1368,34 +1433,62 @@ export default class CustomSoccerPlayer extends BaseEntityController {
 
     const direction = directionFromOrientation(entity, cameraOrientation);
     
-    // Clear ball velocity
+    // Calculate pass distance with boundary awareness
+    const basePassDistance = 15; // Standard distance for directional pass
+    
+    // Calculate preliminary target position
+    const preliminaryTarget = {
+      x: entity.position.x + direction.x * basePassDistance,
+      y: entity.position.y,
+      z: entity.position.z + direction.z * basePassDistance
+    };
+
+    // BOUNDARY AWARENESS: Adjust target to stay in bounds
+    const safeTarget = this._adjustPassForBoundaries(preliminaryTarget, entity.position);
+    
+    // Recalculate actual pass distance to safe target
+    const actualPassDistance = Math.sqrt(
+      Math.pow(safeTarget.x - entity.position.x, 2) + 
+      Math.pow(safeTarget.z - entity.position.z, 2)
+    );
+    
+    // Recalculate normalized direction to safe target
+    const safeDirection = {
+      x: actualPassDistance > 0 ? (safeTarget.x - entity.position.x) / actualPassDistance : direction.x,
+      z: actualPassDistance > 0 ? (safeTarget.z - entity.position.z) / actualPassDistance : direction.z
+    };
+    
+    // More aggressive velocity clearing for cleaner passes
     const currentVelocity = ball.linearVelocity;
     if (currentVelocity) {
       ball.setLinearVelocity({
-        x: currentVelocity.x * 0.3, // Less aggressive velocity clearing for more responsive passes
-        y: currentVelocity.y * 0.3,
-        z: currentVelocity.z * 0.3
+        x: currentVelocity.x * 0.1, // More aggressive clearing
+        y: currentVelocity.y * 0.1,
+        z: currentVelocity.z * 0.1
       });
     } else {
       ball.setLinearVelocity({ x: 0, y: 0, z: 0 });
     }
 
-    // Use moderate power for directional pass
-    const directionalPassPower = 5.0; // Match the base power used in targeted passes
+    // ENHANCED POWER CALCULATION: Use optimal power for directional passes
+    const optimalPower = this._calculateOptimalPassPower(actualPassDistance, 0); // 0 for no target distance
     
     try {
+      // Apply enhanced directional pass with optimal power
+      const verticalComponent = Math.max(0.1, Math.min(0.3, actualPassDistance / 50)); // Subtle arc
+      
       ball.applyImpulse({
-        x: direction.x * directionalPassPower,
-        y: 0.15, // Slight arc
-        z: direction.z * directionalPassPower
+        x: safeDirection.x * optimalPower,
+        y: verticalComponent,
+        z: safeDirection.z * optimalPower
       });
 
-      // Reset angular velocity
+      // Enhanced angular velocity control
       ball.setAngularVelocity({ x: 0, y: 0, z: 0 });
       
-      // Continue resetting angular velocity
+      // More frequent resets for better control
       let resetCount = 0;
-      const maxResets = 6;
+      const maxResets = 10;
       const resetInterval = setInterval(() => {
         if (resetCount >= maxResets || !ball.isSpawned) {
           clearInterval(resetInterval);
@@ -1403,9 +1496,11 @@ export default class CustomSoccerPlayer extends BaseEntityController {
         }
         ball.setAngularVelocity({ x: 0, y: 0, z: 0 });
         resetCount++;
-      }, 50);
+      }, 30);
+      
+      console.log(`🎯 ENHANCED DIRECTIONAL PASS: ${entity.player.username} passing towards (${safeTarget.x.toFixed(1)}, ${safeTarget.z.toFixed(1)}) with power ${optimalPower.toFixed(1)}`);
     } catch (error) {
-      console.error(`Error in directional pass: ${error}`);
+      console.error(`Error in enhanced directional pass: ${error}`);
     }
   }
 

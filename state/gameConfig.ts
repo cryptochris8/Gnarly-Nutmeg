@@ -67,7 +67,7 @@ export const TOTAL_HALVES = 2; // First half and second half
 export const MATCH_DURATION = TOTAL_HALVES * HALF_DURATION; // 10 minutes total
 export const HALFTIME_DURATION = 2 * 60; // 2 minutes halftime break
 
-export const PASS_FORCE = 5;
+export const PASS_FORCE = 6;
 
 export const STUN_DURATION = 1.5 * 1000;
 export const TACKLE_KNOCKBACK_FORCE = 12;
@@ -76,16 +76,16 @@ export const BALL_CONFIG = {
   // Ball properties
   SCALE: 0.2,
   RADIUS: 0.2,
-  FRICTION: 0.4, // Increased from 0.3 to slow down ball movement more
+  FRICTION: 0.5, // Increased from 0.4 for better control and more predictable bounces
 
-  // Movement damping - increase to slow the ball down faster
-  LINEAR_DAMPING: 0.8, // Increased from 0.7 to slow ball down faster
-  ANGULAR_DAMPING: 3.5, // Increased from 3.0 to prevent more spinning
+  // Movement damping - optimized for better passing
+  LINEAR_DAMPING: 0.6, // Reduced from 0.8 to allow passes to travel further while still slowing down naturally
+  ANGULAR_DAMPING: 4.0, // Increased from 3.5 to prevent excessive spinning during passes
 
-  // Impact forces - reduce these for gentler bounces
-  HORIZONTAL_FORCE: 0.3, // Reduced from 0.4 for less bouncing
-  VERTICAL_FORCE: 0.5, // Reduced from 0.6 for less bouncing
-  UPWARD_BIAS: 0.15, // Reduced from 0.2 for less upward bounce
+  // Impact forces - tuned for better pass reception
+  HORIZONTAL_FORCE: 0.25, // Reduced from 0.3 for gentler interactions
+  VERTICAL_FORCE: 0.4, // Reduced from 0.5 for more ground-based passes
+  UPWARD_BIAS: 0.1, // Reduced from 0.15 to keep passes lower and more accurate
 };
 
 export const ABILITY_RESPAWN_TIME = 15 * 1000;

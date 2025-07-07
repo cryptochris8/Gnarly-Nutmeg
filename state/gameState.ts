@@ -1536,8 +1536,270 @@ export class SoccerGame {
       `Throw-in to ${throwInTeam.toUpperCase()} team.`
     );
     
-    // Simple ball reset for throw-in
-    this.resetBallAtPosition(throwInPosition);
+    // Find an AI player from the correct team to perform the throw-in
+    const aiPlayer = this.selectAIPlayerForThrowIn(throwInTeam, throwInPosition);
+    
+    if (aiPlayer) {
+      // Reset ball at throw-in position
+      this.resetBallAtPosition(throwInPosition);
+      
+      // Assign the throw-in to the AI player with 5-second timer
+      this.assignThrowInToAI(aiPlayer, throwInPosition, throwInTeam);
+    } else {
+      // Fallback to simple ball reset if no AI player available
+      console.log("No AI player available for throw-in, falling back to simple reset");
+      this.resetBallAtPosition(throwInPosition);
+    }
+  }
+
+  /**
+   * Select the best AI player from the team to perform the throw-in
+   * @param team - The team that gets the throw-in
+   * @param throwInPosition - Where the throw-in will happen
+   * @returns The selected AI player or null if none available
+   */
+  private selectAIPlayerForThrowIn(team: "red" | "blue", throwInPosition: Vector3Like): AIPlayerEntity | null {
+    // Get AI players from the correct team
+    const aiTeam = team === "red" ? sharedState.getRedAITeam() : sharedState.getBlueAITeam();
+    
+    if (!aiTeam || aiTeam.length === 0) {
+      console.log(`No AI players available on ${team} team for throw-in`);
+      return null;
+    }
+    
+    // Filter for spawned and available AI players
+    const availableAI = aiTeam.filter(ai => 
+      ai.isSpawned && 
+      !ai.isStunned && 
+      !ai.isPlayerFrozen
+    );
+    
+    if (availableAI.length === 0) {
+      console.log(`No available AI players on ${team} team for throw-in`);
+      return null;
+    }
+    
+    // Select the closest AI player to the throw-in position
+    let closestAI: AIPlayerEntity | null = null;
+    let closestDistance = Infinity;
+    
+    for (const ai of availableAI) {
+      const distance = Math.sqrt(
+        Math.pow(ai.position.x - throwInPosition.x, 2) + 
+        Math.pow(ai.position.z - throwInPosition.z, 2)
+      );
+      
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestAI = ai;
+      }
+    }
+    
+    if (closestAI) {
+      console.log(`Selected ${closestAI.player.username} (${closestAI.role}) for throw-in at distance ${closestDistance.toFixed(2)}`);
+    }
+    
+    return closestAI;
+  }
+
+  /**
+   * Assign the throw-in to an AI player with automatic execution after 5 seconds
+   * @param aiPlayer - The AI player who will perform the throw-in
+   * @param throwInPosition - Where the throw-in will happen
+   * @param team - The team performing the throw-in
+   */
+  private assignThrowInToAI(aiPlayer: AIPlayerEntity, throwInPosition: Vector3Like, team: "red" | "blue") {
+    console.log(`Assigning throw-in to ${aiPlayer.player.username} (${aiPlayer.role})`);
+    
+    // Move the AI player to the throw-in position
+    aiPlayer.setPosition(throwInPosition);
+    
+    // Notify about the throw-in assignment
+    this.world.chatManager.sendBroadcastMessage(
+      `${aiPlayer.player.username} will take the throw-in for ${team.toUpperCase()} team.`
+    );
+    
+    // Set up 5-second timer for automatic throw-in
+    setTimeout(() => {
+      this.executeAIThrowIn(aiPlayer, team);
+    }, 5000);
+  }
+
+  /**
+   * Execute the actual throw-in by the AI player
+   * @param aiPlayer - The AI player performing the throw-in
+   * @param team - The team performing the throw-in
+   */
+  private executeAIThrowIn(aiPlayer: AIPlayerEntity, team: "red" | "blue") {
+    console.log(`Executing throw-in by ${aiPlayer.player.username}`);
+    
+    // Verify the AI player is still available
+    if (!aiPlayer.isSpawned || aiPlayer.isStunned || aiPlayer.isPlayerFrozen) {
+      console.log("AI player no longer available for throw-in, resetting ball");
+      this.handleBallReset("AI player unavailable for throw-in");
+      return;
+    }
+    
+    // Get the ball and attach it to the AI player
+    const ball = sharedState.getSoccerBall();
+    if (!ball) {
+      console.log("Ball not found for throw-in");
+      return;
+    }
+    
+    // Attach ball to AI player
+    sharedState.setAttachedPlayer(aiPlayer);
+    
+    // Find the best teammate to throw to
+    const throwTarget = this.findThrowInTarget(aiPlayer, team);
+    
+    if (throwTarget) {
+      console.log(`Throwing to ${throwTarget.player?.username || 'teammate'}`);
+      
+      // Calculate throw direction toward target
+      const throwDirection = {
+        x: throwTarget.position.x - aiPlayer.position.x,
+        z: throwTarget.position.z - aiPlayer.position.z
+      };
+      
+      // Normalize the direction
+      const distance = Math.sqrt(throwDirection.x * throwDirection.x + throwDirection.z * throwDirection.z);
+      if (distance > 0) {
+        throwDirection.x /= distance;
+        throwDirection.z /= distance;
+      }
+      
+      // Execute the throw
+      this.performThrowIn(aiPlayer, throwDirection);
+    } else {
+      // No good target found, throw toward center of field
+      console.log("No good throw target found, throwing toward center field");
+      
+      const centerDirection = {
+        x: AI_FIELD_CENTER_X - aiPlayer.position.x,
+        z: AI_FIELD_CENTER_Z - aiPlayer.position.z
+      };
+      
+      // Normalize the direction
+      const distance = Math.sqrt(centerDirection.x * centerDirection.x + centerDirection.z * centerDirection.z);
+      if (distance > 0) {
+        centerDirection.x /= distance;
+        centerDirection.z /= distance;
+      }
+      
+      this.performThrowIn(aiPlayer, centerDirection);
+    }
+  }
+
+  /**
+   * Find the best teammate to throw the ball to
+   * @param thrower - The AI player throwing the ball
+   * @param team - The team performing the throw-in
+   * @returns The best teammate to throw to, or null if none found
+   */
+  private findThrowInTarget(thrower: AIPlayerEntity, team: "red" | "blue"): SoccerPlayerEntity | null {
+    // Get all teammates (AI and human)
+    const aiTeammates = sharedState.getAITeammates(thrower).filter(ai => 
+      ai.isSpawned && !ai.isStunned && !ai.isPlayerFrozen && ai !== thrower
+    );
+    
+    const allTeammates: SoccerPlayerEntity[] = [...aiTeammates];
+    
+    // Add human players to teammates list
+    if (thrower.world) {
+      const allPlayerEntities = thrower.world.entityManager.getAllPlayerEntities();
+      for (const playerEntity of allPlayerEntities) {
+        if (playerEntity instanceof SoccerPlayerEntity && 
+            playerEntity !== thrower && 
+            playerEntity.team === team && 
+            playerEntity.isSpawned && 
+            !playerEntity.isPlayerFrozen &&
+            !(playerEntity instanceof AIPlayerEntity)) { // Only add human players
+          allTeammates.push(playerEntity);
+        }
+      }
+    }
+    
+    if (allTeammates.length === 0) {
+      return null;
+    }
+    
+    // Find the best teammate (closest to opponent's goal and in good position)
+    let bestTeammate: SoccerPlayerEntity | null = null;
+    let bestScore = -Infinity;
+    
+    const opponentGoalX = team === "red" ? AI_GOAL_LINE_X_BLUE : AI_GOAL_LINE_X_RED;
+    
+    for (const teammate of allTeammates) {
+      const distanceToOpponentGoal = Math.abs(teammate.position.x - opponentGoalX);
+      const distanceToThrower = Math.sqrt(
+        Math.pow(teammate.position.x - thrower.position.x, 2) + 
+        Math.pow(teammate.position.z - thrower.position.z, 2)
+      );
+      
+      // Prefer teammates that are:
+      // 1. Closer to opponent's goal (attacking position)
+      // 2. Not too far from thrower (reasonable throw distance)
+      // 3. In a good field position
+      
+      let score = 0;
+      
+      // Bonus for being closer to opponent goal
+      score += (50 - distanceToOpponentGoal) * 2;
+      
+      // Penalty for being too far from thrower
+      if (distanceToThrower > 25) {
+        score -= (distanceToThrower - 25) * 3;
+      }
+      
+      // Bonus for being in attacking half
+      const isInAttackingHalf = team === "red" ? teammate.position.x > AI_FIELD_CENTER_X : teammate.position.x < AI_FIELD_CENTER_X;
+      if (isInAttackingHalf) {
+        score += 20;
+      }
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestTeammate = teammate;
+      }
+    }
+    
+    return bestTeammate;
+  }
+
+  /**
+   * Perform the actual throw-in mechanics
+   * @param thrower - The AI player throwing the ball
+   * @param direction - The direction to throw the ball
+   */
+  private performThrowIn(thrower: AIPlayerEntity, direction: { x: number; z: number }) {
+    const ball = sharedState.getSoccerBall();
+    if (!ball) return;
+    
+    // Detach ball from player
+    sharedState.setAttachedPlayer(null);
+    
+    // Apply throw force to the ball
+    const throwForce = 15; // Moderate throw force
+    const throwHeight = 2; // Slight upward trajectory
+    
+    ball.applyImpulse({
+      x: direction.x * throwForce,
+      y: throwHeight,
+      z: direction.z * throwForce
+    });
+    
+    // Reset ball's angular velocity for clean throw
+    ball.setAngularVelocity({ x: 0, y: 0, z: 0 });
+    
+    // Play throw sound
+    new Audio({
+      uri: "audio/sfx/soccer/kick.mp3",
+      volume: 0.2,
+      loop: false,
+    }).play(this.world);
+    
+    console.log(`${thrower.player.username} completed throw-in`);
   }
 
   /**
