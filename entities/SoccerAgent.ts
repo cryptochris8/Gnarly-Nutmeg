@@ -75,7 +75,7 @@ export class SoccerAgent {
   
   /**
    * Check if the agent is within shooting range of the goal.
-   * Enhanced to consider role's offensive contribution.
+   * Enhanced to consider role's offensive contribution and stamina levels.
    */
   public withinShootingRange(): boolean {
     const opponentGoalLineX = this.entity.team === 'red' ? AI_GOAL_LINE_X_BLUE : AI_GOAL_LINE_X_RED;
@@ -91,6 +91,14 @@ export class SoccerAgent {
     
     const offensiveFactor = 1 + (roleDef.offensiveContribution - 5) / 25; 
     maxShootingRange *= offensiveFactor;
+
+    // **STAMINA CONSIDERATION**: Reduce shooting range when stamina is low
+    const staminaPercentage = this.entity.getStaminaPercentage();
+    if (staminaPercentage < 30) {
+      maxShootingRange *= 0.7; // Reduce range by 30% when stamina is low
+    } else if (staminaPercentage < 50) {
+      maxShootingRange *= 0.85; // Reduce range by 15% when stamina is moderate
+    }
 
     const distanceToGoal = this.entity.distanceBetween(this.entity.position, goalPosition);
     return distanceToGoal < maxShootingRange;
@@ -172,6 +180,7 @@ export class SoccerAgent {
   
   /**
    * Check if the ball is within reach to intercept
+   * Enhanced to consider stamina levels for more conservative pursuit when tired
    */
   public ballInReach(): boolean {
     const ball = sharedState.getSoccerBall();
@@ -182,7 +191,15 @@ export class SoccerAgent {
     
     // Extend the intercept distance by an additional factor to improve ball pursuit
     // This makes players more eager to go for balls that are further away
-    const extendedInterceptDistance = roleDef.interceptDistance * 1.5;
+    let extendedInterceptDistance = roleDef.interceptDistance * 1.5;
+    
+    // **STAMINA CONSIDERATION**: Reduce intercept distance when stamina is low
+    const staminaPercentage = this.entity.getStaminaPercentage();
+    if (staminaPercentage < 25) {
+      extendedInterceptDistance *= 0.6; // Reduce by 40% when stamina is very low
+    } else if (staminaPercentage < 40) {
+      extendedInterceptDistance *= 0.8; // Reduce by 20% when stamina is low
+    }
     
     return distanceToBall < extendedInterceptDistance;
   }

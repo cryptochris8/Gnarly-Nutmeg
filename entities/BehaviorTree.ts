@@ -102,7 +102,16 @@ export function createBehaviorTree(agent: AIPlayerEntity): BehaviorNode {
             const goalPosition = { x: opponentGoalLineX, y: 1, z: AI_FIELD_CENTER_Z }; // y:1 is a reference height
             
             // Shooting range depends on role (strikers have longer range)
-            const maxShootingRange = agent.aiRole === 'striker' ? 20 : 15;
+            let maxShootingRange = agent.aiRole === 'striker' ? 20 : 15;
+            
+            // **STAMINA CONSIDERATION**: Reduce shooting range when stamina is low
+            const staminaPercentage = agent.getStaminaPercentage();
+            if (staminaPercentage < 30) {
+              maxShootingRange *= 0.7; // Reduce range by 30% when stamina is low
+            } else if (staminaPercentage < 50) {
+              maxShootingRange *= 0.85; // Reduce range by 15% when stamina is moderate
+            }
+            
             const distanceToGoal = agent.distanceBetween(agent.position, goalPosition);
             
             return distanceToGoal < maxShootingRange;

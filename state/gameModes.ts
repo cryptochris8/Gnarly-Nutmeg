@@ -60,7 +60,7 @@ export const ARCADE_MODE_CONFIG = {
   },
   
   playerSpeed: 1.2,
-  sprintMultiplier: 2.0,
+              sprintMultiplier: 1.5,
   
   // Arcade features
   crowdAudio: true,

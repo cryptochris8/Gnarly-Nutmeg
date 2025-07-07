@@ -452,7 +452,16 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     const ballPosition = ball.position;
     const hasBall = sharedState.getAttachedPlayer() === this;
     
-
+    // **STAMINA CONSERVATION LOGIC**
+    // Check stamina levels and adjust behavior accordingly
+    const staminaPercentage = this.getStaminaPercentage();
+    const shouldConserveStamina = this.shouldConserveStamina(staminaPercentage);
+    
+    if (shouldConserveStamina) {
+      // When stamina is low, prioritize conservative play
+      this.handleStaminaConservation(ballPosition, hasBall, staminaPercentage);
+      return;
+    }
     
     // Check if a teammate has the ball - special case to prevent teammates from chasing player with ball
     const playerWithBall = sharedState.getAttachedPlayer();
@@ -3687,5 +3696,121 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     return targetPosition.x >= safeMinX && targetPosition.x <= safeMaxX &&
            targetPosition.z >= safeMinZ && targetPosition.z <= safeMaxZ;
+  }
+
+  /**
+   * STAMINA CONSERVATION SYSTEM
+   * Determines if the AI should conserve stamina based on current levels
+   * @param staminaPercentage Current stamina as a percentage (0-100)
+   * @returns True if stamina should be conserved
+   */
+  private shouldConserveStamina(staminaPercentage: number): boolean {
+    // Different stamina thresholds based on role
+    let conservationThreshold = 30; // Default threshold
+    
+    switch (this.aiRole) {
+      case 'goalkeeper':
+        conservationThreshold = 20; // Goalkeepers conserve less aggressively
+        break;
+      case 'striker':
+        conservationThreshold = 40; // Strikers need to conserve more to be effective
+        break;
+      case 'central-midfielder-1':
+      case 'central-midfielder-2':
+        conservationThreshold = 35; // Midfielders balance defense and attack
+        break;
+      case 'left-back':
+      case 'right-back':
+        conservationThreshold = 25; // Defenders can be more aggressive with stamina
+        break;
+    }
+    
+    // More aggressive conservation as the game progresses
+    // In the second half, players should be more conservative with their stamina
+    // For now, we'll use a consistent threshold regardless of game phase
+    
+    return staminaPercentage < conservationThreshold;
+  }
+  
+  /**
+   * STAMINA CONSERVATION HANDLER
+   * Handles AI behavior when stamina is low, prioritizing recovery and conservative play
+   * @param ballPosition Current ball position
+   * @param hasBall Whether this AI has the ball
+   * @param staminaPercentage Current stamina percentage
+   */
+  private handleStaminaConservation(ballPosition: Vector3Like, hasBall: boolean, staminaPercentage: number): void {
+    // Log conservation behavior occasionally
+    if (Math.random() < 0.02) { // 2% chance to log
+      console.log(`💨 STAMINA CONSERVATION: ${this.player.username} (${this.aiRole}) conserving stamina (${staminaPercentage.toFixed(0)}%)`);
+    }
+    
+    if (hasBall) {
+      // If we have the ball and low stamina, prioritize quick pass over dribbling
+      const passSuccess = this.passBall();
+      if (passSuccess) {
+        console.log(`⚡ STAMINA CONSERVATION: ${this.player.username} made quick pass to preserve stamina`);
+        return;
+      }
+      
+      // If passing failed, hold position and slow down
+      this.targetPosition = {
+        x: this.position.x,
+        y: this.position.y,
+        z: this.position.z
+      };
+      return;
+    }
+    
+    // When we don't have the ball, prioritize positioning over aggressive pursuit
+    const roleDef = ROLE_DEFINITIONS[this.aiRole];
+    const distanceToBall = this.distanceBetween(this.position, ballPosition);
+    
+    // Reduce effective pursuit based on stamina levels
+    const staminaFactor = Math.max(0.3, staminaPercentage / 100); // Never go below 30% pursuit
+    const adjustedPursuitTendency = roleDef.pursuitTendency * staminaFactor;
+    
+    // Only pursue if we're very close to the ball or if we're the designated role
+    const shouldPursue = distanceToBall < 8 && Math.random() < adjustedPursuitTendency;
+    
+    if (shouldPursue && this.isClosestTeammateToPosition(ballPosition)) {
+      // Pursue the ball but with reduced intensity
+      this.targetPosition = {
+        x: ballPosition.x,
+        y: ballPosition.y,
+        z: ballPosition.z
+      };
+    } else {
+      // Move to a conservative position that allows stamina recovery
+      const formationPosition = this.getRoleBasedPosition();
+      
+      // Move towards formation position but prioritize standing still for stamina recovery
+      const distanceToFormation = this.distanceBetween(this.position, formationPosition);
+      
+      if (distanceToFormation < 3) {
+        // If close to formation position, hold position for stamina recovery
+        this.targetPosition = {
+          x: this.position.x,
+          y: this.position.y,
+          z: this.position.z
+        };
+      } else {
+        // Move slowly towards formation position
+        const direction = {
+          x: formationPosition.x - this.position.x,
+          z: formationPosition.z - this.position.z
+        };
+        const distance = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+        
+        if (distance > 0.1) {
+          const moveDistance = Math.min(2, distance); // Move only 2 units at a time
+          this.targetPosition = {
+            x: this.position.x + (direction.x / distance) * moveDistance,
+            y: this.position.y,
+            z: this.position.z + (direction.z / distance) * moveDistance
+          };
+        }
+      }
+    }
   }
 }
