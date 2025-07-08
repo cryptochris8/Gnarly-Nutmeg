@@ -119,6 +119,12 @@ export default function createSoccerBall(world: World) {
       lastPosition = { ...entity.position };
     }
     
+    // **BALL STATIONARY DETECTION SYSTEM**
+    // Update stationary tracking for AI pursuit logic
+    // This ensures balls that sit idle get retrieved by AI players
+    const currentPos = { ...entity.position };
+    sharedState.updateBallStationaryStatus(currentPos);
+    
     const attachedPlayer = sharedState.getAttachedPlayer();
 
     // If the ball falls significantly below the field (should be rare now), reset it

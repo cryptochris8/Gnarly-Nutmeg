@@ -3493,8 +3493,22 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
       }
     }
     
-    // Maximum simultaneous pursuers
-    const maxSimultaneousPursuers = 2;
+    // **ENHANCED STATIONARY BALL LOGIC**
+    // Be more aggressive when ball is stationary
+    const isBallStationary = sharedState.isBallStationary();
+    const stationaryDuration = sharedState.getBallStationaryDuration();
+    
+    // Adjust pursuit limits based on ball stationary status
+    let maxSimultaneousPursuers = 2; // Default
+    if (isBallStationary) {
+      if (stationaryDuration > 10000) { // 10+ seconds
+        maxSimultaneousPursuers = 4; // Very aggressive team response
+      } else if (stationaryDuration > 7000) { // 7+ seconds  
+        maxSimultaneousPursuers = 3; // More aggressive
+      } else {
+        maxSimultaneousPursuers = 3; // Still more aggressive than normal
+      }
+    }
     
     // Always allow pursuit if we're the closest teammate to the ball
     if (this.isClosestTeammateToPosition(ballPosition)) {
@@ -3535,7 +3549,14 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     }
     
     // Only allow pursuit if we're within the pursuit limit by rank
-    return myPursuitRank <= maxSimultaneousPursuers;
+    const shouldPursue = myPursuitRank <= maxSimultaneousPursuers;
+    
+    // Log enhanced coordination for stationary balls
+    if (isBallStationary && shouldPursue) {
+      console.log(`${this.player.username} (${this.aiRole}) ENHANCED pursuit coordination for stationary ball: rank ${myPursuitRank}/${maxSimultaneousPursuers}, pursuers: ${pursuingCount}, duration: ${(stationaryDuration/1000).toFixed(1)}s`);
+    }
+    
+    return shouldPursue;
   }
 
   /**
@@ -3561,7 +3582,47 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     // At this point we've verified the ball is truly loose (not possessed by anyone)
     
-    // SPECIAL CASE: Stuck balls in corners/boundaries
+    // **ENHANCED STATIONARY BALL DETECTION**
+    // Check if ball is stationary anywhere on the field (not just boundaries)
+    const isBallStationary = sharedState.isBallStationary();
+    const stationaryDuration = sharedState.getBallStationaryDuration();
+    
+    if (isBallStationary) {
+      const distanceToBall = this.distanceBetween(this.position, ballPosition);
+      
+      // For stationary balls, be much more aggressive with pursuit
+      let maxStationaryDistance = 40; // Base distance for stationary balls
+      
+      // Increase pursuit distance based on how long ball has been stationary
+      if (stationaryDuration > 10000) { // 10+ seconds
+        maxStationaryDistance = 60; // Very aggressive pursuit
+      } else if (stationaryDuration > 7000) { // 7+ seconds
+        maxStationaryDistance = 50; // More aggressive
+      }
+      
+      // Allow more players to pursue stationary balls
+      const teammates = this.getVisibleTeammates();
+      let playersCloser = 0;
+      
+      for (const teammate of teammates) {
+        if (teammate instanceof AIPlayerEntity && teammate.isSpawned) {
+          const teammateDistance = this.distanceBetween(teammate.position, ballPosition);
+          if (teammateDistance < distanceToBall) {
+            playersCloser++;
+          }
+        }
+      }
+      
+      // Allow up to 3 players to pursue stationary balls (vs normal 2)
+      const shouldPursueStationary = playersCloser < 3 && distanceToBall < maxStationaryDistance;
+      
+      if (shouldPursueStationary) {
+        console.log(`${this.player.username} (${this.aiRole}) pursuing STATIONARY ball (idle for ${(stationaryDuration/1000).toFixed(1)}s, distance: ${distanceToBall.toFixed(1)})`);
+        return true;
+      }
+    }
+    
+    // SPECIAL CASE: Stuck balls in corners/boundaries (existing logic)
     // Check if ball is near boundaries and stationary
     const BOUNDARY_THRESHOLD = 12;
     const nearMinX = Math.abs(ballPosition.x - FIELD_MIN_X) < BOUNDARY_THRESHOLD;
@@ -3624,6 +3685,18 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
       case 'striker': maxPursuitDistance = STRIKER_PURSUIT_DISTANCE; break;
     }
     
+    // **ENHANCED: Increase pursuit distance for stationary balls**
+    const ballIsStationary = sharedState.isBallStationary();
+    if (ballIsStationary) {
+      const stationaryDuration = sharedState.getBallStationaryDuration();
+      if (stationaryDuration > 7000) { // 7+ seconds
+        maxPursuitDistance *= 2.5; // Very extended range
+      } else {
+        maxPursuitDistance *= 2.0; // Extended range
+      }
+      console.log(`${this.player.username} (${this.aiRole}) using EXTENDED pursuit distance ${maxPursuitDistance.toFixed(1)} for stationary ball`);
+    }
+    
     const withinDistance = this.distanceBetween(this.position, ballPosition) < maxPursuitDistance;
     
     // If ball is in preferred area OR we're one of the closest players, consider it relevant
@@ -3655,6 +3728,17 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
       case 'central-midfielder-1':
       case 'central-midfielder-2': maxPursuitDistance = MIDFIELDER_PURSUIT_DISTANCE; break;
       case 'striker': maxPursuitDistance = STRIKER_PURSUIT_DISTANCE; break;
+    }
+    
+    // **ENHANCED: Increase pursuit distance for stationary balls in chase calculations**
+    const ballStationaryStatus = sharedState.isBallStationary();
+    if (ballStationaryStatus) {
+      const stationaryDuration = sharedState.getBallStationaryDuration();
+      if (stationaryDuration > 7000) { // 7+ seconds
+        maxPursuitDistance *= 2.5; // Very extended range
+      } else {
+        maxPursuitDistance *= 2.0; // Extended range
+      }
     }
     
     // Calculate distance from ball to edge of preferred area
