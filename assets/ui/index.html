@@ -4420,7 +4420,7 @@
 
 <div class="instructions-panel" id="instructionsPanel">
   <div class="title-container">
-    <img src="{{CDN_ASSETS_URL}}/ui/logos/hysports-soccer-logo.png" alt="HySports Soccer Logo" class="title-logo">
+    <img src="{{CDN_ASSETS_URL}}/ui/logos/Gnarly-nutmeg.png" alt="Gnarly Nutmeg Soccer Logo" class="title-logo">
   </div>
   
   <div class="how-to-play-container">
@@ -4429,9 +4429,10 @@
       <div class="how-to-play-tooltip">
         <p>⚽ Use WASD or Arrow keys to move</p>
         <p>⚽ Left Click to pass</p>
+        <p>⚽ Type /pass in chat to force a pass when you have the ball</p>
+        <p>⚽ Press F to request pass from teammate</p>
         <p>⚽ Hold Right Mouse Button to charge a shot / Release to shoot</p>
         <p>⚽ Space bar to tackle or dodge</p>
-        <p>🎪 Press F to activate power-ups (Arcade Mode only)</p>
         <p>⚽ Highest score when time expires wins!</p>
         <p>⚽ Select your game mode and team to get started!</p>
       </div>
@@ -4450,7 +4451,7 @@
       <button class="game-mode-btn arcade" id="arcadeModeBtn">
         🎪 Arcade Mode
         <div class="mode-description">Enhanced Soccer Action</div>
-        <div class="mode-features">• Unlimited F-key power-ups • 2 x 5-minute halves • Special effects</div>
+        <div class="mode-features">• Unlimited number-key power-ups • 2 x 5-minute halves • Special effects</div>
       </button>
       <button class="game-mode-btn tournament" id="tournamentModeBtn">
         🏆 Tournament Mode
@@ -6735,7 +6736,7 @@
       playGoalCelebration(data.team);
     }
 
-    // Handle powerup feedback from F key activation
+            // Handle powerup feedback from numbered key activation
     if (data.type === "powerup-feedback") {
       console.log("Powerup feedback received:", data);
       showPowerupFeedback(data);
@@ -8044,7 +8045,7 @@
       
     'fireball': 12000,        // 12 seconds
     'mega_kick': 15000,       // 15 seconds
-    'random_powerup': 3000    // 3 seconds for F key
+          'random_powerup': 3000    // 3 seconds for random activation
   };
 
   // Track cooldown states
@@ -8366,11 +8367,7 @@
           event.preventDefault();
           activatePowerUp('shuriken');
           break;
-        case 'f':
-        case 'F':
-          event.preventDefault();
-          activateRandomPowerUp();
-          break;
+        // F key removed - now used for teammate pass requests in game controller
         case 'u':
         case 'U':
           event.preventDefault();
@@ -8392,7 +8389,7 @@
     }
   }
 
-  // Activate random power-up (F key functionality) - enhanced version
+      // Activate random power-up (UI button functionality) - enhanced version
   function activateRandomPowerUp() {
     console.log(`🎲 Attempting to activate random power-up`);
     
@@ -8718,37 +8715,41 @@
     const mobileActions = document.createElement('div');
     mobileActions.className = 'mobile-actions';
     
-    // Shoot button
+    // Shoot button (Hytopia-compliant with onclick attributes)
     const shootButton = document.createElement('button');
     shootButton.className = 'mobile-action-btn primary';
     shootButton.id = 'mobile-shoot-btn';
     shootButton.textContent = 'KICK';
     shootButton.setAttribute('ontouchstart', 'handleMobileAction("shoot", true)');
     shootButton.setAttribute('ontouchend', 'handleMobileAction("shoot", false)');
+    shootButton.setAttribute('onclick', 'handleMobileQuickAction("shoot")');
     
-    // Pass button
+    // Pass button (Hytopia-compliant with onclick attributes)
     const passButton = document.createElement('button');
     passButton.className = 'mobile-action-btn secondary';
     passButton.id = 'mobile-pass-btn';
     passButton.textContent = 'PASS';
     passButton.setAttribute('ontouchstart', 'handleMobileAction("pass", true)');
     passButton.setAttribute('ontouchend', 'handleMobileAction("pass", false)');
+    passButton.setAttribute('onclick', 'handleMobileQuickAction("pass")');
     
-    // Tackle button
+    // Tackle button (Hytopia-compliant with onclick attributes)
     const tackleButton = document.createElement('button');
     tackleButton.className = 'mobile-action-btn';
     tackleButton.id = 'mobile-tackle-btn';
     tackleButton.textContent = 'TACKLE';
     tackleButton.setAttribute('ontouchstart', 'handleMobileAction("tackle", true)');
     tackleButton.setAttribute('ontouchend', 'handleMobileAction("tackle", false)');
+    tackleButton.setAttribute('onclick', 'handleMobileQuickAction("tackle")');
     
-    // Dodge button
+    // Dodge button (Hytopia-compliant with onclick attributes)
     const dodgeButton = document.createElement('button');
     dodgeButton.className = 'mobile-action-btn';
     dodgeButton.id = 'mobile-dodge-btn';
     dodgeButton.textContent = 'DODGE';
     dodgeButton.setAttribute('ontouchstart', 'handleMobileAction("dodge", true)');
     dodgeButton.setAttribute('ontouchend', 'handleMobileAction("dodge", false)');
+    dodgeButton.setAttribute('onclick', 'handleMobileQuickAction("dodge")');
     
     // Add buttons to actions container
     mobileActions.appendChild(shootButton);
@@ -8833,6 +8834,16 @@
         y: joystickRect.top + joystickRect.height / 2
       };
     });
+  }
+  
+  // Handle mobile action quick press (for onclick events) - Hytopia-compliant
+  function handleMobileQuickAction(action) {
+    console.log(`📱 Quick action: ${action}`);
+    // Simulate press and release for onclick events
+    handleMobileAction(action, true);
+    setTimeout(function() {
+      handleMobileAction(action, false);
+    }, 100);
   }
   
   // Update joystick position and input
@@ -9004,7 +9015,17 @@
         controls.style.border = 'none';
       }, 3000);
       
-      return 'Mobile controls test completed - should be visible now';
+      // Test button events (Hytopia-compliant onclick)
+      setTimeout(() => {
+        console.log('📱 Testing button events...');
+        const shootBtn = document.getElementById('mobile-shoot-btn');
+        if (shootBtn) {
+          console.log('📱 Simulating shoot button click (Hytopia-compliant)...');
+          handleMobileQuickAction('shoot');
+        }
+      }, 1000);
+      
+      return 'Mobile controls test completed - should be visible now with button test';
     } else {
       console.error('📱 Mobile controls container not found');
       return 'Mobile controls container not found';
@@ -9013,27 +9034,40 @@
   
   // Check mobile controls status
   function checkMobileControlsStatus() {
+    const shootButton = document.getElementById('mobile-shoot-btn');
     const status = {
       isMobileDevice: isMobileDevice,
       controlsInitialized: mobileControlsInitialized,
       controlsContainer: !!document.getElementById('mobile-controls-container'),
       joystick: !!document.getElementById('virtual-joystick'),
-      shootButton: !!document.getElementById('mobile-shoot-btn'),
+      shootButton: !!shootButton,
       passButton: !!document.getElementById('mobile-pass-btn'),
       tackleButton: !!document.getElementById('mobile-tackle-btn'),
       dodgeButton: !!document.getElementById('mobile-dodge-btn'),
       screenWidth: window.innerWidth,
       screenHeight: window.innerHeight,
-      touchCapable: 'ontouchstart' in window
+      touchCapable: 'ontouchstart' in window,
+      hytopiaAvailable: typeof hytopia !== 'undefined',
+      buttonEventsSet: shootButton ? (shootButton.getAttribute('onclick') && shootButton.getAttribute('ontouchstart')) : false
     };
     
     console.log('📱 Mobile Controls Status:', status);
+    
+    // Test button events if available (Hytopia-compliant)
+    if (shootButton) {
+      console.log('📱 Testing shoot button event setup (Hytopia-compliant)...');
+      console.log('📱 Shoot button onclick:', shootButton.getAttribute('onclick'));
+      console.log('📱 Shoot button ontouchstart:', shootButton.getAttribute('ontouchstart'));
+      console.log('📱 Shoot button ontouchend:', shootButton.getAttribute('ontouchend'));
+    }
+    
     return status;
   }
   
-  // Make mobile functions globally accessible
+  // Make mobile functions globally accessible (Hytopia-compliant)
   window.initializeMobileControls = initializeMobileControls;
   window.handleMobileAction = handleMobileAction;
+  window.handleMobileQuickAction = handleMobileQuickAction;
   window.detectMobileDevice = detectMobileDevice;
   window.testMobileControls = testMobileControls;
   window.checkMobileControlsStatus = checkMobileControlsStatus;

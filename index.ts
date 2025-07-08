@@ -2218,6 +2218,61 @@ startServer((world) => {
       }
     });
 
+    // Add command to force pass (replaces old E/R key functionality)
+    world.chatManager.registerCommand("/pass", (player, args) => {
+      console.log(`🎯 SERVER: Received /pass command from ${player.username}`);
+      
+      // Find the player's entity
+      const playerEntity = world.entityManager.getAllPlayerEntities().find(
+        (entity) => entity.player.username === player.username
+      );
+      
+      if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+        // Check if player has the ball
+        const attachedPlayer = sharedState.getAttachedPlayer();
+        const hasBall = attachedPlayer?.player?.username === player.username;
+        
+        if (hasBall) {
+          // Simulate a left mouse click to trigger the pass
+          const fakeInput = {
+            w: false, a: false, s: false, d: false, sp: false,
+            ml: true, // Left mouse click for pass
+            mr: false, q: false, sh: false, e: false, f: false,
+            "1": false
+          };
+          
+          // Call the controller's input handler directly with default camera orientation
+          if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+            playerEntity.controller.tickWithPlayerInput(
+              playerEntity,
+              fakeInput,
+              { yaw: 0, pitch: 0 }, // Default camera orientation for pass
+              16 // 16ms delta time (roughly 60fps)
+            );
+            
+            console.log(`✅ SERVER: Force pass executed for ${player.username}`);
+            
+            // Send chat feedback
+            world.chatManager.sendPlayerMessage(
+              player,
+              "⚽ Pass executed!"
+            );
+          }
+        } else {
+          console.log(`❌ SERVER: ${player.username} doesn't have the ball`);
+          world.chatManager.sendPlayerMessage(
+            player,
+            "❌ You don't have the ball! Move close to the ball to pick it up first."
+          );
+        }
+      } else {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "❌ Could not find your player entity. Make sure you've joined a team."
+        );
+      }
+    });
+
     // Add command to fix player position if stuck
     world.chatManager.registerCommand("/fixposition", (player, args) => {
       // Get current mode configuration info to display
