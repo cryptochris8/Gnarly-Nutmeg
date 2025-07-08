@@ -1890,7 +1890,7 @@
 </div>
 
 <!-- POWERUP CONTAINER -->
-<div id="powerup-container" class="powerup-container">
+<div id="powerup-container" class="powerup-container" style="position: fixed !important; bottom: 10px !important; right: 10px !important; z-index: 1000 !important;">
   <div class="powerup-title">🎮 ARCADE POWER-UPS</div>
   
   <div class="powerup-button" id="freeze-blast-btn" onclick="activatePowerUp('freeze_blast')">
@@ -2156,13 +2156,21 @@
   /* ===== ARCADE MODE POWER-UP SYSTEM STYLES ===== */
   .powerup-container {
     position: fixed;
-    bottom: 20px;
-    right: 120px;
+    bottom: 10px;
+    right: 10px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     pointer-events: none;
     z-index: 1000;
+  }
+
+  /* FORCE BOTTOM RIGHT POSITIONING - HIGHEST SPECIFICITY */
+  #powerup-container.powerup-container {
+    position: fixed !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    z-index: 1000 !important;
   }
 
   .powerup-button {
@@ -2530,9 +2538,15 @@
   /* ===== RESPONSIVE DESIGN ENHANCEMENTS ===== */
   @media (max-width: 1024px) {
     .powerup-container {
-      bottom: 15px;
-      right: 100px;
-      gap: 10px;
+      bottom: 10px;
+      right: 10px;
+      gap: 8px;
+    }
+    
+    #powerup-container.powerup-container {
+      bottom: 10px !important;
+      right: 10px !important;
+      gap: 8px !important;
     }
     
     .powerup-button {
@@ -2556,8 +2570,14 @@
   @media (max-width: 768px) {
     .powerup-container {
       bottom: 10px;
-      right: 80px;
-      gap: 8px;
+      right: 10px;
+      gap: 6px;
+    }
+    
+    #powerup-container.powerup-container {
+      bottom: 10px !important;
+      right: 10px !important;
+      gap: 6px !important;
     }
     
     .powerup-button {
@@ -2606,6 +2626,14 @@
       right: 50%;
       transform: translateX(50%);
       gap: 6px;
+    }
+    
+    #powerup-container.powerup-container {
+      flex-direction: row !important;
+      bottom: 10px !important;
+      right: 50% !important;
+      transform: translateX(50%) !important;
+      gap: 6px !important;
     }
     
     .powerup-button {
@@ -2756,61 +2784,9 @@
     }
   }
 
-  /* ===== FORCE POWERUP CONTAINER POSITIONING ===== */
-  #powerup-container.powerup-container {
-    position: fixed !important;
-    bottom: 20px !important;
-    right: 120px !important;
-    z-index: 1000 !important;
-  }
+  /* Removed first duplicate FORCE positioning rules - using clean CSS architecture instead */
 
-  @media (max-width: 1024px) {
-    #powerup-container.powerup-container {
-      right: 100px !important;
-    }
-  }
-
-  @media (max-width: 768px) {
-    #powerup-container.powerup-container {
-      right: 80px !important;
-    }
-  }
-
-  @media (max-width: 480px) {
-    #powerup-container.powerup-container {
-      flex-direction: row !important;
-      right: 50% !important;
-      transform: translateX(50%) !important;
-    }
-  }
-
-  /* ===== FORCE POWERUP CONTAINER POSITIONING ===== */
-  #powerup-container.powerup-container {
-    position: fixed !important;
-    bottom: 20px !important;
-    right: 120px !important;
-    z-index: 1000 !important;
-  }
-
-  @media (max-width: 1024px) {
-    #powerup-container.powerup-container {
-      right: 100px !important;
-    }
-  }
-
-  @media (max-width: 768px) {
-    #powerup-container.powerup-container {
-      right: 80px !important;
-    }
-  }
-
-  @media (max-width: 480px) {
-    #powerup-container.powerup-container {
-      flex-direction: row !important;
-      right: 50% !important;
-      transform: translateX(50%) !important;
-    }
-  }
+  /* Removed second duplicate FORCE positioning rules - using clean CSS architecture instead */
 
   /* ===== ENHANCED GAME MODE SELECTION POLISH ===== */
   .game-mode-btn.fifa {
