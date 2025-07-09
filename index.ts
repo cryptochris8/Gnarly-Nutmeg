@@ -40,7 +40,8 @@ import {
   FIELD_MAX_Z,
   PASS_FORCE,
   BALL_CONFIG,
-  MATCH_DURATION
+  MATCH_DURATION,
+  ABILITY_PICKUP_POSITIONS
 } from "./state/gameConfig";
 import SoccerPlayerEntity from "./entities/SoccerPlayerEntity";
 import AIPlayerEntity, { type SoccerAIRole } from "./entities/AIPlayerEntity";
@@ -48,7 +49,7 @@ import sharedState from "./state/sharedState";
 import { getDirectionFromRotation } from "./utils/direction";
 import spectatorMode from "./utils/observerMode";
 import { soccerMap } from "./state/map";
-import { GameMode, getCurrentGameMode, setGameMode, isFIFAMode, isArcadeMode, isPickupMode, isTournamentMode, getCurrentModeConfig } from "./state/gameModes";
+import { GameMode, getCurrentGameMode, setGameMode, isFIFAMode, isArcadeMode, isTournamentMode, getCurrentModeConfig } from "./state/gameModes";
 import { TournamentManager } from "./state/tournamentManager";
 import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
 import { PickupGameManager } from "./state/pickupGameManager";
@@ -389,9 +390,7 @@ startServer((world) => {
           } else if (data.mode === "arcade") {
             setGameMode(GameMode.ARCADE);
             console.log("Game mode set to Arcade Mode");
-          } else if (data.mode === "pickup") {
-            setGameMode(GameMode.PICKUP);
-            console.log("Game mode set to Pickup Mode");
+                  // Pickup mode removed - physical pickups now integrated into Arcade mode
           }
           
           // Send confirmation back to UI
@@ -497,11 +496,11 @@ startServer((world) => {
               if (gameStarted) {
                 console.log("✅ Game started successfully with AI!");
                 
-                // Activate pickup system if in pickup mode
-                if (isPickupMode()) {
-                  console.log("🎯 Activating pickup system for Pickup Mode");
-                  pickupManager.activate();
-                }
+                        // Activate pickup system if in arcade mode
+        if (isArcadeMode()) {
+          console.log(`🎯 Activating pickup system for Arcade Mode`);
+          pickupManager.activate();
+        }
                 
                 // Unfreeze player after short delay
                 setTimeout(() => {
@@ -1688,7 +1687,13 @@ startServer((world) => {
         ) {
           // Potentially wait slightly or add a ready check before starting multiplayer
           console.log(`Enough human players for multiplayer (Red: ${humanPlayersOnRed}, Blue: ${humanPlayersOnBlue}), attempting start...`);
-          game.startGame(); 
+          const gameStarted = game.startGame();
+          
+                // Activate pickup system if in arcade mode for multiplayer
+      if (gameStarted && isArcadeMode()) {
+        console.log(`🎯 Activating pickup system for Arcade Mode (Multiplayer)`);
+        pickupManager.activate();
+      }
         } else if (aiPlayers.length > 0) {
           // In single-player mode with AI - don't auto-start here, already handled by team selection
           console.log(`Single-player mode detected (${aiPlayers.length} AI players) - skipping multiplayer auto-start`);
@@ -2591,6 +2596,10 @@ startServer((world) => {
         // Start FIFA crowd atmosphere when switching to FIFA during active game
         fifaCrowdManager.start();
         
+        // Deactivate pickup system when switching to FIFA mode
+        pickupManager.deactivate();
+        console.log("🚫 Pickup system deactivated for FIFA Mode");
+        
         world.chatManager.sendPlayerMessage(
           player,
           `🎵 Switched to FIFA mode music`
@@ -2624,6 +2633,10 @@ startServer((world) => {
         // Stop FIFA crowd atmosphere when switching to arcade
         fifaCrowdManager.stop();
         
+        // Activate pickup system when switching to Arcade mode
+        pickupManager.activate();
+        console.log("🎯 Pickup system activated for Arcade Mode");
+        
         world.chatManager.sendPlayerMessage(
           player,
           `🎵 Switched to Arcade mode music`
@@ -2632,7 +2645,7 @@ startServer((world) => {
       
       world.chatManager.sendPlayerMessage(
         player,
-        `🎪 Switched to Arcade Mode - Enhanced soccer with unlimited F-key power-ups!`
+        `🎪 Switched to Arcade Mode - Enhanced soccer with physical power-up pickups!`
       );
       world.chatManager.sendPlayerMessage(
         player,
@@ -2640,42 +2653,11 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Features: Unlimited F-key power-ups, enhanced physics, and special effects!`
+        `Features: Physical power-up pickups, enhanced physics, and special effects!`
       );
     });
 
-    world.chatManager.registerCommand("/pickup", (player, args) => {
-      const previousMode = getCurrentGameMode();
-      setGameMode(GameMode.PICKUP);
-      
-      // Switch music if game is in progress and mode actually changed
-      if (previousMode !== GameMode.PICKUP && game && game.inProgress()) {
-        console.log("Switching to Pickup mode music during active game");
-        fifaGameplayMusic?.pause();
-        arcadeGameplayMusic?.play(world); // Use arcade music for pickup mode
-        
-        // Stop FIFA crowd atmosphere when switching to pickup
-        fifaCrowdManager.stop();
-        
-        world.chatManager.sendPlayerMessage(
-          player,
-          `🎵 Switched to Pickup mode music`
-        );
-      }
-      
-      world.chatManager.sendPlayerMessage(
-        player,
-        `🎯 Switched to Pickup Mode - Soccer with collectible ability pickups!`
-      );
-      world.chatManager.sendPlayerMessage(
-        player,
-        `Match Duration: ${getCurrentModeConfig().halfDuration * getCurrentModeConfig().totalHalves / 60} minutes`
-      );
-      world.chatManager.sendPlayerMessage(
-        player,
-        `Features: Physical ability pickups, collect to use F-key abilities!`
-      );
-    });
+    // /pickup command removed - physical pickups now integrated into Arcade mode
 
     // Tournament Commands
     world.chatManager.registerCommand("/tournament", (player, args) => {
@@ -2976,6 +2958,54 @@ startServer((world) => {
         player,
         `⚡ Speed enhancement activated for 15 seconds!`
       );
+    });
+
+    // Debug command for pickup system testing
+    world.chatManager.registerCommand("/debugpickups", (player, args) => {
+      world.chatManager.sendPlayerMessage(player, `=== PICKUP SYSTEM DEBUG ===`);
+      
+      // Check game mode
+      const currentMode = getCurrentGameMode();
+      world.chatManager.sendPlayerMessage(player, `Game Mode: ${currentMode}`);
+      world.chatManager.sendPlayerMessage(player, `Is Arcade Mode: ${isArcadeMode()}`);
+      
+      // Check pickup manager status
+      const isPickupActive = pickupManager.isPickupSystemActive();
+      const activeCount = pickupManager.getActivePickupCount();
+      world.chatManager.sendPlayerMessage(player, `Pickup System Active: ${isPickupActive}`);
+      world.chatManager.sendPlayerMessage(player, `Active Pickups: ${activeCount}`);
+      
+      // Check player collision groups
+      const playerEntity = world.entityManager.getAllPlayerEntities().find(
+        entity => entity instanceof SoccerPlayerEntity && entity.player.id === player.id
+      );
+      if (playerEntity instanceof SoccerPlayerEntity) {
+        world.chatManager.sendPlayerMessage(player, `Player Entity Type: SoccerPlayerEntity ✅`);
+        world.chatManager.sendPlayerMessage(player, `Player Position: ${JSON.stringify(playerEntity.position)}`);
+        world.chatManager.sendPlayerMessage(player, `Has Ability: ${playerEntity.abilityHolder.hasAbility()}`);
+        
+        if (playerEntity.abilityHolder.hasAbility()) {
+          const ability = playerEntity.abilityHolder.getAbility();
+          world.chatManager.sendPlayerMessage(player, `Current Ability: ${ability?.constructor.name || 'Unknown'}`);
+        }
+      } else {
+        world.chatManager.sendPlayerMessage(player, `Player Entity Type: ${playerEntity?.constructor.name || 'None'} ❌`);
+      }
+      
+      // Pickup positions
+      world.chatManager.sendPlayerMessage(player, `=== PICKUP POSITIONS ===`);
+      ABILITY_PICKUP_POSITIONS.forEach((pos: Vector3Like, i: number) => {
+        world.chatManager.sendPlayerMessage(player, `Position ${i}: ${JSON.stringify(pos)}`);
+      });
+      
+      // Force restart pickup system if in arcade mode
+      if (isArcadeMode() && args[0] === "restart") {
+        pickupManager.deactivate();
+        pickupManager.activate();
+        world.chatManager.sendPlayerMessage(player, `🔄 Pickup system restarted!`);
+      }
+      
+      world.chatManager.sendPlayerMessage(player, `Use "/debugpickups restart" to restart pickup system`);
     });
 
     // Add comprehensive speed test command

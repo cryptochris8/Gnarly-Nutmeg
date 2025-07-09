@@ -7,7 +7,6 @@ import { HALF_DURATION, TOTAL_HALVES, HALFTIME_DURATION } from './gameConfig';
 export enum GameMode {
   FIFA = "fifa",
   ARCADE = "arcade",
-  PICKUP = "pickup",
   TOURNAMENT = "tournament"
 }
 
@@ -42,10 +41,10 @@ export const FIFA_MODE_CONFIG = {
   enhancedPhysics: false
 };
 
-// Arcade Mode Configuration - Enhanced Fun Soccer
+// Arcade Mode Configuration - Enhanced Fun Soccer with Physical Pickups
 export const ARCADE_MODE_CONFIG = {
   name: 'Arcade Mode',
-  description: 'Fast-paced soccer with unlimited F-key power-ups and special abilities',
+  description: 'Fast-paced enhanced soccer with collectible ability pickups scattered on the field',
   
   // Timing system - Same 2 halves but faster pace
   halfDuration: HALF_DURATION, // 5 minutes per half (consistent with FIFA)
@@ -60,58 +59,25 @@ export const ARCADE_MODE_CONFIG = {
   },
   
   playerSpeed: 1.2,
-              sprintMultiplier: 1.5,
+  sprintMultiplier: 1.5,
   
   // Arcade features
   crowdAudio: true,
   announcerCommentary: false, // Focus on gameplay over commentary
   realisticPhysics: false,
   
-  // Arcade enhancements
-  powerUps: true,
-  specialAbilities: true,
+  // Arcade enhancements - now includes physical pickup system
+  powerUps: false, // No random power-ups - physical pickups only
+  specialAbilities: true, // Collected abilities from pickups
   enhancedPhysics: true,
+  abilityPickups: true, // Physical Mario/Sonic-style pickups on field
   
   // Special arcade timing features
   fastPacedGameplay: true,
   quickRestarts: true
 };
 
-// Pickup Mode Configuration - Physical Ability Collection
-export const PICKUP_MODE_CONFIG = {
-  name: 'Pickup Mode',
-  description: 'Soccer with collectible ability pickups scattered on the field',
-  
-  // Timing system - Same as FIFA for balance
-  halfDuration: HALF_DURATION, // 5 minutes per half
-  totalHalves: TOTAL_HALVES, // 2 halves
-  halftimeDuration: HALFTIME_DURATION, // 2 minutes halftime break
-  
-  // Balanced physics between FIFA and Arcade
-  ballPhysics: {
-    damping: 0.92,
-    friction: 0.7,
-    bounciness: 0.7
-  },
-  
-  playerSpeed: 1.1,
-  sprintMultiplier: 1.7,
-  
-  // Pickup features
-  crowdAudio: true,
-  announcerCommentary: false, // Focus on pickup gameplay
-  realisticPhysics: false,
-  
-  // Pickup-specific enhancements
-  powerUps: false, // No F-key random power-ups
-  specialAbilities: true, // Collected abilities only
-  enhancedPhysics: true,
-  abilityPickups: true, // Physical pickups on field
-  
-  // Pickup timing features
-  fastPacedGameplay: false,
-  quickRestarts: true
-};
+// Pickup Mode removed - physical pickups now integrated into Arcade Mode
 
 // Tournament Mode Configuration - Competitive Bracket-Based Soccer
 export const TOURNAMENT_MODE_CONFIG = {
@@ -178,8 +144,6 @@ export const getCurrentModeConfig = () => {
       return FIFA_MODE_CONFIG;
     case GameMode.ARCADE:
       return ARCADE_MODE_CONFIG;
-    case GameMode.PICKUP:
-      return PICKUP_MODE_CONFIG;
     case GameMode.TOURNAMENT:
       return TOURNAMENT_MODE_CONFIG;
     default:
@@ -196,7 +160,6 @@ export const setGameMode = (mode: GameMode): void => {
 // Helper functions for mode checking (used throughout codebase)
 export const isFIFAMode = (): boolean => currentGameMode === GameMode.FIFA;
 export const isArcadeMode = (): boolean => currentGameMode === GameMode.ARCADE;
-export const isPickupMode = (): boolean => currentGameMode === GameMode.PICKUP;
 export const isTournamentMode = (): boolean => currentGameMode === GameMode.TOURNAMENT;
 
 // Enhanced ball physics for arcade mode only (FIFA uses existing BALL_CONFIG)

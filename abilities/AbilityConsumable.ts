@@ -1,9 +1,11 @@
 import { Entity, type World, type Vector3Like, Audio, RigidBodyType, type BlockType, ColliderShape, CollisionGroup } from 'hytopia';
 import { ItemThrowAbility } from './ItemThrowAbility';
 import type { ItemAbilityOptions } from './itemTypes';
+import { ALL_POWERUP_OPTIONS } from './itemTypes';
 import SoccerPlayerEntity from '../entities/SoccerPlayerEntity';
 import { ABILITY_PICKUP_POSITIONS, ABILITY_RESPAWN_TIME } from '../state/gameConfig';
 import { SpeedBoostAbility } from './SpeedBoostAbility';
+import { PowerBoostAbility } from './PowerBoostAbility';
 import type { Ability } from './Ability';
 
 // Timer type for Node.js compatibility
@@ -13,6 +15,7 @@ export class AbilityConsumable {
     private entity: Entity;
     private world: World;
     private respawnTimer: Timer | null = null;
+    private originalPosition: Vector3Like; // Store original position for consistent respawning
 
     constructor(
         world: World,
@@ -20,6 +23,7 @@ export class AbilityConsumable {
         private abilityOptions: ItemAbilityOptions
     ) {
         this.world = world;
+        this.originalPosition = { ...position }; // Store original position
         this.entity = this.createConsumableEntity();
         this.spawn();
     }
@@ -28,33 +32,91 @@ export class AbilityConsumable {
         const entity = new Entity({
             name: `${this.abilityOptions.name}Pickup`,
             modelUri: this.abilityOptions.modelUri,
-            modelScale: this.abilityOptions.modelScale * 1, 
+            modelScale: this.abilityOptions.modelScale * 3, // Increased scale for better visibility 
             modelLoopedAnimations: [this.abilityOptions.idleAnimation],
             rigidBodyOptions: {
                 type: RigidBodyType.KINEMATIC_POSITION,
                 colliders: [
                     {
                         shape: ColliderShape.CYLINDER,
-                        radius: 0.8,
-                        halfHeight: 0.4,
-                        isSensor: false, // This creates solid collision so players stop
+                        radius: 1.2, // Increased for better collision detection with larger models
+                        halfHeight: 0.8, // Increased height for easier pickup
+                        isSensor: true, // Allow pass-through collision for Mario/Sonic-style pickup
                         tag: 'ability-pickup',
                         collisionGroups: {
                             belongsTo: [CollisionGroup.ENTITY],
-                            collidesWith: [CollisionGroup.ENTITY] // Players use ENTITY group by default
+                            // ENHANCED: Multiple collision groups for maximum compatibility
+                            collidesWith: [
+                                CollisionGroup.PLAYER,      // For properly configured players
+                                CollisionGroup.ENTITY,      // Fallback for default entity collision
+                                CollisionGroup.ENTITY_SENSOR // Additional sensor collision
+                            ]
                         },
                         onCollision: (other: BlockType | Entity, started: boolean) => {
-                            if (!started || !(other instanceof SoccerPlayerEntity)) return;
-                            console.log(`🎯 Ability pickup collision detected with player: ${other.player.username}`);
+                            // ENHANCED: Comprehensive collision debugging
+                            console.log(`🔍 PICKUP COLLISION: ${this.abilityOptions.name}`);
+                            console.log(`  ├─ Event: ${started ? 'STARTED' : 'ENDED'}`);
+                            console.log(`  ├─ Other Type: ${other.constructor.name}`);
+                            console.log(`  ├─ Other ID: ${other instanceof Entity ? other.id : 'N/A'}`);
+                            
+                            if (other instanceof Entity && 'player' in other) {
+                                console.log(`  ├─ Player Username: ${(other as any).player?.username || 'Unknown'}`);
+                            }
+                            
+                            if (other instanceof Entity && 'rigidBodyOptions' in other) {
+                                const collisionGroups = (other as any)._collisionGroups;
+                                console.log(`  ├─ Other Collision Groups: ${JSON.stringify(collisionGroups)}`);
+                            }
+                            
+                            console.log(`  └─ Pickup Position: ${JSON.stringify(this.entity.position)}`);
+                            
+                            if (!started) return;
+                            
+                            // Enhanced player detection with multiple checks
+                            let targetPlayer: SoccerPlayerEntity | null = null;
+                            
+                            // Primary check: Direct SoccerPlayerEntity instance
+                            if (other instanceof SoccerPlayerEntity) {
+                                targetPlayer = other;
+                                console.log(`✅ Direct SoccerPlayerEntity detected: ${targetPlayer.player.username}`);
+                            }
+                            // Secondary check: Entity with player property (for compatibility)
+                            else if (other instanceof Entity && 'player' in other && 'abilityHolder' in other) {
+                                targetPlayer = other as SoccerPlayerEntity;
+                                console.log(`✅ Player Entity detected via properties: ${(other as any).player?.username}`);
+                            }
+                            // Fallback: Log non-player collision for debugging
+                            else {
+                                console.log(`❌ Non-player collision: ${other.constructor.name}`);
+                                return;
+                            }
+                            
+                            if (!targetPlayer) {
+                                console.log(`❌ No valid player target found`);
+                                return;
+                            }
+                            
+                            console.log(`🎯 Valid player collision detected: ${targetPlayer.player.username}`);
                             
                             // Check if player already has an ability
-                            if (!other.abilityHolder.hasAbility()) {
-                                console.log(`✅ Giving ability to player: ${other.player.username}`);
-                                this.giveAbilityToPlayer(other);
+                            if (!targetPlayer.abilityHolder.hasAbility()) {
+                                console.log(`✅ PICKUP SUCCESS: Giving ${this.abilityOptions.name} to ${targetPlayer.player.username}`);
+                                this.giveAbilityToPlayer(targetPlayer);
                                 this.despawn();
                                 this.startRespawnTimer();
                             } else {
-                                console.log(`❌ Player ${other.player.username} already has an ability`);
+                                console.log(`❌ Player ${targetPlayer.player.username} already has an ability`);
+                                // Optional: Show feedback to player
+                                try {
+                                    targetPlayer.player.ui.sendData({
+                                        type: "action-feedback",
+                                        feedbackType: "info",
+                                        title: "Ability Slot Full",
+                                        message: `Press F to use current ability first`
+                                    });
+                                } catch (e) {
+                                    console.log("Could not send UI feedback:", e);
+                                }
                             }
                         }
                     }
@@ -67,18 +129,37 @@ export class AbilityConsumable {
 
     private giveAbilityToPlayer(player: SoccerPlayerEntity) {
         let ability: Ability;
-        if (this.abilityOptions.name === "Speed Boost") {
-            ability = new SpeedBoostAbility(this.abilityOptions);
-        } else {
-            ability = new ItemThrowAbility(this.abilityOptions);
+        
+        // Determine ability type based on name
+        switch (this.abilityOptions.name) {
+            case "Speed Boost":
+                ability = new SpeedBoostAbility(this.abilityOptions);
+                break;
+            case "Mega Kick":
+            case "Power Boost":
+            case "Precision":
+            case "Stamina":
+            case "Shield":
+                ability = new PowerBoostAbility(this.abilityOptions);
+                break;
+            case "Shuriken":
+            case "Freeze Blast":
+            case "Fireball":
+            default:
+                ability = new ItemThrowAbility(this.abilityOptions);
+                break;
         }
+        
         player.abilityHolder.setAbility(ability);
         player.abilityHolder.showAbilityUI(player.player);
+        
+        // Create pickup particle effect
+        this.createPickupParticles(player.position);
         
         // Audio feedback for pickup
         try {
             const pickupAudio = new Audio({
-                uri: 'ui/inventory-grab-item.mp3',
+                uri: 'audio/sfx/ui/inventory-grab-item.mp3',
                 volume: 0.5,
                 position: player.position
             });
@@ -90,22 +171,78 @@ export class AbilityConsumable {
         console.log(`🎮 ${player.player.username} collected ${this.abilityOptions.name} ability!`);
     }
 
+    private createPickupParticles(position: Vector3Like) {
+        try {
+            // Create pickup effect using firework model as visual feedback
+            const effectEntity = new Entity({
+                name: 'pickup-effect',
+                modelUri: 'misc/firework.gltf',
+                modelScale: 0.5,
+            });
+
+            // Spawn briefly at pickup location
+            effectEntity.spawn(this.world, position);
+            
+            // Auto-despawn after brief display
+            setTimeout(() => {
+                if (effectEntity.isSpawned) {
+                    effectEntity.despawn();
+                }
+            }, 800); // Quick flash effect
+
+        } catch (e) {
+            console.log("Could not create pickup effect:", e);
+        }
+    }
+
     private startRespawnTimer() {
         if (this.respawnTimer) {
             clearTimeout(this.respawnTimer);
         }
 
         this.respawnTimer = setTimeout(() => {
-            console.log(`🔄 Respawning ${this.abilityOptions.name} pickup`);
-            this.spawn();
+            console.log(`🔄 Respawning pickup with random ability`);
+            this.spawn(true); // Enable randomization on respawn
         }, ABILITY_RESPAWN_TIME);
     }
 
-    public spawn() {
+    /**
+     * Randomly select a new ability type from all available options
+     * Attempts to avoid selecting the same ability that was just collected for variety
+     */
+    private selectRandomAbility(): ItemAbilityOptions {
+        let attempts = 0;
+        let selectedOption: ItemAbilityOptions;
+        
+        // Try to select a different ability type for variety (up to 3 attempts)
+        do {
+            const randomIndex = Math.floor(Math.random() * ALL_POWERUP_OPTIONS.length);
+            selectedOption = ALL_POWERUP_OPTIONS[randomIndex];
+            attempts++;
+        } while (selectedOption.name === this.abilityOptions.name && attempts < 3);
+        
+        console.log(`🎲 Random selection: ${selectedOption.name} (attempts: ${attempts})`);
+        return selectedOption;
+    }
+
+    public spawn(randomizeAbility: boolean = false) {
         if (!this.entity.isSpawned) {
-            const randomPosition = ABILITY_PICKUP_POSITIONS[Math.floor(Math.random() * ABILITY_PICKUP_POSITIONS.length)];
-            this.entity.spawn(this.world, randomPosition);
-            console.log(`📦 Spawned ${this.abilityOptions.name} pickup at position:`, randomPosition);
+            // ENHANCED: Randomize ability type on respawn for variety
+            // Initial spawn uses constructor-specified ability, respawns are randomized
+            if (randomizeAbility) {
+                const oldAbility = this.abilityOptions.name;
+                this.abilityOptions = this.selectRandomAbility();
+                console.log(`🎲 Randomized ability: ${oldAbility} → ${this.abilityOptions.name}`);
+            }
+
+            // FIXED: Create fresh entity each time to ensure collision properties are restored
+            this.entity = this.createConsumableEntity();
+            this.entity.spawn(this.world, this.originalPosition);
+            console.log(`📦 Spawned ${this.abilityOptions.name} pickup at original position:`, this.originalPosition);
+            console.log(`🎯 Pickup collision groups: belongsTo=[ENTITY], collidesWith=[PLAYER,ENTITY,ENTITY_SENSOR]`);
+            console.log(`📏 Pickup collision cylinder: radius=1.2, height=0.8, isSensor=true`);
+            console.log(`🎨 Pickup model scale: ${this.abilityOptions.modelScale * 3}`);
+            console.log(`✅ Fresh entity created - collision settings guaranteed to be correct`);
         }
     }
 
@@ -121,5 +258,7 @@ export class AbilityConsumable {
         if (this.respawnTimer) {
             clearTimeout(this.respawnTimer);
         }
+        // Clean up entity reference
+        console.log(`🧹 Destroying ${this.abilityOptions.name} pickup entity`);
     }
 } 

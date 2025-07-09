@@ -8,11 +8,10 @@ import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 export class ArcadeEnhancementManager {
   private world: World;
   private playerEnhancements: Map<string, PlayerEnhancement> = new Map();
-  private lastEnhancementTime: number = 0;
 
   constructor(world: World) {
     this.world = world;
-    console.log("ArcadeEnhancementManager initialized - only active in Arcade Mode");
+    console.log("ArcadeEnhancementManager initialized - pickup-based abilities only in Arcade Mode");
   }
 
   // Main update loop - only runs in arcade mode
@@ -23,7 +22,7 @@ export class ArcadeEnhancementManager {
     }
 
     this.updatePlayerEnhancements();
-    this.checkForRandomEnhancements();
+    // Random enhancements removed - now using pickup-based system only
   }
 
   // Update active player enhancements
@@ -38,42 +37,7 @@ export class ArcadeEnhancementManager {
     }
   }
 
-  // Randomly give players temporary enhancements in arcade mode
-  private checkForRandomEnhancements(): void {
-    const currentTime = Date.now();
-    
-    // Only trigger every 30 seconds
-    if (currentTime - this.lastEnhancementTime < 30000) {
-      return;
-    }
-
-    // 20% chance to give someone an enhancement
-    if (Math.random() < 0.2) {
-      this.giveRandomEnhancement();
-      this.lastEnhancementTime = currentTime;
-    }
-  }
-
-  // Give a random player a random enhancement
-  private giveRandomEnhancement(): void {
-    // Get all players (this would need to be connected to your player system)
-    // For now, we'll create a simple notification system
-    
-    const enhancementTypes: EnhancementType[] = [
-      'speed', 'power', 'precision', 'freeze_blast', 
-      'fireball', 'mega_kick', 'shield', 'stamina'
-    ];
-    const randomType = enhancementTypes[Math.floor(Math.random() * enhancementTypes.length)];
-    
-    // Play enhancement sound
-    new Audio({
-      uri: "audio/sfx/ui/inventory-grab-item.mp3",
-      loop: false,
-      volume: 0.4,
-    }).play(this.world);
-
-    console.log(`Random ${randomType} power-up available in arcade mode!`);
-  }
+  // Random enhancement system removed - now using pickup-based system only
 
   // Add enhancement to a specific player
   public addEnhancement(playerId: string, type: EnhancementType, duration: number = 10000): void {
@@ -1036,8 +1000,7 @@ export class ArcadeEnhancementManager {
   // Clean up all enhancements (called when switching modes)
   public cleanup(): void {
     this.playerEnhancements.clear();
-    this.lastEnhancementTime = 0;
-    console.log("ArcadeEnhancementManager cleaned up");
+    console.log("ArcadeEnhancementManager cleaned up - pickup-based system only");
   }
 
   /**

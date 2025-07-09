@@ -1449,17 +1449,7 @@
     transform: translateY(-3px);
   }
 
-  .game-mode-btn.pickup {
-    border-color: #9366FF;
-    background: linear-gradient(135deg, rgba(147, 102, 255, 0.2), rgba(147, 102, 255, 0.1));
-  }
-
-  .game-mode-btn.pickup:hover {
-    border-color: #B388FF;
-    background: linear-gradient(135deg, rgba(147, 102, 255, 0.4), rgba(147, 102, 255, 0.2));
-    box-shadow: 0 10px 30px rgba(147, 102, 255, 0.3);
-    transform: translateY(-3px);
-  }
+  /* Pickup mode CSS removed - physical pickups now integrated into Arcade mode */
 
   .game-mode-btn.tournament {
     border-color: #FFD700;
@@ -1889,73 +1879,11 @@
   <span>🎪</span> ARCADE MODE - ENHANCED SOCCER!
 </div>
 
-<!-- POWERUP CONTAINER -->
-<div id="powerup-container" class="powerup-container" style="position: fixed !important; bottom: 10px !important; right: 10px !important; z-index: 1000 !important;">
-  <div class="powerup-title">🎮 ARCADE POWER-UPS</div>
-  
-  <div class="powerup-button" id="freeze-blast-btn" onclick="activatePowerUp('freeze_blast')">
-    <div class="powerup-icon">🧊</div>
-    <div class="powerup-name">Freeze Blast (1)</div>
-    <div class="powerup-cooldown" id="freeze-blast-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="speed-btn" onclick="activatePowerUp('speed')">
-    <div class="powerup-icon">⚡</div>
-    <div class="powerup-name">Speed Boost (2)</div>
-    <div class="powerup-cooldown" id="speed-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="fireball-btn" onclick="activatePowerUp('fireball')">
-    <div class="powerup-icon">🔥</div>
-    <div class="powerup-name">Fireball (3)</div>
-    <div class="powerup-cooldown" id="fireball-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="mega-kick-btn" onclick="activatePowerUp('mega_kick')">
-    <div class="powerup-icon">⚽</div>
-    <div class="powerup-name">Mega Kick (4)</div>
-    <div class="powerup-cooldown" id="mega-kick-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="power-btn" onclick="activatePowerUp('power')">
-    <div class="powerup-icon">💥</div>
-    <div class="powerup-name">Power Boost (5)</div>
-    <div class="powerup-cooldown" id="power-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="precision-btn" onclick="activatePowerUp('precision')">
-    <div class="powerup-icon">🎯</div>
-    <div class="powerup-name">Precision (6)</div>
-    <div class="powerup-cooldown" id="precision-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="stamina-btn" onclick="activatePowerUp('stamina')">
-    <div class="powerup-icon">🧪</div>
-    <div class="powerup-name">Stamina (7)</div>
-    <div class="powerup-cooldown" id="stamina-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="shuriken-btn" onclick="activatePowerUp('shuriken')">
-    <div class="powerup-icon">🥷</div>
-    <div class="powerup-name">Shuriken (8)</div>
-    <div class="powerup-cooldown" id="shuriken-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="shield-btn" onclick="activatePowerUp('shield')">
-    <div class="powerup-icon">🛡️</div>
-    <div class="powerup-name">Shield (U)</div>
-    <div class="powerup-cooldown" id="shield-cooldown"></div>
-  </div>
-  
-  <div class="powerup-button" id="random-powerup-btn" onclick="activateRandomPowerUp()">
-    <div class="powerup-icon">🎲</div>
-    <div class="powerup-name">Random (F)</div>
-    <div class="powerup-cooldown" id="random-powerup-cooldown"></div>
-  </div>
+<!-- PICKUP SYSTEM NOTIFICATION -->
+<div id="pickup-info" class="pickup-info" style="position: fixed !important; bottom: 10px !important; right: 10px !important; z-index: 1000 !important; display: none;">
+  <div class="pickup-title">⭐ PHYSICAL PICKUPS ACTIVE</div>
+  <div class="pickup-description">Run through power-ups to collect them! No more clicking buttons - just Mario/Sonic style pickup gameplay!</div>
 </div>
-
-<!-- POWERUP EFFECT DISPLAY -->
-<div id="powerup-effect-display" class="powerup-effect-display"></div>
 
 <!-- Enhanced Team Selection -->
 <style>
@@ -2823,22 +2751,7 @@
     transform: translateY(-3px);
   }
 
-  .game-mode-btn.pickup {
-    background: linear-gradient(135deg, #9c27b0, #673ab7, #7b1fa2);
-    border: 3px solid #e91e63;
-    box-shadow: 
-      0 6px 20px rgba(156, 39, 176, 0.4),
-      inset 0 2px 4px rgba(255, 255, 255, 0.2);
-  }
-
-  .game-mode-btn.pickup:hover {
-    background: linear-gradient(135deg, #673ab7, #7b1fa2, #9c27b0);
-    box-shadow: 
-      0 8px 30px rgba(156, 39, 176, 0.6),
-      0 0 20px rgba(233, 30, 99, 0.4),
-      inset 0 2px 6px rgba(255, 255, 255, 0.3);
-    transform: translateY(-3px);
-  }
+  /* Duplicate pickup mode CSS removed - physical pickups now integrated into Arcade mode */
 
   .game-mode-btn.tournament {
     background: linear-gradient(135deg, #ffd700, #ffed4a, #fff59d);
@@ -4060,45 +3973,7 @@
     border-color: rgba(40, 167, 69, 1);
   }
   
-  /* Mobile Camera Control Zone */
-  .mobile-camera-zone {
-    position: fixed;
-    top: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 70%;
-    height: 50%;
-    background: transparent;
-    border: 2px dashed rgba(255, 255, 255, 0.3);
-    border-radius: 15px;
-    z-index: 9997;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: auto;
-    touch-action: none; /* Prevent default touch behaviors */
-  }
-  
-  .mobile-camera-instructions {
-    background: rgba(0, 0, 0, 0.8);
-    color: rgba(255, 255, 255, 0.9);
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: bold;
-    text-align: center;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-  }
-  
-  .mobile-camera-zone.active {
-    border-color: rgba(0, 255, 255, 0.6);
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-  }
-  
-  .mobile-camera-zone.active .mobile-camera-instructions {
-    opacity: 0.3;
-  }
+
 
   /* Mobile Performance Indicator */
   .mobile-performance-indicator {
@@ -4466,21 +4341,15 @@
       </button>
       <button class="game-mode-btn arcade" id="arcadeModeBtn">
         🎪 Arcade Mode
-        <div class="mode-description">Enhanced Soccer Action</div>
-        <div class="mode-features">• Unlimited number-key power-ups • 2 x 5-minute halves • Special effects</div>
+        <div class="mode-description">Enhanced Soccer with Physical Pickups</div>
+        <div class="mode-features">• Physical power-up pickups to collect • Mario/Sonic-style gameplay • 2 x 5-minute halves</div>
       </button>
       <button class="game-mode-btn tournament" id="tournamentModeBtn">
         🏆 Tournament Mode
         <div class="mode-description">Competitive Bracket Soccer</div>
         <div class="mode-features">• Competitive brackets • Player coordination • Match scheduling</div>
       </button>
-      <!-- PICKUP MODE - TEMPORARILY DISABLED (READY FOR FUTURE UPGRADE)
-      <button class="game-mode-btn pickup" id="pickupModeBtn">
-        🎯 Pickup Mode
-        <div class="mode-description">Collectible Ability Soccer</div>
-        <div class="mode-features">• Physical pickups to collect • F-key uses collected ability • 2 x 5-minute halves</div>
-      </button>
-      -->
+      <!-- Pickup Mode removed - physical pickups now integrated into Arcade Mode -->
     </div>
     
     <div class="selected-mode-info" id="selectedModeInfo" style="display: none;">
@@ -6824,6 +6693,21 @@
       console.log("Player stats update received:", data);
       updatePlayerStats(data.playerStats);
     }
+
+    // Handle ability icon display
+    if (data.type === "ability-icon") {
+      console.log("Ability icon received:", data);
+      showAbility(data.icon);
+    }
+
+    // Handle ability icon hiding
+    if (data.type === "hide-ability-icon") {
+      console.log("Hide ability icon received:", data);
+      const abilityIcon = document.getElementById("ability-icon");
+      if (abilityIcon) {
+        abilityIcon.classList.remove("visible");
+      }
+    }
   });
 
   // ===== BACKGROUND LOADING INDICATOR (PHASE 2) =====
@@ -8804,23 +8688,9 @@
     performanceIndicator.id = 'mobile-performance-indicator';
     performanceIndicator.textContent = 'Mobile Mode';
     
-    // Create mobile camera control zone
-    const cameraControlZone = document.createElement('div');
-    cameraControlZone.className = 'mobile-camera-zone';
-    cameraControlZone.id = 'mobile-camera-zone';
-    
-    // Camera control instructions overlay
-    const cameraInstructions = document.createElement('div');
-    cameraInstructions.className = 'mobile-camera-instructions';
-    cameraInstructions.id = 'mobile-camera-instructions';
-    cameraInstructions.innerHTML = '👆 Tap and drag to look around';
-    
-    cameraControlZone.appendChild(cameraInstructions);
-    
     // Add all elements to container
     mobileControlsContainer.appendChild(virtualJoystick);
     mobileControlsContainer.appendChild(mobileActions);
-    mobileControlsContainer.appendChild(cameraControlZone);
     mobileControlsContainer.appendChild(performanceIndicator);
     
     // Add container to document
@@ -9063,18 +8933,24 @@
     }
   }
   
-  // Initialize mobile camera controls - NEW TOUCH CAMERA SYSTEM
+  // Initialize mobile camera controls - BACKGROUND CAMERA SYSTEM (NO OVERLAY)
   function initializeMobileCameraControls() {
-    const cameraZone = document.getElementById('mobile-camera-zone');
-    if (!cameraZone) return;
+    console.log('📱 Initializing mobile camera controls (background)...');
     
-    console.log('📱 Initializing mobile camera controls...');
+    // Use document body for camera controls but exclude UI elements
+    const isUIElement = (element) => {
+      return element.closest('.mobile-action-btn') || 
+             element.closest('.virtual-joystick') || 
+             element.closest('button') ||
+             element.closest('.mobile-performance-indicator') ||
+             element.closest('.enhanced-mobile-scoreboard') ||
+             element.closest('.mobile-game-menu');
+    };
     
     // Touch start - begin camera rotation
-    cameraZone.addEventListener('touchstart', function(e) {
-      e.preventDefault();
-      
-      if (e.touches.length === 1) {
+    document.addEventListener('touchstart', function(e) {
+      // Only handle camera if not touching UI elements
+      if (e.touches.length === 1 && !isUIElement(e.target)) {
         mobileCameraState.touchStartPos = {
           x: e.touches[0].clientX,
           y: e.touches[0].clientY
@@ -9085,17 +8961,16 @@
         };
         mobileCameraState.isDragging = false;
         
-        // Visual feedback
-        cameraZone.classList.add('active');
-        console.log('📱 Camera touch started');
+        console.log('📱 Camera touch started (background)');
       }
     }, { passive: false });
     
     // Touch move - rotate camera
-    cameraZone.addEventListener('touchmove', function(e) {
-      e.preventDefault();
-      
-      if (e.touches.length === 1 && mobileCameraState.touchStartPos && mobileCameraState.lastTouchPos) {
+    document.addEventListener('touchmove', function(e) {
+      // Only handle camera if not touching UI elements
+      if (e.touches.length === 1 && !isUIElement(e.target) && 
+          mobileCameraState.touchStartPos && mobileCameraState.lastTouchPos) {
+        
         const currentTouch = {
           x: e.touches[0].clientX,
           y: e.touches[0].clientY
@@ -9150,9 +9025,8 @@
     }, { passive: false });
     
     // Touch end - stop camera rotation
-    cameraZone.addEventListener('touchend', function(e) {
-      e.preventDefault();
-      
+    document.addEventListener('touchend', function(e) {
+      // Reset camera state regardless of where touch ended
       mobileCameraState.touchStartPos = null;
       mobileCameraState.lastTouchPos = null;
       mobileCameraState.isDragging = false;
@@ -9161,13 +9035,10 @@
       mobileInputState.camera.deltaYaw = 0;
       mobileInputState.camera.deltaPitch = 0;
       
-      // Remove visual feedback
-      cameraZone.classList.remove('active');
-      
-      console.log('📱 Camera touch ended');
+      console.log('📱 Camera touch ended (background)');
     }, { passive: false });
     
-    console.log('✅ Mobile camera controls initialized');
+    console.log('✅ Mobile camera controls initialized (background mode)');
   }
   
   // Handle mobile action button presses with enhanced error handling

@@ -88,14 +88,14 @@ export const BALL_CONFIG = {
   UPWARD_BIAS: 0.2, // Increased from 0.15 for more realistic ball trajectory
 };
 
-export const ABILITY_RESPAWN_TIME = 15 * 1000;
+export const ABILITY_RESPAWN_TIME = 8 * 1000; // Reduced from 15s to 8s for faster testing
 
-// Ability pickup positions for large stadium
+// Ability pickup positions for large stadium - ENHANCED for better visibility and spacing
 export const ABILITY_PICKUP_POSITIONS = [
-  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z },
-  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z },
-  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z + 11 },
-  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z + 11 },
-  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z - 11 },
-  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z - 11 },
+  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z },      // Left center
+  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z },      // Right center  
+  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z + 12 }, // Left top
+  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z + 12 }, // Right top
+  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z - 12 }, // Left bottom
+  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z - 12 }, // Right bottom
 ];

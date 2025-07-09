@@ -1,4 +1,4 @@
-import { Audio, Entity, Player, PlayerCameraMode, PlayerEntity, World, EntityEvent, type Vector3Like } from "hytopia";
+import { Audio, Entity, Player, PlayerCameraMode, PlayerEntity, World, EntityEvent, type Vector3Like, CollisionGroup } from "hytopia";
 import CustomSoccerPlayer from "../controllers/SoccerPlayerController";
 import sharedState from "../state/sharedState";
 import { getDirectionFromRotation } from "../utils/direction";
@@ -105,6 +105,28 @@ export default class SoccerPlayerEntity extends PlayerEntity {
     // This ensures the entity is fully registered before attaching the camera
     this.on(EntityEvent.SPAWN, () => {
       console.log(`Entity spawn event for ${player.username} (entity ${this.id})`);
+      
+      // CRITICAL FIX: Configure collision groups for pickup detection
+      // This is essential for ability pickups to detect collisions with players
+      this.setCollisionGroupsForSolidColliders({
+        belongsTo: [CollisionGroup.PLAYER],
+        collidesWith: [
+          CollisionGroup.BLOCK, 
+          CollisionGroup.ENTITY, 
+          CollisionGroup.ENTITY_SENSOR
+        ],
+      });
+      
+      // Also configure sensor colliders to prevent interference
+      this.setCollisionGroupsForSensorColliders({
+        belongsTo: [CollisionGroup.ENTITY_SENSOR],
+        collidesWith: [
+          CollisionGroup.BLOCK,
+          CollisionGroup.ENTITY
+        ],
+      });
+      
+      console.log(`🎯 Collision groups configured: Player belongs to PLAYER group for pickup detection`);
       
       // Set team-appropriate rotation after spawn
       if (this.team === "blue") {
