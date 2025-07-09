@@ -914,6 +914,14 @@ startServer((world) => {
         // Tournament Event Handlers
         else if (data.type === "tournament-create") {
           console.log(`🏆 Player ${player.username} creating tournament:`, data);
+          console.log(`🏆 Tournament creation request details:`, {
+            name: data.name,
+            type: data.tournamentType,
+            gameMode: data.gameMode,
+            maxPlayers: data.maxPlayers,
+            registrationTime: data.registrationTime,
+            createdBy: player.username
+          });
           
           try {
             const tournament = tournamentManager.createTournament(
@@ -925,7 +933,9 @@ startServer((world) => {
               player.username
             );
             
-            player.ui.sendData({
+            console.log(`🏆 Tournament created successfully, sending response to ${player.username}`);
+            
+            const tournamentResponse = {
               type: "tournament-created",
               tournament: {
                 id: tournament.id,
@@ -936,10 +946,15 @@ startServer((world) => {
                 status: tournament.status,
                 players: Object.keys(tournament.players).length
               }
-            });
+            };
+            
+            console.log(`🏆 Sending tournament-created response:`, tournamentResponse);
+            player.ui.sendData(tournamentResponse);
             
             // Broadcast tournament creation to all players
             const allPlayers = PlayerManager.instance.getConnectedPlayers();
+            console.log(`🏆 Broadcasting tournament list to ${allPlayers.length} players`);
+            
             allPlayers.forEach(p => {
               p.ui.sendData({
                 type: "tournament-list-updated",
@@ -955,13 +970,18 @@ startServer((world) => {
               });
             });
             
-            console.log(`✅ Tournament "${tournament.name}" created successfully`);
+            console.log(`✅ Tournament "${tournament.name}" created and broadcast successfully`);
           } catch (error: any) {
-            console.error("Tournament creation error:", error);
-            player.ui.sendData({
+            console.error("❌ Tournament creation error:", error);
+            console.error("❌ Error stack:", error.stack);
+            
+            const errorResponse = {
               type: "tournament-error",
               message: `Failed to create tournament: ${error.message}`
-            });
+            };
+            
+            console.log(`🏆 Sending tournament-error response:`, errorResponse);
+            player.ui.sendData(errorResponse);
           }
         }
         else if (data.type === "tournament-join") {

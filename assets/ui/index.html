@@ -5886,6 +5886,12 @@
       else if (data.type === "tournament-created") {
         console.log("✅ Tournament created successfully:", data.tournament);
         
+        // Clear timeout to prevent auto-recovery
+        if (window.tournamentCreationTimeout) {
+          clearTimeout(window.tournamentCreationTimeout);
+          window.tournamentCreationTimeout = null;
+        }
+        
         // Show success message
         showTournamentSuccess(`Tournament "${data.tournament.name}" created successfully!`);
         
@@ -5922,6 +5928,13 @@
       }
       else if (data.type === "tournament-error") {
         console.error("❌ Tournament error:", data.message);
+        
+        // Clear timeout to prevent auto-recovery
+        if (window.tournamentCreationTimeout) {
+          clearTimeout(window.tournamentCreationTimeout);
+          window.tournamentCreationTimeout = null;
+        }
+        
         showTournamentError(data.message);
         
         // Re-enable create button
@@ -7935,7 +7948,7 @@
         }
       }, 500);
     }, 3000);
-    }
+  }
 
   // ===== ARCADE MODE POWER-UP SYSTEM FUNCTIONS =====
   
@@ -9465,6 +9478,42 @@
       console.error('❌ Back to lobby error:', error);
     }
   }
+
+  // Tournament Creation Debug Function
+  function debugTournamentCreation() {
+    const button = document.getElementById("createTournamentBtn");
+    const status = {
+      buttonExists: !!button,
+      buttonDisabled: button ? button.disabled : null,
+      buttonText: button ? button.textContent : null,
+      hytopiaAvailable: typeof hytopia !== 'undefined',
+      sendDataAvailable: typeof hytopia !== 'undefined' && typeof hytopia.sendData === 'function',
+      creationTimeout: !!window.tournamentCreationTimeout,
+      selectedTournamentId: window.selectedTournamentId || null,
+      currentTournamentId: window.currentTournamentId || null
+    };
+    
+    console.log('🏆 Tournament Creation Debug Status:', status);
+    
+    // Force recovery if button is stuck
+    if (button && button.disabled && button.textContent === "Creating...") {
+      console.log('🔧 Force recovering stuck tournament creation button...');
+      button.disabled = false;
+      button.textContent = "🏆 Create Tournament";
+      
+      if (window.tournamentCreationTimeout) {
+        clearTimeout(window.tournamentCreationTimeout);
+        window.tournamentCreationTimeout = null;
+      }
+      
+      showTournamentSuccess("Tournament creation button recovered");
+    }
+    
+    return status;
+  }
+
+  // Make debug function globally available
+  window.debugTournamentCreation = debugTournamentCreation;
 
   // Tournament Error Display
   function showTournamentError(message) {
