@@ -4060,6 +4060,46 @@
     border-color: rgba(40, 167, 69, 1);
   }
   
+  /* Mobile Camera Control Zone */
+  .mobile-camera-zone {
+    position: fixed;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70%;
+    height: 50%;
+    background: transparent;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    z-index: 9997;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none; /* Prevent default touch behaviors */
+  }
+  
+  .mobile-camera-instructions {
+    background: rgba(0, 0, 0, 0.8);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  
+  .mobile-camera-zone.active {
+    border-color: rgba(0, 255, 255, 0.6);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+  }
+  
+  .mobile-camera-zone.active .mobile-camera-instructions {
+    opacity: 0.3;
+  }
+
   /* Mobile Performance Indicator */
   .mobile-performance-indicator {
     position: fixed;
@@ -8619,15 +8659,40 @@
   let joystickCenter = { x: 0, y: 0 };
   let joystickInput = { x: 0, y: 0 };
   
+  // Enhanced joystick configuration
+  let joystickConfig = {
+    deadzone: 0.15, // 15% deadzone to prevent drift
+    sensitivity: 1.0, // Base sensitivity multiplier
+    maxDistance: 40, // Maximum knob movement distance
+    smoothing: 0.8, // Input smoothing factor (0-1)
+    autoRecenter: true, // Auto-recenter when released
+    dynamicSensitivity: true, // Adjust sensitivity based on distance from center
+    inputThrottle: 16, // Throttle input updates to 60fps max
+    lastInputTime: 0 // Track input timing for throttling
+  };
+  
   // Mobile input state
   let mobileInputState = {
     movement: { x: 0, y: 0 },
+    camera: { yaw: 0, pitch: 0, deltaYaw: 0, deltaPitch: 0 },
     actions: {
       shooting: false,
       passing: false,
       tackling: false,
       dodging: false
     }
+  };
+  
+  // Mobile camera control state
+  let mobileCameraState = {
+    enabled: true,
+    sensitivity: 0.003, // Sensitivity for touch camera rotation
+    maxPitch: Math.PI / 3, // 60 degrees max pitch up/down
+    touchStartPos: null,
+    lastTouchPos: null,
+    isDragging: false,
+    deadzone: 5, // Minimum movement before camera rotation starts
+    smoothing: 0.1 // Camera smoothing factor
   };
   
   // Enhanced device detection function
@@ -8739,13 +8804,30 @@
     performanceIndicator.id = 'mobile-performance-indicator';
     performanceIndicator.textContent = 'Mobile Mode';
     
+    // Create mobile camera control zone
+    const cameraControlZone = document.createElement('div');
+    cameraControlZone.className = 'mobile-camera-zone';
+    cameraControlZone.id = 'mobile-camera-zone';
+    
+    // Camera control instructions overlay
+    const cameraInstructions = document.createElement('div');
+    cameraInstructions.className = 'mobile-camera-instructions';
+    cameraInstructions.id = 'mobile-camera-instructions';
+    cameraInstructions.innerHTML = '👆 Tap and drag to look around';
+    
+    cameraControlZone.appendChild(cameraInstructions);
+    
     // Add all elements to container
     mobileControlsContainer.appendChild(virtualJoystick);
     mobileControlsContainer.appendChild(mobileActions);
+    mobileControlsContainer.appendChild(cameraControlZone);
     mobileControlsContainer.appendChild(performanceIndicator);
     
     // Add container to document
     document.body.appendChild(mobileControlsContainer);
+    
+    // Initialize camera control events
+    initializeMobileCameraControls();
     
     // Initialize joystick event handling
     initializeJoystickEvents();
@@ -8822,58 +8904,270 @@
     }, 100);
   }
   
-  // Update joystick position and input
+  // Update joystick position and input - ENHANCED WITH DEADZONE & SENSITIVITY
   function updateJoystickPosition(touch) {
     const knob = document.getElementById('joystick-knob');
     if (!knob) return;
     
+    // Input throttling for performance
+    const currentTime = Date.now();
+    if (currentTime - joystickConfig.lastInputTime < joystickConfig.inputThrottle) {
+      return; // Skip this update to prevent spam
+    }
+    joystickConfig.lastInputTime = currentTime;
+    
     const deltaX = touch.clientX - joystickCenter.x;
     const deltaY = touch.clientY - joystickCenter.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const maxDistance = 40; // Max knob movement distance
+    const maxDistance = joystickConfig.maxDistance;
     
-    if (distance <= maxDistance) {
-      knob.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-      joystickInput.x = deltaX / maxDistance;
-      joystickInput.y = deltaY / maxDistance;
-    } else {
+    let limitedX = deltaX;
+    let limitedY = deltaY;
+    let actualDistance = distance;
+    
+    // Limit to max distance
+    if (distance > maxDistance) {
       const angle = Math.atan2(deltaY, deltaX);
-      const limitedX = Math.cos(angle) * maxDistance;
-      const limitedY = Math.sin(angle) * maxDistance;
+      limitedX = Math.cos(angle) * maxDistance;
+      limitedY = Math.sin(angle) * maxDistance;
+      actualDistance = maxDistance;
+    }
+    
+    // Update visual knob position
+    knob.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
+    
+    // Calculate normalized input (-1 to 1)
+    let normalizedX = limitedX / maxDistance;
+    let normalizedY = limitedY / maxDistance;
+    
+    // Apply deadzone - no input if within deadzone
+    const normalizedDistance = actualDistance / maxDistance;
+    if (normalizedDistance < joystickConfig.deadzone) {
+      normalizedX = 0;
+      normalizedY = 0;
       
-      knob.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
-      joystickInput.x = limitedX / maxDistance;
-      joystickInput.y = limitedY / maxDistance;
+      // Visual feedback for deadzone
+      knob.style.opacity = '0.6';
+    } else {
+      // Scale input to remove deadzone effect
+      const adjustedDistance = (normalizedDistance - joystickConfig.deadzone) / (1 - joystickConfig.deadzone);
+      const scaleFactor = adjustedDistance / normalizedDistance;
+      
+      normalizedX *= scaleFactor;
+      normalizedY *= scaleFactor;
+      
+      // Apply dynamic sensitivity - more sensitive at edges
+      if (joystickConfig.dynamicSensitivity) {
+        const sensitivityMultiplier = 0.5 + (adjustedDistance * 0.5); // 0.5x to 1.0x sensitivity
+        normalizedX *= sensitivityMultiplier;
+        normalizedY *= sensitivityMultiplier;
+      }
+      
+      // Visual feedback for active input
+      knob.style.opacity = '1.0';
+    }
+    
+    // Apply base sensitivity
+    normalizedX *= joystickConfig.sensitivity;
+    normalizedY *= joystickConfig.sensitivity;
+    
+    // Apply smoothing to previous input
+    if (joystickConfig.smoothing > 0) {
+      const smoothing = joystickConfig.smoothing;
+      joystickInput.x = joystickInput.x * smoothing + normalizedX * (1 - smoothing);
+      joystickInput.y = joystickInput.y * smoothing + normalizedY * (1 - smoothing);
+    } else {
+      joystickInput.x = normalizedX;
+      joystickInput.y = normalizedY;
     }
     
     // Update mobile input state
     mobileInputState.movement.x = joystickInput.x;
     mobileInputState.movement.y = -joystickInput.y; // Invert Y for game coordinates
     
-    // Send movement data to server
-    hytopia.sendData({
-      type: "mobile-movement-input",
-      movement: mobileInputState.movement
-    });
+    // Only send data if input is significant (prevents network spam)
+    const inputMagnitude = Math.sqrt(joystickInput.x * joystickInput.x + joystickInput.y * joystickInput.y);
+    if (inputMagnitude > 0.01) {
+      // Send movement data to server
+      hytopia.sendData({
+        type: "mobile-movement-input",
+        movement: mobileInputState.movement,
+        inputMagnitude: inputMagnitude // Include magnitude for server-side optimization
+      });
+    }
   }
   
-  // Reset joystick to center
+  // Reset joystick to center - ENHANCED
   function resetJoystick() {
     const knob = document.getElementById('joystick-knob');
     if (knob) {
-      knob.style.transform = 'translate(0px, 0px)';
+      // Smooth visual reset if auto-recenter is enabled
+      if (joystickConfig.autoRecenter) {
+        knob.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+        knob.style.transform = 'translate(0px, 0px)';
+        knob.style.opacity = '0.8';
+        
+        // Remove transition after animation
+        setTimeout(() => {
+          knob.style.transition = '';
+        }, 200);
+      } else {
+        knob.style.transform = 'translate(0px, 0px)';
+        knob.style.opacity = '0.8';
+      }
     }
     
-    joystickInput.x = 0;
-    joystickInput.y = 0;
-    mobileInputState.movement.x = 0;
-    mobileInputState.movement.y = 0;
+    // Reset input state with smoothing
+    if (joystickConfig.smoothing > 0) {
+      // Gradually reduce input to zero for smooth stopping
+      const smoothSteps = 5;
+      const stepDelay = joystickConfig.inputThrottle;
+      
+      for (let i = 1; i <= smoothSteps; i++) {
+        setTimeout(() => {
+          const factor = (smoothSteps - i) / smoothSteps;
+          joystickInput.x *= factor;
+          joystickInput.y *= factor;
+          mobileInputState.movement.x = joystickInput.x;
+          mobileInputState.movement.y = joystickInput.y;
+          
+          // Send gradual stop to server
+          if (i === smoothSteps) {
+            // Final stop
+            joystickInput.x = 0;
+            joystickInput.y = 0;
+            mobileInputState.movement.x = 0;
+            mobileInputState.movement.y = 0;
+          }
+          
+          hytopia.sendData({
+            type: "mobile-movement-input",
+            movement: { x: mobileInputState.movement.x, y: mobileInputState.movement.y },
+            inputMagnitude: Math.sqrt(mobileInputState.movement.x * mobileInputState.movement.x + 
+                                   mobileInputState.movement.y * mobileInputState.movement.y)
+          });
+        }, i * stepDelay);
+      }
+    } else {
+      // Immediate stop
+      joystickInput.x = 0;
+      joystickInput.y = 0;
+      mobileInputState.movement.x = 0;
+      mobileInputState.movement.y = 0;
+      
+      hytopia.sendData({
+        type: "mobile-movement-input",
+        movement: { x: 0, y: 0 },
+        inputMagnitude: 0
+      });
+    }
+  }
+  
+  // Initialize mobile camera controls - NEW TOUCH CAMERA SYSTEM
+  function initializeMobileCameraControls() {
+    const cameraZone = document.getElementById('mobile-camera-zone');
+    if (!cameraZone) return;
     
-    // Send stop movement to server
-    hytopia.sendData({
-      type: "mobile-movement-input",
-      movement: { x: 0, y: 0 }
-    });
+    console.log('📱 Initializing mobile camera controls...');
+    
+    // Touch start - begin camera rotation
+    cameraZone.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      
+      if (e.touches.length === 1) {
+        mobileCameraState.touchStartPos = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY
+        };
+        mobileCameraState.lastTouchPos = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY
+        };
+        mobileCameraState.isDragging = false;
+        
+        // Visual feedback
+        cameraZone.classList.add('active');
+        console.log('📱 Camera touch started');
+      }
+    }, { passive: false });
+    
+    // Touch move - rotate camera
+    cameraZone.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      
+      if (e.touches.length === 1 && mobileCameraState.touchStartPos && mobileCameraState.lastTouchPos) {
+        const currentTouch = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY
+        };
+        
+        // Check if we've moved enough to start dragging
+        const distanceFromStart = Math.sqrt(
+          Math.pow(currentTouch.x - mobileCameraState.touchStartPos.x, 2) +
+          Math.pow(currentTouch.y - mobileCameraState.touchStartPos.y, 2)
+        );
+        
+        if (distanceFromStart > mobileCameraState.deadzone) {
+          mobileCameraState.isDragging = true;
+          
+          // Calculate delta movement
+          const deltaX = currentTouch.x - mobileCameraState.lastTouchPos.x;
+          const deltaY = currentTouch.y - mobileCameraState.lastTouchPos.y;
+          
+          // Apply sensitivity and convert to camera rotation
+          const deltaYaw = deltaX * mobileCameraState.sensitivity;
+          const deltaPitch = -deltaY * mobileCameraState.sensitivity; // Invert Y for natural camera feel
+          
+          // Update camera state with smoothing
+          mobileInputState.camera.deltaYaw = deltaYaw * mobileCameraState.smoothing;
+          mobileInputState.camera.deltaPitch = Math.max(-mobileCameraState.maxPitch, 
+            Math.min(mobileCameraState.maxPitch, deltaPitch * mobileCameraState.smoothing));
+          
+          // Accumulate total camera rotation
+          mobileInputState.camera.yaw += mobileInputState.camera.deltaYaw;
+          mobileInputState.camera.pitch += mobileInputState.camera.deltaPitch;
+          
+          // Send camera data to server
+          hytopia.sendData({
+            type: "mobile-camera-input",
+            camera: {
+              yaw: mobileInputState.camera.yaw,
+              pitch: mobileInputState.camera.pitch,
+              deltaYaw: mobileInputState.camera.deltaYaw,
+              deltaPitch: mobileInputState.camera.deltaPitch
+            }
+          });
+          
+          // Update last touch position
+          mobileCameraState.lastTouchPos = currentTouch;
+          
+          // Debug logging (occasional)
+          if (Math.random() < 0.01) {
+            console.log(`📱 Camera rotation: yaw=${mobileInputState.camera.yaw.toFixed(3)}, pitch=${mobileInputState.camera.pitch.toFixed(3)}`);
+          }
+        }
+      }
+    }, { passive: false });
+    
+    // Touch end - stop camera rotation
+    cameraZone.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      
+      mobileCameraState.touchStartPos = null;
+      mobileCameraState.lastTouchPos = null;
+      mobileCameraState.isDragging = false;
+      
+      // Reset delta values
+      mobileInputState.camera.deltaYaw = 0;
+      mobileInputState.camera.deltaPitch = 0;
+      
+      // Remove visual feedback
+      cameraZone.classList.remove('active');
+      
+      console.log('📱 Camera touch ended');
+    }, { passive: false });
+    
+    console.log('✅ Mobile camera controls initialized');
   }
   
   // Handle mobile action button presses with enhanced error handling
@@ -9040,6 +9334,60 @@
     return status;
   }
   
+  // Mobile configuration functions - NEW CUSTOMIZATION SYSTEM
+  function setJoystickSensitivity(sensitivity) {
+    joystickConfig.sensitivity = Math.max(0.1, Math.min(3.0, sensitivity));
+    console.log(`📱 Joystick sensitivity set to ${joystickConfig.sensitivity}`);
+    
+    // Send feedback to UI
+    updateMobileGameStatus(`⚙️ Sensitivity: ${Math.round(joystickConfig.sensitivity * 100)}%`);
+    setTimeout(() => updateMobileGameStatus('Ready to play!'), 2000);
+  }
+  
+  function setJoystickDeadzone(deadzone) {
+    joystickConfig.deadzone = Math.max(0.0, Math.min(0.5, deadzone));
+    console.log(`📱 Joystick deadzone set to ${joystickConfig.deadzone}`);
+    
+    updateMobileGameStatus(`⚙️ Deadzone: ${Math.round(joystickConfig.deadzone * 100)}%`);
+    setTimeout(() => updateMobileGameStatus('Ready to play!'), 2000);
+  }
+  
+  function setCameraSensitivity(sensitivity) {
+    mobileCameraState.sensitivity = Math.max(0.001, Math.min(0.01, sensitivity));
+    console.log(`📱 Camera sensitivity set to ${mobileCameraState.sensitivity}`);
+    
+    updateMobileGameStatus(`📷 Camera: ${Math.round(mobileCameraState.sensitivity * 1000)}%`);
+    setTimeout(() => updateMobileGameStatus('Ready to play!'), 2000);
+  }
+  
+  function resetMobileControls() {
+    // Reset to default configuration
+    joystickConfig = {
+      deadzone: 0.15,
+      sensitivity: 1.0,
+      maxDistance: 40,
+      smoothing: 0.8,
+      autoRecenter: true,
+      dynamicSensitivity: true,
+      inputThrottle: 16,
+      lastInputTime: 0
+    };
+    
+    mobileCameraState.sensitivity = 0.003;
+    
+    updateMobileGameStatus('🔄 Controls reset to default');
+    setTimeout(() => updateMobileGameStatus('Ready to play!'), 2000);
+    
+    console.log('📱 Mobile controls reset to default configuration');
+  }
+  
+  function getMobileControlsConfig() {
+    return {
+      joystick: { ...joystickConfig },
+      camera: { sensitivity: mobileCameraState.sensitivity, deadzone: mobileCameraState.deadzone }
+    };
+  }
+  
   // Make mobile functions globally accessible (Hytopia-compliant)
   window.initializeMobileControls = initializeMobileControls;
   window.handleMobileAction = handleMobileAction;
@@ -9047,6 +9395,11 @@
   window.detectMobileDevice = detectMobileDevice;
   window.testMobileControls = testMobileControls;
   window.checkMobileControlsStatus = checkMobileControlsStatus;
+  window.setJoystickSensitivity = setJoystickSensitivity;
+  window.setJoystickDeadzone = setJoystickDeadzone;
+  window.setCameraSensitivity = setCameraSensitivity;
+  window.resetMobileControls = resetMobileControls;
+  window.getMobileControlsConfig = getMobileControlsConfig;
 
   // ===== TOURNAMENT SYSTEM FUNCTIONS =====
 
@@ -9545,16 +9898,77 @@
             else if (angle >= -135 && angle <= -45) direction = 'up';
             else direction = 'left';
             
-            // Send swipe gesture to server
+            // Enhanced swipe gesture processing for camera control
+            const swipeSpeed = distance / gestureTime;
+            const swipeData = {
+              direction: direction,
+              speed: swipeSpeed,
+              distance: distance,
+              angle: angle
+            };
+            
+            // Convert swipe to camera rotation
+            if (mobileCameraState.enabled) {
+              let cameraYawDelta = 0;
+              let cameraPitchDelta = 0;
+              
+              // Map swipe direction to camera rotation
+              const swipeIntensity = Math.min(swipeSpeed / 2, 1.0); // Normalize intensity
+              const rotationAmount = swipeIntensity * 0.5; // Adjust rotation sensitivity
+              
+              switch (direction) {
+                case 'left':
+                  cameraYawDelta = -rotationAmount;
+                  break;
+                case 'right':
+                  cameraYawDelta = rotationAmount;
+                  break;
+                case 'up':
+                  cameraPitchDelta = rotationAmount;
+                  break;
+                case 'down':
+                  cameraPitchDelta = -rotationAmount;
+                  break;
+              }
+              
+              // Apply camera rotation if significant
+              if (Math.abs(cameraYawDelta) > 0.01 || Math.abs(cameraPitchDelta) > 0.01) {
+                mobileInputState.camera.yaw += cameraYawDelta;
+                mobileInputState.camera.pitch += cameraPitchDelta;
+                
+                // Clamp pitch to reasonable bounds
+                mobileInputState.camera.pitch = Math.max(-mobileCameraState.maxPitch, 
+                  Math.min(mobileCameraState.maxPitch, mobileInputState.camera.pitch));
+                
+                // Send camera update to server
+                hytopia.sendData({
+                  type: "mobile-camera-input",
+                  camera: {
+                    yaw: mobileInputState.camera.yaw,
+                    pitch: mobileInputState.camera.pitch,
+                    deltaYaw: cameraYawDelta,
+                    deltaPitch: cameraPitchDelta
+                  },
+                  source: "swipe-gesture"
+                });
+                
+                console.log(`📱 Swipe camera: ${direction} (yaw: ${cameraYawDelta.toFixed(3)}, pitch: ${cameraPitchDelta.toFixed(3)})`);
+              }
+            }
+            
+            // Send swipe gesture to server for other uses
             hytopia.sendData({
               type: "mobile-swipe-gesture",
               direction: direction,
               speed: distance / gestureTime,
-              distance: distance
+              distance: distance,
+              cameraApplied: mobileCameraState.enabled
             });
             
-            // Show visual feedback
-            updateMobileGameStatus(`⚡ Swipe ${direction.toUpperCase()}`);
+            // Show enhanced visual feedback
+            const feedbackIcon = direction === 'left' ? '👈' : direction === 'right' ? '👉' : 
+                               direction === 'up' ? '👆' : '👇';
+            updateMobileGameStatus(`${feedbackIcon} Camera ${direction.toUpperCase()}`);
             setTimeout(() => updateMobileGameStatus('Ready to play!'), 1000);
             
             console.log(`📱 Swipe gesture detected: ${direction} (${Math.round(distance)}px in ${gestureTime}ms)`);

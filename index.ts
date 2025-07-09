@@ -372,6 +372,9 @@ startServer((world) => {
       });
 
       player.ui.on(PlayerUIEvent.DATA, async ({ playerUI, data }) => {
+        // Debug: Log all incoming data
+        console.log(`🔍 Server received data from ${player.username}:`, JSON.stringify(data, null, 2));
+        
         if (data.type === "select-game-mode" && data.mode) {
           // Handle game mode selection
           console.log(`Player ${player.username} selected game mode: ${data.mode}`);
@@ -1219,18 +1222,75 @@ startServer((world) => {
           console.log(`✅ Mobile mode enabled for ${player.username}`);
         }
         else if (data.type === "mobile-movement-input") {
-          // Handle mobile virtual joystick movement
+          // Handle mobile virtual joystick movement - OPTIMIZED
           const movementInput = data.movement;
+          const inputMagnitude = data.inputMagnitude || 0;
+          
+          // Input validation and throttling
+          if (!movementInput || (Math.abs(movementInput.x) < 0.01 && Math.abs(movementInput.y) < 0.01)) {
+            return; // Ignore negligible input to reduce processing
+          }
           
           // Get the player's soccer entity
           const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
           if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
-            // Convert joystick input to player controller format
+            // Store mobile player optimization data
+            const mobileData = (player as any)._mobileOptimization || {
+              lastInputTime: 0,
+              inputBuffer: [],
+              throttleInterval: 33 // 30fps for mobile optimization
+            };
+            
+            const currentTime = Date.now();
+            
+            // Server-side input throttling for mobile devices
+            if (currentTime - mobileData.lastInputTime < mobileData.throttleInterval) {
+              // Buffer the input for smooth interpolation
+              mobileData.inputBuffer.push({ movement: movementInput, time: currentTime });
+              if (mobileData.inputBuffer.length > 3) {
+                mobileData.inputBuffer.shift(); // Keep only recent inputs
+              }
+              return;
+            }
+            
+                         // Process buffered inputs for smooth movement
+             if (mobileData.inputBuffer.length > 0) {
+               const avgInput = mobileData.inputBuffer.reduce((acc: { x: number, y: number }, input: any) => ({
+                 x: acc.x + input.movement.x,
+                 y: acc.y + input.movement.y
+               }), { x: 0, y: 0 });
+              
+              avgInput.x /= mobileData.inputBuffer.length;
+              avgInput.y /= mobileData.inputBuffer.length;
+              
+              // Use averaged input for smoother movement
+              Object.assign(movementInput, avgInput);
+              mobileData.inputBuffer = [];
+            }
+            
+            mobileData.lastInputTime = currentTime;
+            (player as any)._mobileOptimization = mobileData;
+            
+            // Convert joystick input to player controller format with mobile optimizations
+            const deadzone = 0.15; // Server-side deadzone verification
+            const magnitude = Math.sqrt(movementInput.x * movementInput.x + movementInput.y * movementInput.y);
+            
+            if (magnitude < deadzone) {
+              return; // Ignore inputs within deadzone
+            }
+            
+            // Apply mobile-specific movement scaling
+            const mobileSensitivity = (player as any)._mobileSensitivity || 1.0;
+            const scaledInput = {
+              x: movementInput.x * mobileSensitivity,
+              y: movementInput.y * mobileSensitivity
+            };
+            
             const controllerInput = {
-              forward: movementInput.y > 0,
-              backward: movementInput.y < 0,
-              left: movementInput.x < 0,
-              right: movementInput.x > 0,
+              forward: scaledInput.y > 0,
+              backward: scaledInput.y < 0,
+              left: scaledInput.x < 0,
+              right: scaledInput.x > 0,
               primaryDown: false,
               secondaryDown: false,
               tertiary: false,
@@ -1239,17 +1299,21 @@ startServer((world) => {
             
             // Apply movement through the player controller
             if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
-              // Use current camera orientation for mobile movement
+              // Use stored mobile camera orientation for movement direction
+              const storedCamera = (player as any)._mobileCameraOrientation || { yaw: 0, pitch: 0 };
               const cameraOrientation = {
-                yaw: 0, // Can be enhanced to use actual camera rotation later
-                pitch: 0
+                yaw: storedCamera.yaw,
+                pitch: storedCamera.pitch
               };
+              
+              // Optimized delta time for mobile devices
+              const deltaTime = Math.min(33, currentTime - mobileData.lastInputTime + 16);
               
               playerEntity.controller.tickWithPlayerInput(
                 playerEntity,
                 controllerInput,
                 cameraOrientation,
-                16 // 16ms delta time (roughly 60fps)
+                deltaTime
               );
             }
           }
@@ -1276,11 +1340,14 @@ startServer((world) => {
               dodging: action === 'dodge' && pressed
             };
             
+            // Get stored mobile camera orientation or default
+            const storedCamera = (player as any)._mobileCameraOrientation || { yaw: 0, pitch: 0 };
+            
             // Apply action through the player controller
             if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
               const cameraOrientation = {
-                yaw: 0, // Can be enhanced later
-                pitch: 0
+                yaw: storedCamera.yaw,
+                pitch: storedCamera.pitch
               };
               
               playerEntity.controller.tickWithPlayerInput(
@@ -1299,6 +1366,60 @@ startServer((world) => {
                 success: true
               });
             }
+          }
+        }
+        else if (data.type === "mobile-camera-input") {
+          // Handle mobile camera rotation - NEW SYSTEM
+          const camera = data.camera;
+          
+          console.log(`📱 Mobile camera: ${player.username} yaw=${camera.yaw.toFixed(3)}, pitch=${camera.pitch.toFixed(3)}`);
+          
+          // Store camera orientation for this mobile player
+          (player as any)._mobileCameraOrientation = {
+            yaw: camera.yaw,
+            pitch: camera.pitch
+          };
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Apply camera rotation through Hytopia SDK if available
+            if (player.camera && typeof player.camera.setOffset === 'function') {
+              try {
+                // Calculate camera offset based on mobile rotation
+                const distance = 5; // Camera distance from player
+                const height = 2; // Camera height offset
+                
+                const offsetX = Math.sin(camera.yaw) * distance;
+                const offsetZ = Math.cos(camera.yaw) * distance;
+                const offsetY = height + Math.sin(camera.pitch) * 2;
+                
+                // Apply camera offset for third-person view optimized for mobile
+                player.camera.setOffset({ 
+                  x: offsetX, 
+                  y: offsetY, 
+                  z: offsetZ 
+                });
+                
+                // Set camera to track the player entity
+                player.camera.setTrackedEntity(playerEntity);
+                
+                // Optimize FOV for mobile
+                if (typeof player.camera.setFov === 'function') {
+                  player.camera.setFov(85); // Wider FOV for better mobile experience
+                }
+                
+              } catch (cameraError) {
+                console.warn(`📱 Camera control error for ${player.username}:`, cameraError);
+              }
+            }
+            
+            // Send camera feedback to mobile UI
+            player.ui.sendData({
+              type: "mobile-camera-feedback",
+              camera: camera,
+              success: true
+            });
           }
         }
         // ===== PHASE 2 MOBILE GESTURE HANDLERS (HYTOPIA SDK COMPLIANT) =====
@@ -1949,57 +2070,70 @@ startServer((world) => {
       if (args.length < 2) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Usage: /testgoal <red|blue> - Tests goal detection by placing ball in goal"
+          "Usage: /testgoal <red|blue> - Test goal detection for specified team's goal"
         );
         return;
       }
       
       const team = args[1].toLowerCase();
-      let testPosition;
+      if (team !== "red" && team !== "blue") {
+        world.chatManager.sendPlayerMessage(player, "Invalid team. Use 'red' or 'blue'");
+        return;
+      }
+      
+      // ENHANCED: Test new realistic goal boundaries
+      const GOAL_WIDTH = 10;
+      let testPosition: { x: number; y: number; z: number };
       
       if (team === "red") {
-        // Place ball in red goal (blue should score)
-        testPosition = { 
-          x: AI_GOAL_LINE_X_RED - 1, 
-          y: SAFE_SPAWN_Y, 
-          z: AI_FIELD_CENTER_Z 
+        // Test Red Goal (Blue scores here)
+        testPosition = {
+          x: AI_GOAL_LINE_X_RED - 1, // Inside red goal area
+          y: 2, // Valid goal height
+          z: AI_FIELD_CENTER_Z // Center of goal
         };
         world.chatManager.sendPlayerMessage(
           player,
-          `Placing ball in RED goal at X=${testPosition.x}. BLUE team should score.`
+          `🔴 Testing RED GOAL detection (Blue scores here)`
         );
-      } else if (team === "blue") {
-        // Place ball in blue goal (red should score)
-        testPosition = { 
-          x: AI_GOAL_LINE_X_BLUE + 1, 
-          y: SAFE_SPAWN_Y, 
-          z: AI_FIELD_CENTER_Z 
+      } else {
+        // Test Blue Goal (Red scores here)  
+        testPosition = {
+          x: AI_GOAL_LINE_X_BLUE + 1, // Inside blue goal area
+          y: 2, // Valid goal height
+          z: AI_FIELD_CENTER_Z // Center of goal
         };
         world.chatManager.sendPlayerMessage(
           player,
-          `Placing ball in BLUE goal at X=${testPosition.x}. RED team should score.`
+          `🔵 Testing BLUE GOAL detection (Red scores here)`
+        );
+      }
+      
+      // Test the goal detection
+      const goal = soccerMap.checkGoal(testPosition);
+      
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Test Position: X=${testPosition.x}, Y=${testPosition.y}, Z=${testPosition.z}`
+      );
+      
+      if (goal) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `✅ GOAL DETECTED! ${goal.team.toUpperCase()} team would score!`
         );
       } else {
         world.chatManager.sendPlayerMessage(
           player,
-          "Invalid team. Use 'red' or 'blue'"
+          `❌ NO GOAL - Position is outside goal boundaries`
         );
-        return;
       }
       
-      // Despawn and respawn ball at test position
-      if (soccerBall.isSpawned) {
-        soccerBall.despawn();
-      }
-      sharedState.setAttachedPlayer(null);
-      soccerBall.spawn(world, testPosition);
-      soccerBall.setLinearVelocity({ x: 0, y: 0, z: 0 });
-      soccerBall.setAngularVelocity({ x: 0, y: 0, z: 0 });
+      // Show current goal boundaries for reference
+      const redGoalBounds = `RED: X[${AI_GOAL_LINE_X_RED - 3} to ${AI_GOAL_LINE_X_RED + 1}], Z[${AI_FIELD_CENTER_Z - 5} to ${AI_FIELD_CENTER_Z + 5}]`;
+      const blueGoalBounds = `BLUE: X[${AI_GOAL_LINE_X_BLUE - 1} to ${AI_GOAL_LINE_X_BLUE + 3}], Z[${AI_FIELD_CENTER_Z - 5} to ${AI_FIELD_CENTER_Z + 5}]`;
       
-      world.chatManager.sendPlayerMessage(
-        player,
-        `Ball placed at X=${testPosition.x}, Y=${testPosition.y}, Z=${testPosition.z}. Check console for goal detection logs.`
-      );
+      world.chatManager.sendPlayerMessage(player, `Goal Boundaries: ${redGoalBounds}, ${blueGoalBounds}`);
     });
 
     // Add a command to check current ball position
@@ -2087,21 +2221,34 @@ startServer((world) => {
     world.chatManager.registerCommand("/goals", (player, args) => {
       world.chatManager.sendPlayerMessage(
         player,
-        "=== GOAL BOUNDARIES ==="
+        "=== GOAL BOUNDARIES (FIXED) ==="
       );
+      
+      // FIXED: Updated goal boundaries to reflect realistic dimensions
+      const GOAL_WIDTH = 10;
+      const RED_GOAL_MIN_X = AI_GOAL_LINE_X_RED - 3;
+      const RED_GOAL_MAX_X = AI_GOAL_LINE_X_RED + 1;
+      const BLUE_GOAL_MIN_X = AI_GOAL_LINE_X_BLUE - 1; 
+      const BLUE_GOAL_MAX_X = AI_GOAL_LINE_X_BLUE + 3;
+      const GOAL_MIN_Z = AI_FIELD_CENTER_Z - GOAL_WIDTH/2;
+      const GOAL_MAX_Z = AI_FIELD_CENTER_Z + GOAL_WIDTH/2;
       
       world.chatManager.sendPlayerMessage(
         player,
-        `RED GOAL (Blue scores here): X[${AI_GOAL_LINE_X_RED - 5} to ${AI_GOAL_LINE_X_RED + 3}], Z[${AI_FIELD_CENTER_Z - 20} to ${AI_FIELD_CENTER_Z + 20}], Y[-1 to 6]`
+        `RED GOAL (Blue scores here): X[${RED_GOAL_MIN_X} to ${RED_GOAL_MAX_X}], Z[${GOAL_MIN_Z} to ${GOAL_MAX_Z}], Y[0 to 4]`
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `BLUE GOAL (Red scores here): X[${AI_GOAL_LINE_X_BLUE - 3} to ${AI_GOAL_LINE_X_BLUE + 5}], Z[${AI_FIELD_CENTER_Z - 20} to ${AI_FIELD_CENTER_Z + 20}], Y[-1 to 6]`
+        `BLUE GOAL (Red scores here): X[${BLUE_GOAL_MIN_X} to ${BLUE_GOAL_MAX_X}], Z[${GOAL_MIN_Z} to ${GOAL_MAX_Z}], Y[0 to 4]`
       );
       
       world.chatManager.sendPlayerMessage(
         player,
         `Field boundaries: X[${FIELD_MIN_X} to ${FIELD_MAX_X}], Z[${FIELD_MIN_Z} to ${FIELD_MAX_Z}]`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        "✅ Goals are now realistic size: 10 blocks wide x 4 blocks high"
       );
       world.chatManager.sendPlayerMessage(
         player,
