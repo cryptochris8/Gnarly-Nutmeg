@@ -8594,13 +8594,13 @@
   
   // Enhanced device detection function
   function detectMobileDevice() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
     const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
     const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const screenWidth = window.innerWidth || document.documentElement.clientWidth;
     
-    // Multiple detection methods for better reliability
-    const isMobileUA = mobileRegex.test(userAgent.toLowerCase());
+    // Multiple detection methods for better reliability - with null safety
+    const isMobileUA = userAgent ? mobileRegex.test(userAgent.toLowerCase()) : false;
     const isMobileScreen = screenWidth <= 768;
     const isTouchDevice = touchCapable;
     const isSmallScreen = screenWidth <= 1024 && window.innerHeight <= 768;
