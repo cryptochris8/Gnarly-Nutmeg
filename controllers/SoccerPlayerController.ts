@@ -305,6 +305,30 @@ export default class CustomSoccerPlayer extends BaseEntityController {
     cameraOrientation: PlayerCameraOrientation,
     deltaTimeMs: number
   ) {
+    // Safety check
+    if (!entity.isSpawned || (entity instanceof SoccerPlayerEntity && entity.isPlayerFrozen)) {
+      // Clear any charging state if player is not properly spawned or frozen
+      if (this._holdingQ !== null) {
+        this._clearPowerChargeIfNeeded(entity);
+      }
+      return;
+    }
+
+    // Check for charging state when ball possession is lost
+    const soccerBall = sharedState.getSoccerBall();
+    const hasBall = sharedState.getAttachedPlayer() === entity;
+    
+    // **CRITICAL FIX**: Clear charging state if player no longer has ball
+    if (this._holdingQ !== null && !hasBall) {
+      console.log(`🔧 SHOT METER FIX: Clearing charging state for ${entity.player?.username || 'unknown'} - lost ball possession`);
+      this._clearPowerChargeIfNeeded(entity);
+      
+      // Stop wind-up animation if it's playing
+      if (entity.modelLoopedAnimations.has("wind_up")) {
+        entity.stopModelAnimations(["wind_up"]);
+      }
+    }
+
     try {
       // Early return if entity or world is invalid
       if (!entity?.isSpawned || !entity.world) {
@@ -429,6 +453,13 @@ export default class CustomSoccerPlayer extends BaseEntityController {
             }
             const elapsed = Date.now() - this._chargeStartTime;
             const percentage = Math.min((elapsed / 1500) * 100, 100);
+
+            // **SHOT METER FIX**: Add failsafe timeout after 3 seconds
+            if (elapsed > 3000) {
+              console.log(`🔧 SHOT METER FAILSAFE: Auto-clearing stuck charging state after 3s for ${entity.player?.username || 'unknown'}`);
+              this._clearPowerChargeIfNeeded(entity);
+              return;
+            }
 
             this._powerBarUI?.setState({
                isCharging: true,
@@ -1019,23 +1050,52 @@ export default class CustomSoccerPlayer extends BaseEntityController {
 
   /**
    * Clean up power charge related state if needed
+   * **ENHANCED**: Now properly resets all charging state to prevent freeze bugs
    */
   private _clearPowerChargeIfNeeded(player: PlayerEntity) {
+    console.log(`🔧 SHOT METER CLEANUP: Clearing all charging state for ${player.player?.username || 'unknown'}`);
+    
     // Clear charge interval if it exists
     this.clearChargeInterval();
     
     // Clear any charge UI if it exists
     if (this._powerBarUI) {
       try {
+        this._powerBarUI.setState({
+          isCharging: false,
+          startTime: null,
+          percentage: 0,
+        });
+        this._powerBarUI.unload();
         this._powerBarUI = undefined;
       } catch (error) {
-        // Ignore errors
+        console.log("Error clearing power bar UI:", error);
+      }
+    }
+    
+    // **CRITICAL**: Reset all charging state variables
+    this._holdingQ = null;
+    this._chargeStartTime = null;
+    
+    // Stop wind-up animation if it's playing
+    if (player instanceof SoccerPlayerEntity && player.modelLoopedAnimations.has("wind_up")) {
+      try {
+        player.stopModelAnimations(["wind_up"]);
+        console.log(`🔧 SHOT METER CLEANUP: Stopped wind_up animation for ${player.player?.username || 'unknown'}`);
+      } catch (error) {
+        console.log("Error stopping wind_up animation:", error);
       }
     }
   }
 
   public detach(entity: Entity) {
     try {
+      // **SHOT METER FIX**: Clear any charging state when detaching
+      if (this._holdingQ !== null && entity instanceof PlayerEntity) {
+        console.log(`🔧 SHOT METER FIX: Clearing charging state during detach for ${entity.player?.username || 'unknown'}`);
+        this._clearPowerChargeIfNeeded(entity);
+      }
+
       // Clear any pending animations or intervals
       if (entity instanceof SoccerPlayerEntity) {
         try {
