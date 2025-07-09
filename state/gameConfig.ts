@@ -79,13 +79,13 @@ export const BALL_CONFIG = {
   FRICTION: 0.4, // Increased from 0.3 to slow down ball movement more
 
   // Movement damping - increase to slow the ball down faster
-  LINEAR_DAMPING: 0.8, // Increased from 0.7 to slow ball down faster
-  ANGULAR_DAMPING: 3.5, // Increased from 3.0 to prevent more spinning
+  LINEAR_DAMPING: 0.7, // Reduced from 0.8 for better crossbar bouncing
+  ANGULAR_DAMPING: 3.0, // Reduced from 3.5 for more natural ball rotation
 
-  // Impact forces - reduce these for gentler bounces
-  HORIZONTAL_FORCE: 0.3, // Reduced from 0.4 for less bouncing
-  VERTICAL_FORCE: 0.5, // Reduced from 0.6 for less bouncing
-  UPWARD_BIAS: 0.15, // Reduced from 0.2 for less upward bounce
+  // ENHANCED: Impact forces for realistic crossbar bouncing
+  HORIZONTAL_FORCE: 0.4, // Increased from 0.3 for better bounce response
+  VERTICAL_FORCE: 0.6, // Increased from 0.5 for better upward bounce off crossbar
+  UPWARD_BIAS: 0.2, // Increased from 0.15 for more realistic ball trajectory
 };
 
 export const ABILITY_RESPAWN_TIME = 15 * 1000;

@@ -1983,22 +1983,39 @@ export class SoccerGame {
     const arcadeGameplayMusic = (this.world as any)._arcadeGameplayMusic;
     const fifaGameplayMusic = (this.world as any)._fifaGameplayMusic;
     
+    // Enhanced debugging for music system
+    console.log("🎵 Music instance check:");
+    console.log(`  - mainMusic: ${mainMusic ? 'EXISTS' : 'MISSING'}`);
+    console.log(`  - arcadeGameplayMusic: ${arcadeGameplayMusic ? 'EXISTS' : 'MISSING'}`);
+    console.log(`  - fifaGameplayMusic: ${fifaGameplayMusic ? 'EXISTS' : 'MISSING'}`);
+    
     if (!mainMusic || !arcadeGameplayMusic || !fifaGameplayMusic) {
-      console.error("Music system not properly initialized");
+      console.error("❌ Music system not properly initialized - MUSIC WILL NOT PLAY");
+      console.error("Check that music instances are created in index.ts startup");
       return;
     }
     
     // Stop opening music
-    mainMusic.pause();
-    console.log("🎵 Paused opening music");
+    try {
+      mainMusic.pause();
+      console.log("✅ Paused opening music successfully");
+    } catch (error) {
+      console.error("❌ Error pausing opening music:", error);
+    }
     
     // Start appropriate gameplay music based on current mode
     const currentMode = getCurrentGameMode();
     console.log(`🎵 Current game mode: ${currentMode}`);
     
     if (currentMode === GameMode.FIFA) {
-      fifaGameplayMusic.play(this.world);
-      console.log("🎵 Started FIFA gameplay music");
+      try {
+        fifaGameplayMusic.play(this.world);
+        console.log("✅ Started FIFA gameplay music successfully");
+        console.log(`   - File: Vettore - Silk.mp3`);
+        console.log(`   - Volume: 0.4 (increased for audibility)`);
+      } catch (error) {
+        console.error("❌ Error starting FIFA gameplay music:", error);
+      }
       
       // Start FIFA crowd atmosphere
       if (this.fifaCrowdManager) {
@@ -2012,8 +2029,14 @@ export class SoccerGame {
         }
       }
     } else {
-      arcadeGameplayMusic.play(this.world);
-      console.log("🎵 Started Arcade gameplay music");
+      try {
+        arcadeGameplayMusic.play(this.world);
+        console.log("✅ Started Arcade gameplay music successfully");
+        console.log(`   - File: always-win.mp3`);
+        console.log(`   - Volume: 0.4 (increased for audibility)`);
+      } catch (error) {
+        console.error("❌ Error starting Arcade gameplay music:", error);
+      }
       
       // Stop FIFA crowd atmosphere for non-FIFA modes
       if (this.fifaCrowdManager) {

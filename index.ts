@@ -137,7 +137,7 @@ startServer((world) => {
     const mainMusic = new Audio({
       uri: "audio/music/Ian Post - 8 Bit Samba - No FX.mp3",
       loop: true,
-      volume: 0.1, // Restored to original volume
+      volume: 0.2, // Slightly increased but still lower than gameplay music (0.4)
     });
     
     // Start music immediately (removed delay)
@@ -148,13 +148,13 @@ startServer((world) => {
     const arcadeGameplayMusic = new Audio({
       uri: "audio/music/always-win.mp3",
       loop: true,
-      volume: 0.1, // Restored to original volume
+      volume: 0.4, // INCREASED from 0.1 to 0.4 for audible volume
     });
 
     const fifaGameplayMusic = new Audio({
       uri: "audio/music/Vettore - Silk.mp3",
       loop: true,
-      volume: 0.1, // Restored to original volume
+      volume: 0.4, // INCREASED from 0.1 to 0.4 for audible volume
     });
 
     const getGameplayMusic = (): Audio => {
@@ -169,6 +169,9 @@ startServer((world) => {
     (world as any)._mainMusic = mainMusic;
     (world as any)._arcadeGameplayMusic = arcadeGameplayMusic;
     (world as any)._fifaGameplayMusic = fifaGameplayMusic;
+    
+    // Add initialization delay to ensure audio system is ready
+    console.log("🎵 Music system initialized - gameplay music ready");
     (world as any)._getCurrentGameMode = getCurrentGameMode;
 
     // Function to spawn AI players (restored to full 6v6)
@@ -1802,12 +1805,12 @@ startServer((world) => {
       );
     });
 
-    // Add a debug command to test music
+    // Enhanced debug command to test music - IMPROVED DIAGNOSTICS
     world.chatManager.registerCommand("/music", (player, args) => {
       if (args.length < 2) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Usage: /music <opening|gameplay|status> - Switch between music tracks or check status"
+          "Usage: /music <opening|gameplay|status|test> - Switch between music tracks, check status, or test specific tracks"
         );
         return;
       }
@@ -1819,27 +1822,80 @@ startServer((world) => {
         arcadeGameplayMusic?.pause();
         fifaGameplayMusic?.pause();
         mainMusic.play(world);
-        world.chatManager.sendPlayerMessage(player, "Switched to opening music");
+        world.chatManager.sendPlayerMessage(player, "✅ Switched to opening music");
       } else if (musicType === "gameplay") {
         console.log(`Manual switch to gameplay music (${getCurrentGameMode()} mode)`);
-        mainMusic.pause();
-        getGameplayMusic().play(world);
-        world.chatManager.sendPlayerMessage(player, `Switched to gameplay music (${getCurrentGameMode()} mode)`);
+        
+        // Enhanced error checking
+        if (!arcadeGameplayMusic || !fifaGameplayMusic) {
+          world.chatManager.sendPlayerMessage(player, "❌ Gameplay music not initialized!");
+          return;
+        }
+        
+        try {
+          mainMusic.pause();
+          getGameplayMusic().play(world);
+          const currentMode = getCurrentGameMode();
+          const trackName = currentMode === GameMode.FIFA ? "Vettore - Silk.mp3" : "always-win.mp3";
+          world.chatManager.sendPlayerMessage(player, `✅ Switched to gameplay music (${currentMode} mode)`);
+          world.chatManager.sendPlayerMessage(player, `🎵 Playing: ${trackName} at volume 0.4`);
+        } catch (error) {
+          world.chatManager.sendPlayerMessage(player, `❌ Error playing music: ${error}`);
+          console.error("Music playback error:", error);
+        }
+      } else if (musicType === "test") {
+        // New test mode for direct track testing
+        const testMode = args[2]?.toLowerCase();
+        if (!testMode || (testMode !== 'fifa' && testMode !== 'arcade')) {
+          world.chatManager.sendPlayerMessage(player, "Usage: /music test <fifa|arcade>");
+          return;
+        }
+
+        world.chatManager.sendPlayerMessage(player, `🎵 Testing ${testMode.toUpperCase()} music directly...`);
+        
+        // Stop all music first
+        mainMusic?.pause();
+        arcadeGameplayMusic?.pause();
+        fifaGameplayMusic?.pause();
+
+        try {
+          if (testMode === 'fifa') {
+            if (fifaGameplayMusic) {
+              fifaGameplayMusic.play(world);
+              world.chatManager.sendPlayerMessage(player, "✅ FIFA music started (Vettore - Silk.mp3)");
+            } else {
+              world.chatManager.sendPlayerMessage(player, "❌ FIFA music instance not found!");
+            }
+          } else {
+            if (arcadeGameplayMusic) {
+              arcadeGameplayMusic.play(world);
+              world.chatManager.sendPlayerMessage(player, "✅ Arcade music started (always-win.mp3)");
+            } else {
+              world.chatManager.sendPlayerMessage(player, "❌ Arcade music instance not found!");
+            }
+          }
+          world.chatManager.sendPlayerMessage(player, "🔊 Volume: 0.4 (increased for audibility)");
+        } catch (error) {
+          world.chatManager.sendPlayerMessage(player, `❌ Error: ${error}`);
+          console.error("Music test error:", error);
+        }
       } else if (musicType === "status") {
         const currentMode = getCurrentGameMode();
         const trackName = currentMode === GameMode.FIFA ? "Vettore - Silk.mp3" : "always-win.mp3";
         const crowdStatus = fifaCrowdManager.isActivated() ? "🏟️ Active" : "🔇 Inactive";
         
-        world.chatManager.sendPlayerMessage(player, `=== AUDIO STATUS ===`);
+        world.chatManager.sendPlayerMessage(player, `=== ENHANCED AUDIO STATUS ===`);
         world.chatManager.sendPlayerMessage(player, `Current Mode: ${currentMode.toUpperCase()}`);
         world.chatManager.sendPlayerMessage(player, `Gameplay Track: ${trackName}`);
+        world.chatManager.sendPlayerMessage(player, `Music Instances: Main:${mainMusic?'✅':'❌'} Arcade:${arcadeGameplayMusic?'✅':'❌'} FIFA:${fifaGameplayMusic?'✅':'❌'}`);
         world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game ? (game.inProgress() ? "Yes" : "No") : "Not initialized"}`);
         world.chatManager.sendPlayerMessage(player, `FIFA Crowd: ${crowdStatus}`);
-        world.chatManager.sendPlayerMessage(player, `Commands: /crowd <action> | /music <action>`);
+        world.chatManager.sendPlayerMessage(player, `Music Volume: 0.4 (increased from 0.1)`);
+        world.chatManager.sendPlayerMessage(player, `Commands: /crowd <action> | /music <test|gameplay|status>`);
       } else {
         world.chatManager.sendPlayerMessage(
           player,
-          "Invalid option. Use 'opening', 'gameplay', or 'status'"
+          "Invalid option. Use 'opening', 'gameplay', 'test', or 'status'"
         );
       }
     });

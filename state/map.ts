@@ -33,22 +33,28 @@ import {
 
 export class SoccerMap {
   private getGoals(): Goal[] {
-    // Large stadium goals only
+    // FIXED: Realistic soccer goal dimensions
+    // Standard soccer goal: 8 yards (24 feet) wide x 8 feet (2.4m) high
+    // In Minecraft blocks: ~8-10 blocks wide x 3-4 blocks high
+    const GOAL_WIDTH = 10; // Realistic goal width (5 blocks each side of center)
+    const GOAL_HEIGHT_MIN = 0; // Ground level (no below-ground goals)
+    const GOAL_HEIGHT_MAX = 4; // Realistic goal height (4 blocks high)
+    
     return [
       {
         // Red Goal (Defended by Red Team) - Located at FIELD_MIN_X (X = -37)
         // When ball enters here, Blue team scores
-        x: { min: GAME_CONFIG.AI_GOAL_LINE_X_RED - 5, max: GAME_CONFIG.AI_GOAL_LINE_X_RED + 3 },
-        z: { min: GAME_CONFIG.AI_FIELD_CENTER_Z - 20, max: GAME_CONFIG.AI_FIELD_CENTER_Z + 20 }, // Wider goal area
-        y: { min: -1, max: 4 }, // Realistic goal height - prevents high arc shots from counting as goals
+        x: { min: GAME_CONFIG.AI_GOAL_LINE_X_RED - 3, max: GAME_CONFIG.AI_GOAL_LINE_X_RED + 1 }, // 4 blocks deep
+        z: { min: GAME_CONFIG.AI_FIELD_CENTER_Z - GOAL_WIDTH/2, max: GAME_CONFIG.AI_FIELD_CENTER_Z + GOAL_WIDTH/2 }, // 10 blocks wide
+        y: { min: GOAL_HEIGHT_MIN, max: GOAL_HEIGHT_MAX }, // Ground level to 4 blocks high
         team: 'blue' // Blue team scores when ball enters Red's goal
       },
       {
-        // Blue Goal (Defended by Blue Team) - Located at FIELD_MAX_X (X = 52)
+        // Blue Goal (Defended by Blue Team) - Located at FIELD_MAX_X (X = 52)  
         // When ball enters here, Red team scores
-        x: { min: GAME_CONFIG.AI_GOAL_LINE_X_BLUE - 3, max: GAME_CONFIG.AI_GOAL_LINE_X_BLUE + 5 },
-        z: { min: GAME_CONFIG.AI_FIELD_CENTER_Z - 20, max: GAME_CONFIG.AI_FIELD_CENTER_Z + 20 }, // Wider goal area
-        y: { min: -1, max: 4 }, // Realistic goal height - prevents high arc shots from counting as goals
+        x: { min: GAME_CONFIG.AI_GOAL_LINE_X_BLUE - 1, max: GAME_CONFIG.AI_GOAL_LINE_X_BLUE + 3 }, // 4 blocks deep
+        z: { min: GAME_CONFIG.AI_FIELD_CENTER_Z - GOAL_WIDTH/2, max: GAME_CONFIG.AI_FIELD_CENTER_Z + GOAL_WIDTH/2 }, // 10 blocks wide  
+        y: { min: GOAL_HEIGHT_MIN, max: GOAL_HEIGHT_MAX }, // Ground level to 4 blocks high
         team: 'red' // Red team scores when ball enters Blue's goal
       }
     ];
@@ -65,13 +71,34 @@ export class SoccerMap {
   public checkGoal(position: { x: number; y: number; z: number }): Goal | null {
     const goals = this.getGoals();
     
-    // Check goals without logging every check
+    // ENHANCED: Additional validation to prevent false goals
+    // Check if ball is clearly above field level (no goals from underground)
+    if (position.y < 0) {
+      console.log(`❌ Goal detection REJECTED: Ball below ground level at Y=${position.y.toFixed(2)}`);
+      return null;
+    }
+    
+    // Check if ball is reasonably close to goal area (prevent long-distance false positives)
+    const isNearRedGoal = Math.abs(position.x - GAME_CONFIG.AI_GOAL_LINE_X_RED) < 10;
+    const isNearBlueGoal = Math.abs(position.x - GAME_CONFIG.AI_GOAL_LINE_X_BLUE) < 10;
+    
+    if (!isNearRedGoal && !isNearBlueGoal) {
+      // Ball is too far from any goal to be a valid goal
+      return null;
+    }
+    
+    // Check goals with enhanced logging
     for (const goal of goals) {
       if (this.isPositionInBounds(position, goal)) {
         const scoringTeam = goal.team;
         const defendingTeam = goal.team === 'red' ? 'Blue' : 'Red';
-        console.log(`GOAL DETECTED! Ball entered ${defendingTeam} goal at X=${position.x.toFixed(2)}, Z=${position.z.toFixed(2)}`);
-        console.log(`${scoringTeam.toUpperCase()} TEAM SCORES!`);
+        
+        // ENHANCED: Detailed goal validation logging
+        console.log(`✅ VALID GOAL DETECTED!`);
+        console.log(`   Ball Position: X=${position.x.toFixed(2)}, Y=${position.y.toFixed(2)}, Z=${position.z.toFixed(2)}`);
+        console.log(`   Goal Bounds: X[${goal.x.min} to ${goal.x.max}], Y[${goal.y.min} to ${goal.y.max}], Z[${goal.z.min} to ${goal.z.max}]`);
+        console.log(`   ${defendingTeam} goal entered - ${scoringTeam.toUpperCase()} TEAM SCORES!`);
+        
         return goal;
       }
     }

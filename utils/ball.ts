@@ -6,17 +6,131 @@ import {
   World,
   Audio,
   EntityEvent,
+  Collider,
+  CollisionGroup,
 } from "hytopia";
 import sharedState from "../state/sharedState";
 import { getDirectionFromRotation } from "./direction";
-import { BALL_CONFIG, BALL_SPAWN_POSITION, FIELD_MIN_Y } from "../state/gameConfig";
+import { BALL_CONFIG, BALL_SPAWN_POSITION, FIELD_MIN_Y, GAME_CONFIG } from "../state/gameConfig";
 import { soccerMap } from "../state/map";
 import type { BoundaryInfo } from "../state/map";
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 
+// Goal sensor tracking
+let redGoalSensor: Collider | null = null;
+let blueGoalSensor: Collider | null = null;
+let ballHasEnteredGoal = false;
+let goalSensorDebounce = 0;
+let worldRef: World | null = null; // Store world reference for goal sensor callbacks
+
+/**
+ * Create goal line sensors for reliable goal detection
+ * These sensors detect when the ball crosses the goal line, regardless of bouncing
+ */
+function createGoalSensors(world: World) {
+  // Store world reference for goal sensor callbacks
+  worldRef = world;
+  
+  // Red goal sensor (Blue team scores when ball enters)
+  redGoalSensor = new Collider({
+    shape: ColliderShape.BLOCK,
+    halfExtents: { x: 2, y: 4, z: 5 }, // 4x8x10 goal area
+    isSensor: true,
+    tag: 'red-goal-sensor',
+    relativePosition: { 
+      x: GAME_CONFIG.AI_GOAL_LINE_X_RED, 
+      y: 2, 
+      z: GAME_CONFIG.AI_FIELD_CENTER_Z 
+    },
+    onCollision: (other: BlockType | Entity, started: boolean) => {
+      if (other instanceof Entity && other.name === 'SoccerBall' && started) {
+        console.log('🥅 Ball entered RED goal sensor - BLUE TEAM SCORES!');
+        handleGoalSensorTrigger('blue', other);
+      }
+    },
+  });
+
+  // Blue goal sensor (Red team scores when ball enters)
+  blueGoalSensor = new Collider({
+    shape: ColliderShape.BLOCK,
+    halfExtents: { x: 2, y: 4, z: 5 }, // 4x8x10 goal area
+    isSensor: true,
+    tag: 'blue-goal-sensor',
+    relativePosition: { 
+      x: GAME_CONFIG.AI_GOAL_LINE_X_BLUE, 
+      y: 2, 
+      z: GAME_CONFIG.AI_FIELD_CENTER_Z 
+    },
+    onCollision: (other: BlockType | Entity, started: boolean) => {
+      if (other instanceof Entity && other.name === 'SoccerBall' && started) {
+        console.log('🥅 Ball entered BLUE goal sensor - RED TEAM SCORES!');
+        handleGoalSensorTrigger('red', other);
+      }
+    },
+  });
+
+  // Add sensors to world simulation
+  redGoalSensor.addToSimulation(world.simulation);
+  blueGoalSensor.addToSimulation(world.simulation);
+  
+  console.log('⚽ Goal sensors created and added to simulation');
+}
+
+/**
+ * Handle goal sensor trigger with debouncing to prevent multiple rapid goals
+ */
+function handleGoalSensorTrigger(scoringTeam: 'red' | 'blue', ballEntity: Entity) {
+  const currentTime = Date.now();
+  
+  // Debounce goals to prevent multiple rapid triggers (2 second cooldown)
+  if (currentTime - goalSensorDebounce < 2000) {
+    console.log('🚫 Goal sensor triggered but debounced (too recent)');
+    return;
+  }
+  
+  // Skip if ball is attached to a player (shouldn't happen in goal area, but safety check)
+  if (sharedState.getAttachedPlayer() !== null) {
+    console.log('🚫 Goal sensor triggered but ball is attached to player');
+    return;
+  }
+  
+  // Skip if goal is already being handled
+  if (ballHasEnteredGoal) {
+    console.log('🚫 Goal sensor triggered but goal already being handled');
+    return;
+  }
+  
+  goalSensorDebounce = currentTime;
+  ballHasEnteredGoal = true;
+  
+  console.log(`✅ GOAL CONFIRMED via sensor! ${scoringTeam.toUpperCase()} TEAM SCORES!`);
+  console.log(`   Ball position: X=${ballEntity.position.x.toFixed(2)}, Y=${ballEntity.position.y.toFixed(2)}, Z=${ballEntity.position.z.toFixed(2)}`);
+  
+  // Emit goal event immediately - no confirmation delay needed
+  if (worldRef) {
+    worldRef.emit("goal" as any, scoringTeam as any);
+  }
+  
+  // Reset ball after short celebration delay
+  setTimeout(() => {
+    if (worldRef) {
+      ballEntity.despawn();
+      ballEntity.spawn(worldRef, BALL_SPAWN_POSITION);
+      ballEntity.setLinearVelocity({ x: 0, y: 0, z: 0 });
+      ballEntity.setAngularVelocity({ x: 0, y: 0, z: 0 });
+      ballHasEnteredGoal = false;
+    } else {
+      console.error('❌ Cannot respawn ball: worldRef is null');
+    }
+  }, 3000);
+}
+
 export default function createSoccerBall(world: World) {
   console.log("Creating soccer ball with config:", JSON.stringify(BALL_CONFIG));
   console.log("Ball spawn position:", JSON.stringify(BALL_SPAWN_POSITION));
+  
+  // Create goal sensors for reliable goal detection
+  createGoalSensors(world);
   
   const soccerBall = new Entity({
     name: "SoccerBall",
@@ -32,11 +146,12 @@ export default function createSoccerBall(world: World) {
           shape: ColliderShape.BALL,
           radius: BALL_CONFIG.RADIUS,
           friction: BALL_CONFIG.FRICTION,
-          // Ensure proper collision groups for terrain interaction
+          // ENHANCED: Improved collision groups for better crossbar/goal post interaction
           collisionGroups: {
-            belongsTo: [1], // Default collision group
-            collidesWith: [1, 2, 4] // Collide with terrain, blocks, and entities
+            belongsTo: [1], // Default collision group for ball
+            collidesWith: [1, 2, 4, 8] // Collide with terrain(1), blocks(2), entities(4), and goal structures(8)
           }
+          // Note: Ball bounce physics handled by BALL_CONFIG settings in gameConfig.ts
         },
       ],
     },
@@ -158,40 +273,12 @@ export default function createSoccerBall(world: World) {
         return;
       }
       
-      // Enhanced goal detection - check for goals
-      const goal = soccerMap.checkGoal(currentPos);
-      if (goal) {
-        console.log(`GOAL DETECTED by ball at position ${currentPos.x}, ${currentPos.y}, ${currentPos.z} for team ${goal.team}`);
-        inGoal = true;
-        // Add a small delay before emitting the goal event to ensure it's not a glancing blow
-        setTimeout(() => {
-          // Double-check we're still in the goal and not already being handled
-          const updatedPos = { ...entity.position };
-          const stillInGoal = soccerMap.checkGoal(updatedPos);
-          if (stillInGoal && stillInGoal.team === goal.team && inGoal) {
-            console.log(`Confirming GOAL event for team ${goal.team}`);
-            // Emit the goal event without playing the whistle here
-            // The whistle will be played by the game state handler
-            world.emit("goal" as any, goal.team as any);
-            
-            // Reset ball position after a delay
-            setTimeout(() => {
-              if (inGoal) { // Double check we're still handling this goal
-                entity.despawn();
-                entity.spawn(world, BALL_SPAWN_POSITION);
-                entity.setLinearVelocity({ x: 0, y: 0, z: 0 });
-                entity.setAngularVelocity({ x: 0, y: 0, z: 0 });
-                inGoal = false;
-              }
-            }, 3000);
-          } else {
-            // Ball moved out of goal during confirmation delay
-            inGoal = false;
-          }
-        }, 100); // Short confirmation delay
-      }
+      // NOTE: Goal detection now handled by collision sensors instead of position checking
+      // This eliminates the bounce-out issue where balls quickly exit the goal area
+      // during the confirmation delay, causing goals to be incorrectly rejected
+      
       // Enhanced out-of-bounds detection with detailed boundary information
-      else {
+      {
         const boundaryInfo: BoundaryInfo = soccerMap.checkBoundaryDetails(currentPos);
         
         if (boundaryInfo.isOutOfBounds && !isRespawning) {
