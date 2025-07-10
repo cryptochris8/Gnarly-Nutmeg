@@ -206,7 +206,7 @@ startServer((world) => {
         const spawnPosition = getStartPosition(opponentTeam, role);
         aiPlayer.spawn(world, spawnPosition);
         aiPlayers.push(aiPlayer);
-        sharedState.addAIToTeam(aiPlayer, opponentTeam);
+                  sharedState.addAIToTeam(aiPlayer, opponentTeam);
       }
       
       console.log(`✅ Spawned ${aiPlayers.length} AI players total`);
@@ -944,7 +944,8 @@ startServer((world) => {
                 gameMode: tournament.gameMode,
                 maxPlayers: tournament.maxPlayers,
                 status: tournament.status,
-                players: Object.keys(tournament.players).length
+                players: Object.values(tournament.players), // ✅ Send full player objects
+                playerCount: Object.keys(tournament.players).length
               }
             };
             
@@ -1002,7 +1003,7 @@ startServer((world) => {
                   gameMode: tournament.gameMode,
                   maxPlayers: tournament.maxPlayers,
                   status: tournament.status,
-                  players: Object.keys(tournament.players),
+                  players: Object.values(tournament.players), // ✅ Send full player objects
                   playerCount: Object.keys(tournament.players).length
                 } : null
               });
@@ -1244,7 +1245,7 @@ startServer((world) => {
           console.log(`✅ Mobile mode enabled for ${player.username}`);
         }
         else if (data.type === "mobile-movement-input") {
-          // Handle mobile virtual joystick movement - OPTIMIZED
+          // Handle mobile virtual joystick movement - HYTOPIA SDK COMPLIANT
           const movementInput = data.movement;
           const inputMagnitude = data.inputMagnitude || 0;
           
@@ -1275,12 +1276,12 @@ startServer((world) => {
               return;
             }
             
-                         // Process buffered inputs for smooth movement
-             if (mobileData.inputBuffer.length > 0) {
-               const avgInput = mobileData.inputBuffer.reduce((acc: { x: number, y: number }, input: any) => ({
-                 x: acc.x + input.movement.x,
-                 y: acc.y + input.movement.y
-               }), { x: 0, y: 0 });
+            // Process buffered inputs for smooth movement
+            if (mobileData.inputBuffer.length > 0) {
+              const avgInput = mobileData.inputBuffer.reduce((acc: { x: number, y: number }, input: any) => ({
+                x: acc.x + input.movement.x,
+                y: acc.y + input.movement.y
+              }), { x: 0, y: 0 });
               
               avgInput.x /= mobileData.inputBuffer.length;
               avgInput.y /= mobileData.inputBuffer.length;
@@ -1293,7 +1294,7 @@ startServer((world) => {
             mobileData.lastInputTime = currentTime;
             (player as any)._mobileOptimization = mobileData;
             
-            // Convert joystick input to player controller format with mobile optimizations
+            // Convert joystick input to HYTOPIA SDK PlayerInput format
             const deadzone = 0.15; // Server-side deadzone verification
             const magnitude = Math.sqrt(movementInput.x * movementInput.x + movementInput.y * movementInput.y);
             
@@ -1308,18 +1309,43 @@ startServer((world) => {
               y: movementInput.y * mobileSensitivity
             };
             
-            const controllerInput = {
-              forward: scaledInput.y > 0,
-              backward: scaledInput.y < 0,
-              left: scaledInput.x < 0,
-              right: scaledInput.x > 0,
-              primaryDown: false,
-              secondaryDown: false,
-              tertiary: false,
-              dodging: false
+            // HYTOPIA SDK COMPLIANT PlayerInput - Use standard SDK input properties
+            const hytopiaPlayerInput = {
+              // Movement keys (w, a, s, d)
+              w: scaledInput.y > 0.1,    // forward
+              a: scaledInput.x < -0.1,   // left
+              s: scaledInput.y < -0.1,   // backward  
+              d: scaledInput.x > 0.1,    // right
+              
+              // Mouse buttons
+              ml: false,  // mouse left click
+              mr: false,  // mouse right click
+              
+              // Other standard keys
+              sp: false,  // spacebar
+              sh: false,  // shift
+              q: false,   // charge shot
+              e: false,   // tackle
+              r: false,
+              f: false,
+              z: false,
+              x: false,
+              c: false,
+              v: false,
+              
+              // Number keys
+              1: false,
+              2: false,
+              3: false,
+              4: false,
+              5: false,
+              6: false,
+              7: false,
+              8: false,
+              9: false
             };
             
-            // Apply movement through the player controller
+            // Apply movement through the player controller using proper PlayerInput
             if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
               // Use stored mobile camera orientation for movement direction
               const storedCamera = (player as any)._mobileCameraOrientation || { yaw: 0, pitch: 0 };
@@ -1333,7 +1359,7 @@ startServer((world) => {
               
               playerEntity.controller.tickWithPlayerInput(
                 playerEntity,
-                controllerInput,
+                hytopiaPlayerInput, // Now using proper Hytopia SDK format
                 cameraOrientation,
                 deltaTime
               );
@@ -1341,7 +1367,7 @@ startServer((world) => {
           }
         }
         else if (data.type === "mobile-action-input") {
-          // Handle mobile action button presses
+          // Handle mobile action button presses - HYTOPIA SDK COMPLIANT
           const action = data.action;
           const pressed = data.pressed;
           
@@ -1350,22 +1376,44 @@ startServer((world) => {
           // Get the player's soccer entity
           const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
           if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
-            // Create input state for the specific action
-            const actionInput = {
-              forward: false,
-              backward: false,
-              left: false,
-              right: false,
-              primaryDown: action === 'shoot' && pressed,
-              secondaryDown: action === 'pass' && pressed,
-              tertiary: action === 'tackle' && pressed,
-              dodging: action === 'dodge' && pressed
+            // Create HYTOPIA SDK compliant PlayerInput for actions
+            const hytopiaActionInput = {
+              // Movement keys - false for action input
+              w: false,
+              a: false,
+              s: false,
+              d: false,
+              
+              // Map mobile actions to proper Hytopia SDK input properties
+              ml: action === 'pass' && pressed,    // mouse left = pass
+              mr: action === 'shoot' && pressed,   // mouse right = shoot
+              sp: false,                          // spacebar
+              sh: false,                          // shift
+              q: false,                           // charge shot
+              e: action === 'tackle' && pressed,   // tackle
+              r: false,
+              f: action === 'dodge' && pressed,    // dodge (f key)
+              z: false,
+              x: false,
+              c: false,
+              v: false,
+              
+              // Number keys
+              1: false,
+              2: false,
+              3: false,
+              4: false,
+              5: false,
+              6: false,
+              7: false,
+              8: false,
+              9: false
             };
             
             // Get stored mobile camera orientation or default
             const storedCamera = (player as any)._mobileCameraOrientation || { yaw: 0, pitch: 0 };
             
-            // Apply action through the player controller
+            // Apply action through the player controller using proper PlayerInput
             if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
               const cameraOrientation = {
                 yaw: storedCamera.yaw,
@@ -1374,7 +1422,7 @@ startServer((world) => {
               
               playerEntity.controller.tickWithPlayerInput(
                 playerEntity,
-                actionInput,
+                hytopiaActionInput, // Now using proper Hytopia SDK format
                 cameraOrientation,
                 16 // 16ms delta time
               );

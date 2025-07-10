@@ -451,6 +451,9 @@ export class TournamentManager {
     this.saveTournamentToPersistence(tournament);
     console.log(`✅ Match ${matchId} completed: ${winner} defeats ${loser} ${score.player1}-${score.player2}`);
 
+    // Notify all tournament players of bracket update
+    this.notifyBracketUpdate(tournament);
+
     // Advance tournament
     this.advanceTournament(tournamentId, match);
 
@@ -704,8 +707,33 @@ export class TournamentManager {
           bracket: tournament.bracket.map(m => ({
             id: m.id,
             roundNumber: m.roundNumber,
+            matchNumber: m.matchNumber,
             player1: m.player1,
             player2: m.player2,
+            winner: m.winner,
+            score: m.score,
+            status: m.status
+          }))
+        });
+      }
+    });
+  }
+
+  private notifyBracketUpdate(tournament: Tournament): void {
+    Object.keys(tournament.players).forEach(username => {
+      const player = PlayerManager.instance.getConnectedPlayerByUsername(username);
+      if (player) {
+        player.ui.sendData({
+          type: "tournament-bracket-updated",
+          tournamentId: tournament.id,
+          bracket: tournament.bracket.map(m => ({
+            id: m.id,
+            roundNumber: m.roundNumber,
+            matchNumber: m.matchNumber,
+            player1: m.player1,
+            player2: m.player2,
+            winner: m.winner,
+            score: m.score,
             status: m.status
           }))
         });
