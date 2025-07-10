@@ -1874,6 +1874,80 @@
   </div>
 </div>
 
+<!-- COUNTDOWN DISPLAY -->
+<div id="countdown-display" style="
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 72px;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: none;
+  pointer-events: none;
+  text-align: center;
+">3</div>
+
+<!-- ABILITY ICON -->
+<img id="ability-icon" src="{{CDN_ASSETS_URL}}/ui/icons/shuriken-icon.png" alt="Ability" style="
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+  pointer-events: none;
+" />
+
+<!-- GOAL CELEBRATION ELEMENTS -->
+<div class="game-text" style="
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 64px;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+  z-index: 9998;
+  display: none;
+  pointer-events: none;
+  text-align: center;
+">GOAL!</div>
+
+<div id="goal-overlay" style="
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 215, 0, 0.1);
+  z-index: 9997;
+  display: none;
+  pointer-events: none;
+"></div>
+
+<!-- COOLDOWN MESSAGE -->
+<div id="cooldown-message" style="
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 100, 100, 0.9);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  z-index: 1000;
+  display: none;
+  pointer-events: none;
+  text-align: center;
+">Cooldown message</div>
+
 <!-- ARCADE MODE INDICATOR -->
 <div id="arcade-mode-indicator" class="arcade-mode-indicator">
   <span>🎪</span> ARCADE MODE - ENHANCED SOCCER!
@@ -8718,53 +8792,22 @@
 
   // ===== PHASE 1 MOBILE CONTROLS SYSTEM (HYTOPIA SDK COMPLIANT) =====
   
-  // DISABLED MOBILE DETECTION - Causing InputManager conflicts
-  // Mobile device detection disabled to prevent InputManager errors
-  let isMobileDevice = false;
+  // Mobile controls state variables
   let mobileControlsInitialized = false;
   let mobileCameraState = {
     enabled: true,
-    sensitivity: 0.003, // Sensitivity for touch camera rotation
-    maxPitch: Math.PI / 3, // 60 degrees max pitch up/down
+    sensitivity: 0.003,
+    maxPitch: Math.PI / 3,
     touchStartPos: null,
     lastTouchPos: null,
     isDragging: false,
-    deadzone: 5, // Minimum movement before camera rotation starts
-    smoothing: 0.1 // Camera smoothing factor
+    deadzone: 5,
+    smoothing: 0.1
   };
-  
-  // Enhanced device detection function
-  function detectMobileDevice() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
-    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
-    const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const screenWidth = window.innerWidth || document.documentElement.clientWidth;
-    
-    // Multiple detection methods for better reliability - with null safety
-    const isMobileUA = userAgent ? mobileRegex.test(userAgent.toLowerCase()) : false;
-    const isMobileScreen = screenWidth <= 768;
-    const isTouchDevice = touchCapable;
-    const isSmallScreen = screenWidth <= 1024 && window.innerHeight <= 768;
-    
-    // Consider it mobile if any of these conditions are true
-    isMobileDevice = isMobileUA || (isTouchDevice && isMobileScreen) || (isTouchDevice && isSmallScreen);
-    
-    console.log('📱 Enhanced mobile device detection:', {
-      userAgent: userAgent,
-      isMobile: isMobileDevice,
-      isMobileUA: isMobileUA,
-      touchCapable: isTouchDevice,
-      screenWidth: screenWidth,
-      screenHeight: window.innerHeight,
-      reason: isMobileUA ? 'User Agent' : isTouchDevice && isMobileScreen ? 'Touch + Screen Size' : isTouchDevice && isSmallScreen ? 'Touch + Small Screen' : 'Not Mobile'
-    });
-    
-    return isMobileDevice;
-  }
   
   // Initialize mobile controls
   function initializeMobileControls() {
-    if (mobileControlsInitialized || !detectMobileDevice()) {
+    if (mobileControlsInitialized) {
       return;
     }
     
@@ -8775,7 +8818,7 @@
     mobileControlsContainer.id = 'mobile-controls-container';
     mobileControlsContainer.className = 'mobile-controls mobile-active';
     
-    // Force visibility for mobile devices
+    // Force visibility for all devices
     mobileControlsContainer.style.display = 'block';
     mobileControlsContainer.style.visibility = 'visible';
     
@@ -8857,16 +8900,18 @@
     initializeJoystickEvents();
     
     // Notify server about mobile mode
-    hytopia.sendData({
-      type: "mobile-mode-enabled",
-      deviceInfo: {
-        userAgent: navigator.userAgent,
-        screenWidth: window.innerWidth,
-        screenHeight: window.innerHeight,
-        touchCapable: 'ontouchstart' in window,
-        devicePixelRatio: window.devicePixelRatio || 1
-      }
-    });
+    if (typeof hytopia !== 'undefined' && hytopia.sendData) {
+      hytopia.sendData({
+        type: "mobile-mode-enabled",
+        deviceInfo: {
+          userAgent: navigator.userAgent,
+          screenWidth: window.innerWidth,
+          screenHeight: window.innerHeight,
+          touchCapable: 'ontouchstart' in window,
+          devicePixelRatio: window.devicePixelRatio || 1
+        }
+      });
+    }
     
     mobileControlsInitialized = true;
     console.log('✅ Mobile controls initialized successfully');
@@ -9151,97 +9196,6 @@
   // NOTE: Mobile controls initialization should be handled through Hytopia SDK lifecycle
   console.log("⚠️ DOM and window event listeners disabled - violate Hytopia SDK InputManager rules");
   
-  // DISABLED: Mobile detection causing InputManager conflicts with Hytopia SDK
-  // Additional backup initialization after Hytopia connects
-  // setTimeout(function() {
-  //   console.log('📱 Backup initialization attempt');
-  //   if (!mobileControlsInitialized && detectMobileDevice()) {
-  //     initializeMobileControls();
-  //   }
-  // }, 3000);
-  
-  // Force initialization for mobile devices - emergency backup
-  // setInterval(function() {
-  //   if (!mobileControlsInitialized && detectMobileDevice()) {
-  //     console.log('📱 Emergency backup initialization triggered');
-  //     initializeMobileControls();
-  //   }
-  // }, 5000);
-  
-  // Test mobile controls function (for debugging)
-  function testMobileControls() {
-    console.log('📱 Testing mobile controls...');
-    
-    // Force mobile detection
-    isMobileDevice = true;
-    
-    // Force initialization
-    mobileControlsInitialized = false;
-    initializeMobileControls();
-    
-    // Test button visibility
-    const controls = document.getElementById('mobile-controls-container');
-    if (controls) {
-      controls.style.display = 'block';
-      controls.style.visibility = 'visible';
-      controls.style.zIndex = '99999';
-      console.log('📱 Mobile controls forced visible');
-      
-      // Add red debug border
-      controls.style.border = '3px solid red';
-      setTimeout(() => {
-        controls.style.border = 'none';
-      }, 3000);
-      
-      // Test button events (Hytopia-compliant onclick)
-      setTimeout(() => {
-        console.log('📱 Testing button events...');
-        const shootBtn = document.getElementById('mobile-shoot-btn');
-        if (shootBtn) {
-          console.log('📱 Simulating shoot button click (Hytopia-compliant)...');
-          handleMobileQuickAction('shoot');
-        }
-      }, 1000);
-      
-      return 'Mobile controls test completed - should be visible now with button test';
-    } else {
-      console.error('📱 Mobile controls container not found');
-      return 'Mobile controls container not found';
-    }
-  }
-  
-  // Check mobile controls status
-  function checkMobileControlsStatus() {
-    const shootButton = document.getElementById('mobile-shoot-btn');
-    const status = {
-      isMobileDevice: isMobileDevice,
-      controlsInitialized: mobileControlsInitialized,
-      controlsContainer: !!document.getElementById('mobile-controls-container'),
-      joystick: !!document.getElementById('virtual-joystick'),
-      shootButton: !!shootButton,
-      passButton: !!document.getElementById('mobile-pass-btn'),
-      tackleButton: !!document.getElementById('mobile-tackle-btn'),
-      dodgeButton: !!document.getElementById('mobile-dodge-btn'),
-      screenWidth: window.innerWidth,
-      screenHeight: window.innerHeight,
-      touchCapable: 'ontouchstart' in window,
-      hytopiaAvailable: typeof hytopia !== 'undefined',
-      buttonEventsSet: shootButton ? (shootButton.getAttribute('onclick') && shootButton.getAttribute('ontouchstart')) : false
-    };
-    
-    console.log('📱 Mobile Controls Status:', status);
-    
-    // Test button events if available (Hytopia-compliant)
-    if (shootButton) {
-      console.log('📱 Testing shoot button event setup (Hytopia-compliant)...');
-      console.log('📱 Shoot button onclick:', shootButton.getAttribute('onclick'));
-      console.log('📱 Shoot button ontouchstart:', shootButton.getAttribute('ontouchstart'));
-      console.log('📱 Shoot button ontouchend:', shootButton.getAttribute('ontouchend'));
-    }
-    
-    return status;
-  }
-  
   // Mobile configuration functions - NEW CUSTOMIZATION SYSTEM
   function setJoystickSensitivity(sensitivity) {
     joystickConfig.sensitivity = Math.max(0.1, Math.min(3.0, sensitivity));
@@ -9294,6 +9248,35 @@
       joystick: { ...joystickConfig },
       camera: { sensitivity: mobileCameraState.sensitivity, deadzone: mobileCameraState.deadzone }
     };
+  }
+  
+  // Enhanced device detection function
+  function detectMobileDevice() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+    const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const screenWidth = window.innerWidth || document.documentElement.clientWidth;
+    
+    // Multiple detection methods for better reliability
+    const isMobileUA = mobileRegex.test(userAgent.toLowerCase());
+    const isMobileScreen = screenWidth <= 768;
+    const isTouchDevice = touchCapable;
+    const isSmallScreen = screenWidth <= 1024 && window.innerHeight <= 768;
+    
+    // Consider it mobile if any of these conditions are true
+    isMobileDevice = isMobileUA || (isTouchDevice && isMobileScreen) || (isTouchDevice && isSmallScreen);
+    
+    console.log('📱 Enhanced mobile device detection:', {
+      userAgent: userAgent,
+      isMobile: isMobileDevice,
+      isMobileUA: isMobileUA,
+      touchCapable: isTouchDevice,
+      screenWidth: screenWidth,
+      screenHeight: window.innerHeight,
+      reason: isMobileUA ? 'User Agent' : isTouchDevice && isMobileScreen ? 'Touch + Screen Size' : isTouchDevice && isSmallScreen ? 'Touch + Small Screen' : 'Not Mobile'
+    });
+    
+    return isMobileDevice;
   }
   
   // Make mobile functions globally accessible (Hytopia-compliant)
@@ -10575,6 +10558,12 @@
   window.showMobileTeamSelection = showMobileTeamSelection;
   window.selectMobileTeam = selectMobileTeam;
   window.showMobileGameMenu = showMobileGameMenu;
+
+  // Initialize mobile controls when page loads
+  setTimeout(function() {
+    console.log('📱 Starting mobile controls initialization...');
+    initializeMobileControls();
+  }, 1000);
 
 </script>
 
