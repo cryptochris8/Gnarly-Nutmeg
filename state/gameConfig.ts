@@ -67,7 +67,7 @@ export const TOTAL_HALVES = 2; // First half and second half
 export const MATCH_DURATION = TOTAL_HALVES * HALF_DURATION; // 10 minutes total
 export const HALFTIME_DURATION = 2 * 60; // 2 minutes halftime break
 
-export const PASS_FORCE = 5;
+export const PASS_FORCE = 3.5;
 
 export const STUN_DURATION = 1.5 * 1000;
 export const TACKLE_KNOCKBACK_FORCE = 12;

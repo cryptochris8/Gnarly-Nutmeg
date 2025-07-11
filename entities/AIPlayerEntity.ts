@@ -241,8 +241,8 @@ const CENTER_AVOIDANCE_RADIUS = 12.0;      // Radius around center to avoid crow
 // Constants for arcing shots and passes
 const SHOT_ARC_FACTOR = 0.18; // Balanced arc for realistic goal shots without going over crossbar
 const PASS_ARC_FACTOR = 0.05; // Reduced from 0.08 to keep passes lower and more controlled
-const PASS_FORCE = 4; // Reduced from 6 to prevent balls going out of bounds
-const SHOT_FORCE = 4.5; // Increased from 1.8 to give AI players sufficient shooting power
+const PASS_FORCE = 3.5; // Reduced from 5.5 to 3.5 for better pass control (user feedback)
+const SHOT_FORCE = 2.5; // Reduced to match typical human quick shot power
 
 /**
  * Behavioral Tree Implementation
@@ -1926,7 +1926,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     sharedState.setAttachedPlayer(null);
     
     // Apply powerMultiplier to the base SHOT_FORCE with safety caps
-    let effectiveMultiplier = Math.min(powerMultiplier, 1.2); // Increased from 1.0 to allow stronger shots
+    let effectiveMultiplier = 1.0; // TESTING: Force all AI shots to use base 4.5 force only
     
     // Calculate the effective shot force with a hard maximum cap
     const effectiveShotForce = Math.min(SHOT_FORCE * effectiveMultiplier, 10); // Increased cap from 6 to 10 for better shooting range

@@ -23,8 +23,8 @@
   },
   "dependencies": {
     "@gltf-transform/cli": "^4.2.0",
-    "@hytopia.com/assets": "^0.2.21",
-    "hytopia": "^0.6.32",
+    "@hytopia.com/assets": "^0.3.13",
+    "hytopia": "^0.6.34",
     "mediasoup": "^3.16.5"
   },
   "trustedDependencies": [

@@ -349,10 +349,19 @@ export default function createSoccerBall(world: World) {
       const ballPosition = entity.position;
       const ballVelocity = entity.linearVelocity;
       
-      // Only check for proximity possession if ball is moving slowly or stationary
+      // Enhanced reception assistance - different logic for moving vs stationary balls
       const ballSpeed = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
-      const PROXIMITY_POSSESSION_DISTANCE = 1.5; // Distance in units for automatic possession
-      const MAX_BALL_SPEED_FOR_PROXIMITY = 3.0; // Only auto-possess if ball is moving slowly
+      
+      // Enhanced settings for better pass reception
+      let PROXIMITY_POSSESSION_DISTANCE = 1.5; // Base distance for automatic possession
+      let MAX_BALL_SPEED_FOR_PROXIMITY = 3.0; // Base max speed for auto-possession
+      
+      // RECEPTION ASSISTANCE: If ball is moving (likely a pass), increase reception assistance
+      if (ballSpeed > 1.0) {
+        // Ball is moving - likely a pass, so provide enhanced reception assistance
+        PROXIMITY_POSSESSION_DISTANCE = 2.2; // Increased from 1.5 to 2.2 for easier pass reception
+        MAX_BALL_SPEED_FOR_PROXIMITY = 6.0; // Increased from 3.0 to 6.0 to help with faster passes
+      }
       
       if (ballSpeed < MAX_BALL_SPEED_FOR_PROXIMITY) {
         // Get all player entities in the world
@@ -367,8 +376,34 @@ export default function createSoccerBall(world: World) {
               Math.pow(playerEntity.position.z - ballPosition.z, 2)
             );
             
-            if (distance < PROXIMITY_POSSESSION_DISTANCE && distance < closestDistance) {
-              closestDistance = distance;
+            // ENHANCED RECEPTION: Additional assistance for balls moving toward the player
+            let effectiveDistance = distance;
+            if (ballSpeed > 1.0) {
+              // Calculate if ball is moving toward this player
+              const ballDirection = { x: ballVelocity.x, z: ballVelocity.z };
+              const ballToPlayer = {
+                x: playerEntity.position.x - ballPosition.x,
+                z: playerEntity.position.z - ballPosition.z
+              };
+              
+              // Normalize vectors for dot product calculation
+              const ballDirLength = Math.sqrt(ballDirection.x * ballDirection.x + ballDirection.z * ballDirection.z);
+              const ballToPlayerLength = Math.sqrt(ballToPlayer.x * ballToPlayer.x + ballToPlayer.z * ballToPlayer.z);
+              
+              if (ballDirLength > 0 && ballToPlayerLength > 0) {
+                const dotProduct = (ballDirection.x * ballToPlayer.x + ballDirection.z * ballToPlayer.z) / 
+                                  (ballDirLength * ballToPlayerLength);
+                
+                // If ball is moving toward player (dot product > 0.5), reduce effective distance for easier reception
+                if (dotProduct > 0.5) {
+                  effectiveDistance = distance * 0.7; // Make it 30% easier to receive when ball is coming toward player
+                  console.log(`Reception assistance for ${playerEntity.player.username}: ball moving toward player (dot: ${dotProduct.toFixed(2)})`);
+                }
+              }
+            }
+            
+            if (effectiveDistance < PROXIMITY_POSSESSION_DISTANCE && effectiveDistance < closestDistance) {
+              closestDistance = effectiveDistance;
               closestPlayer = playerEntity;
             }
           }
@@ -385,7 +420,7 @@ export default function createSoccerBall(world: World) {
             loop: false,
           }).play(entity.world as World);
           
-          console.log(`Ball automatically attached to ${closestPlayer.player.username} (proximity: ${closestDistance.toFixed(2)} units)`);
+          console.log(`Ball automatically attached to ${closestPlayer.player.username} (proximity: ${closestDistance.toFixed(2)} units, speed: ${ballSpeed.toFixed(1)})`);
         }
       }
     }
