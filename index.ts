@@ -40,23 +40,19 @@ import {
   FIELD_MAX_Z,
   PASS_FORCE,
   BALL_CONFIG,
-  MATCH_DURATION
+  MATCH_DURATION,
+  ABILITY_PICKUP_POSITIONS
 } from "./state/gameConfig";
 import SoccerPlayerEntity from "./entities/SoccerPlayerEntity";
 import AIPlayerEntity, { type SoccerAIRole } from "./entities/AIPlayerEntity";
 import sharedState from "./state/sharedState";
 import { getDirectionFromRotation } from "./utils/direction";
-import observerMode from "./utils/observerMode";
+import spectatorMode from "./utils/observerMode";
 import { soccerMap } from "./state/map";
-import { 
-  GameMode, 
-  getCurrentGameMode, 
-  setGameMode, 
-  isFIFAMode, 
-  isArcadeMode,
-  getCurrentModeConfig 
-} from "./state/gameModes";
+import { GameMode, getCurrentGameMode, setGameMode, isFIFAMode, isArcadeMode, isTournamentMode, getCurrentModeConfig } from "./state/gameModes";
+import { TournamentManager } from "./state/tournamentManager";
 import { ArcadeEnhancementManager } from "./state/arcadeEnhancements";
+import { PickupGameManager } from "./state/pickupGameManager";
 import { FIFACrowdManager } from "./utils/fifaCrowdManager";
 import PerformanceProfiler from "./utils/performanceProfiler";
 import { PerformanceOptimizer } from "./utils/performanceOptimizations";
@@ -91,53 +87,99 @@ startServer((world) => {
     (world as any)._arcadeManager = arcadeManager;
     game.setArcadeManager(arcadeManager);
     
+    // Initialize pickup game system
+    const pickupManager = new PickupGameManager(world);
+    (world as any)._pickupManager = pickupManager;
+    game.setPickupManager(pickupManager);
+    
+    // Initialize tournament system
+    const tournamentManager = new TournamentManager(world);
+    (world as any)._tournamentManager = tournamentManager;
+    game.setTournamentManager(tournamentManager);
+    
     // Initialize FIFA crowd atmosphere system
     const fifaCrowdManager = new FIFACrowdManager(world);
     game.setFIFACrowdManager(fifaCrowdManager);
     
-    // Initialize performance systems
+    // Initialize performance systems for GPU memory optimization
     const performanceProfiler = new PerformanceProfiler(world, {
-      enabled: false,
-      sampleInterval: 1000,
-      maxSamples: 60, // Reduced for memory efficiency
-      logInterval: 30000,
+      enabled: true, // Enable for GPU memory monitoring
+      sampleInterval: 2000, // Less frequent sampling to reduce overhead
+      maxSamples: 30, // Smaller buffer for memory efficiency
+      logInterval: 60000, // Log every minute
       trackMemory: true
     });
     (world as any)._performanceProfiler = performanceProfiler;
+    performanceProfiler.start(); // Start profiling immediately
     
     const performanceOptimizer = new PerformanceOptimizer('HIGH_PERFORMANCE'); // Start with high performance mode
+    console.log("🚀 Performance optimizer initialized in HIGH_PERFORMANCE mode for GPU memory conservation");
     
-    console.log("✅ Game initialized successfully!");
+    // Server-side Memory Management
+    const setupServerMemoryManagement = () => {
+      // Force garbage collection every 30 seconds to free up server memory
+      setInterval(() => {
+        if (typeof global.gc === 'function') {
+          global.gc();
+          console.log("🧹 Forced server garbage collection to free memory");
+        }
+      }, 30000);
+      
+      console.log("🛡️ Server memory management enabled");
+    };
+    
+    // Setup server memory management immediately
+    setupServerMemoryManagement();
+    
+    console.log("✅ Game initialized successfully with GPU memory optimizations!");
 
-    // Music setup
+    // Music setup - restored to original audio behavior
+    console.log("🎵 Loading audio system...");
     const mainMusic = new Audio({
       uri: "audio/music/Ian Post - 8 Bit Samba - No FX.mp3",
       loop: true,
-      volume: 0.1,
+      volume: 0.2, // Slightly increased but still lower than gameplay music (0.4)
     });
+    
+    // Start music immediately (removed delay)
     mainMusic.play(world);
+    console.log("🎵 Main music started");
 
+    // Create gameplay music objects immediately (removed lazy-loading)
     const arcadeGameplayMusic = new Audio({
       uri: "audio/music/always-win.mp3",
       loop: true,
-      volume: 0.1,
+      volume: 0.4, // INCREASED from 0.1 to 0.4 for audible volume
     });
 
     const fifaGameplayMusic = new Audio({
-      uri: "audio/music/hytopia-main.mp3",
+      uri: "audio/music/Vettore - Silk.mp3",
       loop: true,
-      volume: 0.1,
+      volume: 0.4, // INCREASED from 0.1 to 0.4 for audible volume
     });
 
     const getGameplayMusic = (): Audio => {
-      return isFIFAMode() ? fifaGameplayMusic : arcadeGameplayMusic;
+      if (isFIFAMode()) {
+        return fifaGameplayMusic;
+      } else {
+        return arcadeGameplayMusic;
+      }
     };
 
-    // Function to spawn AI players (simplified)
+    // Store music instances on world object for access by gameState
+    (world as any)._mainMusic = mainMusic;
+    (world as any)._arcadeGameplayMusic = arcadeGameplayMusic;
+    (world as any)._fifaGameplayMusic = fifaGameplayMusic;
+    
+    // Add initialization delay to ensure audio system is ready
+    console.log("🎵 Music system initialized - gameplay music ready");
+    (world as any)._getCurrentGameMode = getCurrentGameMode;
+
+    // Function to spawn AI players (restored to full 6v6)
     const spawnAIPlayers = async (playerTeam: "red" | "blue"): Promise<void> => {
       console.log(`🤖 Spawning AI players for team ${playerTeam}...`);
       
-      // Define full team roles
+      // Define full team roles for 6v6 gameplay
       const fullTeamRoles: SoccerAIRole[] = [
         'goalkeeper',
         'left-back',
@@ -164,7 +206,7 @@ startServer((world) => {
         const spawnPosition = getStartPosition(opponentTeam, role);
         aiPlayer.spawn(world, spawnPosition);
         aiPlayers.push(aiPlayer);
-        sharedState.addAIToTeam(aiPlayer, opponentTeam);
+                  sharedState.addAIToTeam(aiPlayer, opponentTeam);
       }
       
       console.log(`✅ Spawned ${aiPlayers.length} AI players total`);
@@ -296,16 +338,11 @@ startServer((world) => {
     world.on(PlayerEvent.JOINED_WORLD, ({ player }) => {
       console.log(`Player ${player.username} joined world`);
       
-      // Check if this player is a developer and should auto-enable observer mode
-      if (observerMode.isDeveloper(player.username)) {
-        // Only auto-enable observer if no game is in progress
-        if (!game || !game.inProgress()) {
-          world.chatManager.sendPlayerMessage(
-            player,
-            "Developer detected. Use /observer to enable observer mode or /aitraining to start AI training match."
-          );
-        }
-      }
+      // Welcome message for new players
+      world.chatManager.sendPlayerMessage(
+        player,
+        "🎮 Welcome to Hytopia Soccer! Use /spectate to watch games when teams are full."
+      );
       
       // Load UI first before any game state checks
       player.ui.load("ui/index.html");
@@ -339,6 +376,9 @@ startServer((world) => {
       });
 
       player.ui.on(PlayerUIEvent.DATA, async ({ playerUI, data }) => {
+        // Debug: Log all incoming data
+        console.log(`🔍 Server received data from ${player.username}:`, JSON.stringify(data, null, 2));
+        
         if (data.type === "select-game-mode" && data.mode) {
           // Handle game mode selection
           console.log(`Player ${player.username} selected game mode: ${data.mode}`);
@@ -350,6 +390,7 @@ startServer((world) => {
           } else if (data.mode === "arcade") {
             setGameMode(GameMode.ARCADE);
             console.log("Game mode set to Arcade Mode");
+                  // Pickup mode removed - physical pickups now integrated into Arcade mode
           }
           
           // Send confirmation back to UI
@@ -382,10 +423,12 @@ startServer((world) => {
           }
 
           if(game.isTeamFull(data.team)) {
+            // Offer spectator mode when team is full
+            spectatorMode.joinAsSpectator(player, world);
             player.ui.sendData({
-              type: "focus-on-instructions",
+              type: "spectator-mode-active",
+              message: "Team is full - you've joined as a spectator! Use /leavespectator to exit spectator mode."
             });
-            world.chatManager.sendPlayerMessage(player, "Team is full");
             return;
           }
           
@@ -452,6 +495,12 @@ startServer((world) => {
               const gameStarted = game && game.startGame();
               if (gameStarted) {
                 console.log("✅ Game started successfully with AI!");
+                
+                        // Activate pickup system if in arcade mode
+        if (isArcadeMode()) {
+          console.log(`🎯 Activating pickup system for Arcade Mode`);
+          pickupManager.activate();
+        }
                 
                 // Unfreeze player after short delay
                 setTimeout(() => {
@@ -862,6 +911,820 @@ startServer((world) => {
             });
           }
         }
+        // Tournament Event Handlers
+        else if (data.type === "tournament-create") {
+          console.log(`🏆 Player ${player.username} creating tournament:`, data);
+          console.log(`🏆 Tournament creation request details:`, {
+            name: data.name,
+            type: data.tournamentType,
+            gameMode: data.gameMode,
+            maxPlayers: data.maxPlayers,
+            registrationTime: data.registrationTime,
+            createdBy: player.username
+          });
+          
+          try {
+            const tournament = tournamentManager.createTournament(
+              data.name,
+              data.tournamentType,
+              data.gameMode,
+              data.maxPlayers,
+              data.registrationTime,
+              player.username
+            );
+            
+            console.log(`🏆 Tournament created successfully, sending response to ${player.username}`);
+            
+            const tournamentResponse = {
+              type: "tournament-created",
+              tournament: {
+                id: tournament.id,
+                name: tournament.name,
+                type: tournament.type,
+                gameMode: tournament.gameMode,
+                maxPlayers: tournament.maxPlayers,
+                status: tournament.status,
+                players: Object.values(tournament.players), // ✅ Send full player objects
+                playerCount: Object.keys(tournament.players).length
+              }
+            };
+            
+            console.log(`🏆 Sending tournament-created response:`, tournamentResponse);
+            player.ui.sendData(tournamentResponse);
+            
+            // Broadcast tournament creation to all players
+            const allPlayers = PlayerManager.instance.getConnectedPlayers();
+            console.log(`🏆 Broadcasting tournament list to ${allPlayers.length} players`);
+            
+            allPlayers.forEach(p => {
+              p.ui.sendData({
+                type: "tournament-list-updated",
+                tournaments: tournamentManager.getActiveTournaments().map(t => ({
+                  id: t.id,
+                  name: t.name,
+                  type: t.type,
+                  gameMode: t.gameMode,
+                  maxPlayers: t.maxPlayers,
+                  status: t.status,
+                  players: Object.keys(t.players).length
+                }))
+              });
+            });
+            
+            console.log(`✅ Tournament "${tournament.name}" created and broadcast successfully`);
+          } catch (error: any) {
+            console.error("❌ Tournament creation error:", error);
+            console.error("❌ Error stack:", error.stack);
+            
+            const errorResponse = {
+              type: "tournament-error",
+              message: `Failed to create tournament: ${error.message}`
+            };
+            
+            console.log(`🏆 Sending tournament-error response:`, errorResponse);
+            player.ui.sendData(errorResponse);
+          }
+        }
+        else if (data.type === "tournament-join") {
+          console.log(`🏆 Player ${player.username} joining tournament: ${data.tournamentId}`);
+          
+          try {
+            const success = tournamentManager.registerPlayer(data.tournamentId, player.username, player.username);
+            
+            if (success) {
+              const tournament = tournamentManager.getTournament(data.tournamentId);
+              
+              player.ui.sendData({
+                type: "tournament-joined",
+                tournament: tournament ? {
+                  id: tournament.id,
+                  name: tournament.name,
+                  type: tournament.type,
+                  gameMode: tournament.gameMode,
+                  maxPlayers: tournament.maxPlayers,
+                  status: tournament.status,
+                  players: Object.values(tournament.players), // ✅ Send full player objects
+                  playerCount: Object.keys(tournament.players).length
+                } : null
+              });
+              
+              // Update all players with new tournament data
+              const allPlayers = PlayerManager.instance.getConnectedPlayers();
+              allPlayers.forEach(p => {
+                p.ui.sendData({
+                  type: "tournament-list-updated",
+                  tournaments: tournamentManager.getActiveTournaments().map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    type: t.type,
+                    gameMode: t.gameMode,
+                    maxPlayers: t.maxPlayers,
+                    status: t.status,
+                    players: Object.keys(t.players).length
+                  }))
+                });
+              });
+              
+              console.log(`✅ Player ${player.username} joined tournament successfully`);
+            } else {
+              player.ui.sendData({
+                type: "tournament-error",
+                message: "Failed to join tournament. It may be full or already started."
+              });
+            }
+          } catch (error: any) {
+            console.error("Tournament join error:", error);
+            player.ui.sendData({
+              type: "tournament-error",
+              message: `Failed to join tournament: ${error.message}`
+            });
+          }
+        }
+        else if (data.type === "tournament-leave") {
+          console.log(`🏆 Player ${player.username} leaving tournament`);
+          
+          const activeTournaments = tournamentManager.getPlayerActiveTournaments(player.username);
+          if (activeTournaments.length > 0) {
+            const tournament = activeTournaments[0];
+            
+            try {
+              const success = tournamentManager.unregisterPlayer(tournament.id, player.username);
+              
+              if (success) {
+                player.ui.sendData({
+                  type: "tournament-left",
+                  message: `Left tournament "${tournament.name}"`
+                });
+                
+                // Update all players with new tournament data
+                const allPlayers = PlayerManager.instance.getConnectedPlayers();
+                allPlayers.forEach(p => {
+                  p.ui.sendData({
+                    type: "tournament-list-updated",
+                    tournaments: tournamentManager.getActiveTournaments().map(t => ({
+                      id: t.id,
+                      name: t.name,
+                      type: t.type,
+                      gameMode: t.gameMode,
+                      maxPlayers: t.maxPlayers,
+                      status: t.status,
+                      players: Object.keys(t.players).length
+                    }))
+                  });
+                });
+                
+                console.log(`✅ Player ${player.username} left tournament successfully`);
+              } else {
+                player.ui.sendData({
+                  type: "tournament-error",
+                  message: "Failed to leave tournament"
+                });
+              }
+            } catch (error: any) {
+              console.error("Tournament leave error:", error);
+              player.ui.sendData({
+                type: "tournament-error",
+                message: `Failed to leave tournament: ${error.message}`
+              });
+            }
+          } else {
+            player.ui.sendData({
+              type: "tournament-error",
+              message: "You are not in any tournaments"
+            });
+          }
+        }
+        else if (data.type === "tournament-ready") {
+          console.log(`🏆 Player ${player.username} marking ready for tournament match`);
+          
+          const match = tournamentManager.getMatchForPlayer(player.username);
+          if (match) {
+            try {
+              // Find the tournament this match belongs to
+              const tournament = tournamentManager.getActiveTournaments().find(t => 
+                t.bracket.some(m => m.id === match.id)
+              );
+              
+              if (tournament) {
+                const success = tournamentManager.setPlayerReady(tournament.id, match.id, player.username, true);
+                
+                if (success) {
+                  player.ui.sendData({
+                    type: "tournament-ready-updated",
+                    isReady: true,
+                    message: "Marked as ready for match!"
+                  });
+                  
+                  console.log(`✅ Player ${player.username} marked as ready for match`);
+                } else {
+                  player.ui.sendData({
+                    type: "tournament-error",
+                    message: "Failed to mark as ready"
+                  });
+                }
+              } else {
+                player.ui.sendData({
+                  type: "tournament-error",
+                  message: "Tournament not found for match"
+                });
+              }
+            } catch (error: any) {
+              console.error("Tournament ready error:", error);
+              player.ui.sendData({
+                type: "tournament-error",
+                message: `Failed to set ready status: ${error.message}`
+              });
+            }
+          } else {
+            player.ui.sendData({
+              type: "tournament-error",
+              message: "You don't have any upcoming matches"
+            });
+          }
+        }
+        else if (data.type === "tournament-get-status") {
+          console.log(`🏆 Player ${player.username} requesting tournament status`);
+          
+          const activeTournaments = tournamentManager.getPlayerActiveTournaments(player.username);
+          
+          if (activeTournaments.length > 0) {
+            const tournament = activeTournaments[0];
+            const match = tournamentManager.getMatchForPlayer(player.username);
+            
+            player.ui.sendData({
+              type: "tournament-status",
+              tournament: {
+                id: tournament.id,
+                name: tournament.name,
+                type: tournament.type,
+                gameMode: tournament.gameMode,
+                maxPlayers: tournament.maxPlayers,
+                status: tournament.status,
+                players: Object.keys(tournament.players),
+                playerCount: Object.keys(tournament.players).length,
+                bracket: tournament.bracket
+              },
+              playerMatch: match ? {
+                id: match.id,
+                opponent: match.player1 === player.username ? match.player2 : match.player1,
+                status: match.status,
+                roundNumber: match.roundNumber,
+                scheduledTime: match.scheduledTime
+              } : null
+            });
+          } else {
+            player.ui.sendData({
+              type: "tournament-status",
+              tournament: null,
+              playerMatch: null
+            });
+          }
+        }
+        else if (data.type === "tournament-get-list") {
+          console.log(`🏆 Player ${player.username} requesting tournament list`);
+          
+          const tournaments = tournamentManager.getActiveTournaments();
+          
+          player.ui.sendData({
+            type: "tournament-list",
+            tournaments: tournaments.map(t => ({
+              id: t.id,
+              name: t.name,
+              type: t.type,
+              gameMode: t.gameMode,
+              maxPlayers: t.maxPlayers,
+              status: t.status,
+              players: Object.keys(t.players).length,
+              createdBy: t.createdBy,
+              registrationDeadline: t.registrationDeadline
+            }))
+          });
+        }
+        // Spectator mode event handlers
+        else if (data.type === "spectator-next-player") {
+          console.log(`🎥 Spectator ${player.username} wants to switch to next player`);
+          spectatorMode.nextPlayer(player);
+        }
+        else if (data.type === "spectator-next-camera") {
+          console.log(`🎥 Spectator ${player.username} wants to switch camera mode`);
+          spectatorMode.nextCameraMode(player);
+        }
+        else if (data.type === "spectator-leave") {
+          console.log(`🎥 Spectator ${player.username} wants to leave spectator mode`);
+          spectatorMode.removeSpectator(player);
+        }
+        // ===== PHASE 1 MOBILE INPUT HANDLING (HYTOPIA SDK COMPLIANT) =====
+        else if (data.type === "mobile-mode-enabled") {
+          // Handle mobile mode initialization
+          console.log(`📱 Player ${player.username} enabled mobile mode`);
+          console.log(`📱 Device info:`, data.deviceInfo);
+          
+          // Store mobile mode preference for this player
+          (player as any)._isMobilePlayer = true;
+          
+          // Send mobile-optimized game state if game is active
+          if (game && game.inProgress()) {
+            player.ui.sendData({
+              type: "mobile-game-state",
+              gameState: game.getState(),
+              optimizedForMobile: true
+            });
+          }
+          
+          // Notify all other players about mobile player
+          PlayerManager.instance.getConnectedPlayers().forEach((p) => {
+            if (p.username !== player.username) {
+              p.ui.sendData({
+                type: "mobile-player-joined",
+                playerName: player.username,
+                deviceInfo: data.deviceInfo
+              });
+            }
+          });
+          
+          console.log(`✅ Mobile mode enabled for ${player.username}`);
+        }
+        else if (data.type === "mobile-movement-input") {
+          // Handle mobile virtual joystick movement - HYTOPIA SDK COMPLIANT
+          const movementInput = data.movement;
+          const inputMagnitude = data.inputMagnitude || 0;
+          
+          // Input validation and throttling
+          if (!movementInput || (Math.abs(movementInput.x) < 0.01 && Math.abs(movementInput.y) < 0.01)) {
+            return; // Ignore negligible input to reduce processing
+          }
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Store mobile player optimization data
+            const mobileData = (player as any)._mobileOptimization || {
+              lastInputTime: 0,
+              inputBuffer: [],
+              throttleInterval: 33 // 30fps for mobile optimization
+            };
+            
+            const currentTime = Date.now();
+            
+            // Server-side input throttling for mobile devices
+            if (currentTime - mobileData.lastInputTime < mobileData.throttleInterval) {
+              // Buffer the input for smooth interpolation
+              mobileData.inputBuffer.push({ movement: movementInput, time: currentTime });
+              if (mobileData.inputBuffer.length > 3) {
+                mobileData.inputBuffer.shift(); // Keep only recent inputs
+              }
+              return;
+            }
+            
+            // Process buffered inputs for smooth movement
+            if (mobileData.inputBuffer.length > 0) {
+              const avgInput = mobileData.inputBuffer.reduce((acc: { x: number, y: number }, input: any) => ({
+                x: acc.x + input.movement.x,
+                y: acc.y + input.movement.y
+              }), { x: 0, y: 0 });
+              
+              avgInput.x /= mobileData.inputBuffer.length;
+              avgInput.y /= mobileData.inputBuffer.length;
+              
+              // Use averaged input for smoother movement
+              Object.assign(movementInput, avgInput);
+              mobileData.inputBuffer = [];
+            }
+            
+            mobileData.lastInputTime = currentTime;
+            (player as any)._mobileOptimization = mobileData;
+            
+            // Convert joystick input to HYTOPIA SDK PlayerInput format
+            const deadzone = 0.15; // Server-side deadzone verification
+            const magnitude = Math.sqrt(movementInput.x * movementInput.x + movementInput.y * movementInput.y);
+            
+            if (magnitude < deadzone) {
+              return; // Ignore inputs within deadzone
+            }
+            
+            // Apply mobile-specific movement scaling
+            const mobileSensitivity = (player as any)._mobileSensitivity || 1.0;
+            const scaledInput = {
+              x: movementInput.x * mobileSensitivity,
+              y: movementInput.y * mobileSensitivity
+            };
+            
+            // HYTOPIA SDK COMPLIANT PlayerInput - Use standard SDK input properties
+            const hytopiaPlayerInput = {
+              // Movement keys (w, a, s, d)
+              w: scaledInput.y > 0.1,    // forward
+              a: scaledInput.x < -0.1,   // left
+              s: scaledInput.y < -0.1,   // backward  
+              d: scaledInput.x > 0.1,    // right
+              
+              // Mouse buttons
+              ml: false,  // mouse left click
+              mr: false,  // mouse right click
+              
+              // Other standard keys
+              sp: false,  // spacebar
+              sh: false,  // shift
+              q: false,   // charge shot
+              e: false,   // tackle
+              r: false,
+              f: false,
+              z: false,
+              x: false,
+              c: false,
+              v: false,
+              
+              // Number keys
+              1: false,
+              2: false,
+              3: false,
+              4: false,
+              5: false,
+              6: false,
+              7: false,
+              8: false,
+              9: false
+            };
+            
+            // Apply movement through the player controller using proper PlayerInput
+            if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+              // Use stored mobile camera orientation for movement direction
+              const storedCamera = (player as any)._mobileCameraOrientation || { yaw: 0, pitch: 0 };
+              const cameraOrientation = {
+                yaw: storedCamera.yaw,
+                pitch: storedCamera.pitch
+              };
+              
+              // Optimized delta time for mobile devices
+              const deltaTime = Math.min(33, currentTime - mobileData.lastInputTime + 16);
+              
+              playerEntity.controller.tickWithPlayerInput(
+                playerEntity,
+                hytopiaPlayerInput, // Now using proper Hytopia SDK format
+                cameraOrientation,
+                deltaTime
+              );
+            }
+          }
+        }
+        else if (data.type === "mobile-action-input") {
+          // Handle mobile action button presses - HYTOPIA SDK COMPLIANT
+          const action = data.action;
+          const pressed = data.pressed;
+          
+          console.log(`📱 Mobile action: ${player.username} ${action} ${pressed ? 'pressed' : 'released'}`);
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Create HYTOPIA SDK compliant PlayerInput for actions
+            const hytopiaActionInput = {
+              // Movement keys - false for action input
+              w: false,
+              a: false,
+              s: false,
+              d: false,
+              
+              // Map mobile actions to proper Hytopia SDK input properties
+              ml: action === 'pass' && pressed,    // mouse left = pass
+              mr: action === 'shoot' && pressed,   // mouse right = shoot
+              sp: false,                          // spacebar
+              sh: false,                          // shift
+              q: false,                           // charge shot
+              e: action === 'tackle' && pressed,   // tackle
+              r: false,
+              f: action === 'dodge' && pressed,    // dodge (f key)
+              z: false,
+              x: false,
+              c: false,
+              v: false,
+              
+              // Number keys
+              1: false,
+              2: false,
+              3: false,
+              4: false,
+              5: false,
+              6: false,
+              7: false,
+              8: false,
+              9: false
+            };
+            
+            // Get stored mobile camera orientation or default
+            const storedCamera = (player as any)._mobileCameraOrientation || { yaw: 0, pitch: 0 };
+            
+            // Apply action through the player controller using proper PlayerInput
+            if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+              const cameraOrientation = {
+                yaw: storedCamera.yaw,
+                pitch: storedCamera.pitch
+              };
+              
+              playerEntity.controller.tickWithPlayerInput(
+                playerEntity,
+                hytopiaActionInput, // Now using proper Hytopia SDK format
+                cameraOrientation,
+                16 // 16ms delta time
+              );
+            }
+            
+            // Send feedback for successful action registration
+            if (pressed) {
+              player.ui.sendData({
+                type: "mobile-action-feedback",
+                action: action,
+                success: true
+              });
+            }
+          }
+        }
+        else if (data.type === "mobile-camera-input") {
+          // Handle mobile camera rotation - NEW SYSTEM
+          const camera = data.camera;
+          
+          console.log(`📱 Mobile camera: ${player.username} yaw=${camera.yaw.toFixed(3)}, pitch=${camera.pitch.toFixed(3)}`);
+          
+          // Store camera orientation for this mobile player
+          (player as any)._mobileCameraOrientation = {
+            yaw: camera.yaw,
+            pitch: camera.pitch
+          };
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Apply camera rotation through Hytopia SDK if available
+            if (player.camera && typeof player.camera.setOffset === 'function') {
+              try {
+                // Calculate camera offset based on mobile rotation
+                const distance = 5; // Camera distance from player
+                const height = 2; // Camera height offset
+                
+                const offsetX = Math.sin(camera.yaw) * distance;
+                const offsetZ = Math.cos(camera.yaw) * distance;
+                const offsetY = height + Math.sin(camera.pitch) * 2;
+                
+                // Apply camera offset for third-person view optimized for mobile
+                player.camera.setOffset({ 
+                  x: offsetX, 
+                  y: offsetY, 
+                  z: offsetZ 
+                });
+                
+                // Set camera to track the player entity
+                player.camera.setTrackedEntity(playerEntity);
+                
+                // Optimize FOV for mobile
+                if (typeof player.camera.setFov === 'function') {
+                  player.camera.setFov(85); // Wider FOV for better mobile experience
+                }
+                
+              } catch (cameraError) {
+                console.warn(`📱 Camera control error for ${player.username}:`, cameraError);
+              }
+            }
+            
+            // Send camera feedback to mobile UI
+            player.ui.sendData({
+              type: "mobile-camera-feedback",
+              camera: camera,
+              success: true
+            });
+          }
+        }
+        // ===== PHASE 2 MOBILE GESTURE HANDLERS (HYTOPIA SDK COMPLIANT) =====
+        else if (data.type === "mobile-swipe-gesture") {
+          // Handle swipe gestures for special actions
+          const direction = data.direction;
+          const speed = data.speed;
+          const distance = data.distance;
+          
+          console.log(`📱 Swipe gesture: ${player.username} swiped ${direction} (${speed.toFixed(1)} px/ms)`);
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Handle swipe-based actions
+            switch (direction) {
+              case 'right':
+                // Quick pass to the right
+                if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                  const rightPassInput = {
+                    forward: false,
+                    backward: false,
+                    left: false,
+                    right: true,
+                    primaryDown: false,
+                    secondaryDown: true, // Pass
+                    tertiary: false,
+                    dodging: false
+                  };
+                  
+                  playerEntity.controller.tickWithPlayerInput(
+                    playerEntity,
+                    rightPassInput,
+                    { yaw: 90, pitch: 0 }, // Face right
+                    16
+                  );
+                }
+                break;
+                
+              case 'left':
+                // Quick pass to the left
+                if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                  const leftPassInput = {
+                    forward: false,
+                    backward: false,
+                    left: true,
+                    right: false,
+                    primaryDown: false,
+                    secondaryDown: true, // Pass
+                    tertiary: false,
+                    dodging: false
+                  };
+                  
+                  playerEntity.controller.tickWithPlayerInput(
+                    playerEntity,
+                    leftPassInput,
+                    { yaw: -90, pitch: 0 }, // Face left
+                    16
+                  );
+                }
+                break;
+                
+              case 'up':
+                // Power shot forward
+                if (speed > 1.0) { // Fast swipe = power shot
+                  if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                    const powerShotInput = {
+                      forward: true,
+                      backward: false,
+                      left: false,
+                      right: false,
+                      primaryDown: true, // Power shot
+                      secondaryDown: false,
+                      tertiary: false,
+                      dodging: false
+                    };
+                    
+                    playerEntity.controller.tickWithPlayerInput(
+                      playerEntity,
+                      powerShotInput,
+                      { yaw: 0, pitch: 0 }, // Face forward
+                      16
+                    );
+                  }
+                }
+                break;
+                
+              case 'down':
+                // Dodge/tackle
+                if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+                  const dodgeInput = {
+                    forward: false,
+                    backward: false,
+                    left: false,
+                    right: false,
+                    primaryDown: false,
+                    secondaryDown: false,
+                    tertiary: true, // Tackle
+                    dodging: true
+                  };
+                  
+                  playerEntity.controller.tickWithPlayerInput(
+                    playerEntity,
+                    dodgeInput,
+                    { yaw: 0, pitch: 0 },
+                    16
+                  );
+                }
+                break;
+            }
+            
+            // Send feedback to mobile UI
+            player.ui.sendData({
+              type: "mobile-swipe-feedback",
+              direction: direction,
+              action: direction === 'up' ? 'Power Shot' : 
+                     direction === 'down' ? 'Dodge' : 
+                     `Pass ${direction.toUpperCase()}`,
+              success: true
+            });
+          }
+        }
+        else if (data.type === "mobile-zoom-gesture") {
+          // Handle pinch-to-zoom for camera control
+          const zoom = data.zoom;
+          const center = data.center;
+          
+          console.log(`📱 Zoom gesture: ${player.username} zoom ${zoom.toFixed(2)}x`);
+          
+          // Get the player's soccer entity
+          const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0];
+          if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+            // Store mobile zoom preference for this player
+            (player as any)._mobileZoomLevel = zoom;
+            
+            // Send zoom feedback to mobile UI
+            player.ui.sendData({
+              type: "mobile-zoom-feedback",
+              zoom: zoom,
+              success: true
+            });
+          }
+        }
+        else if (data.type === "mobile-team-selection") {
+          // Handle mobile team selection
+          const selectedTeam = data.team;
+          console.log(`📱 Mobile team selection: ${player.username} chose ${selectedTeam}`);
+          
+          // Use existing team selection logic - same as regular team-selected handler
+          if (game) {
+            // Check if player is already on a team
+            if (game.getTeamOfPlayer(player.username) !== null) {
+              console.log("📱 Player already on a team");
+              player.ui.sendData({
+                type: "mobile-team-selection-feedback",
+                team: selectedTeam,
+                success: false,
+                message: "Already on a team"
+              });
+              return;
+            }
+            
+            // Check if team is full
+            if (game.isTeamFull(selectedTeam)) {
+              console.log(`📱 Team ${selectedTeam} is full`);
+              player.ui.sendData({
+                type: "mobile-team-selection-feedback",
+                team: selectedTeam,
+                success: false,
+                message: "Team is full"
+              });
+              return;
+            }
+            
+            // Join game and team using existing methods
+            game.joinGame(player.username, player.username);
+            game.joinTeam(player.username, selectedTeam);
+            
+            // Send success feedback
+            player.ui.sendData({
+              type: "mobile-team-selection-feedback",
+              team: selectedTeam,
+              success: true
+            });
+            
+            console.log(`📱 ${player.username} successfully joined ${selectedTeam} team`);
+          }
+        }
+        else if (data.type === "mobile-performance-warning") {
+          // Handle mobile performance warnings
+          const fps = data.fps;
+          const deviceInfo = data.deviceInfo;
+          
+          console.log(`📱 Performance warning: ${player.username} FPS dropped to ${fps} (${deviceInfo?.userAgent || 'unknown device'})`);
+          
+          // Store mobile performance data for this player
+          (player as any)._mobilePerformanceData = {
+            fps: fps,
+            deviceInfo: deviceInfo,
+            timestamp: Date.now()
+          };
+          
+          // Switch to mobile-optimized performance mode if needed
+          if (fps < 25) {
+            console.log(`📱 Switching ${player.username} to mobile-optimized performance mode`);
+            
+            // Send optimized settings to mobile client
+            player.ui.sendData({
+              type: "mobile-performance-optimization",
+              optimizationLevel: "MOBILE_OPTIMIZED",
+              settings: {
+                reducedAI: true,
+                lowerPhysicsQuality: true,
+                reducedParticles: true,
+                simplifiedUI: true
+              }
+            });
+          }
+        }
+        else if (data.type === "mobile-quit-game") {
+          // Handle mobile quit game request
+          console.log(`📱 Mobile quit request: ${player.username}`);
+          
+          // Remove player from game
+          if (game) {
+            game.removePlayer(player.username);
+          }
+          
+          // Send quit confirmation
+          player.ui.sendData({
+            type: "mobile-quit-feedback",
+            success: true
+          });
+        }
+
       });
 
       // Attempt to start multiplayer game (only for human players, not AI)
@@ -892,7 +1755,13 @@ startServer((world) => {
         ) {
           // Potentially wait slightly or add a ready check before starting multiplayer
           console.log(`Enough human players for multiplayer (Red: ${humanPlayersOnRed}, Blue: ${humanPlayersOnBlue}), attempting start...`);
-          game.startGame(); 
+          const gameStarted = game.startGame();
+          
+                // Activate pickup system if in arcade mode for multiplayer
+      if (gameStarted && isArcadeMode()) {
+        console.log(`🎯 Activating pickup system for Arcade Mode (Multiplayer)`);
+        pickupManager.activate();
+      }
         } else if (aiPlayers.length > 0) {
           // In single-player mode with AI - don't auto-start here, already handled by team selection
           console.log(`Single-player mode detected (${aiPlayers.length} AI players) - skipping multiplayer auto-start`);
@@ -1009,12 +1878,12 @@ startServer((world) => {
       );
     });
 
-    // Add a debug command to test music
+    // Enhanced debug command to test music - IMPROVED DIAGNOSTICS
     world.chatManager.registerCommand("/music", (player, args) => {
       if (args.length < 2) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Usage: /music <opening|gameplay|status> - Switch between music tracks or check status"
+          "Usage: /music <opening|gameplay|status|test> - Switch between music tracks, check status, or test specific tracks"
         );
         return;
       }
@@ -1023,30 +1892,83 @@ startServer((world) => {
       if (musicType === "opening") {
         console.log("Manual switch to opening music");
         // Pause both gameplay tracks
-        arcadeGameplayMusic.pause();
-        fifaGameplayMusic.pause();
+        arcadeGameplayMusic?.pause();
+        fifaGameplayMusic?.pause();
         mainMusic.play(world);
-        world.chatManager.sendPlayerMessage(player, "Switched to opening music");
+        world.chatManager.sendPlayerMessage(player, "✅ Switched to opening music");
       } else if (musicType === "gameplay") {
         console.log(`Manual switch to gameplay music (${getCurrentGameMode()} mode)`);
-        mainMusic.pause();
-        getGameplayMusic().play(world);
-        world.chatManager.sendPlayerMessage(player, `Switched to gameplay music (${getCurrentGameMode()} mode)`);
+        
+        // Enhanced error checking
+        if (!arcadeGameplayMusic || !fifaGameplayMusic) {
+          world.chatManager.sendPlayerMessage(player, "❌ Gameplay music not initialized!");
+          return;
+        }
+        
+        try {
+          mainMusic.pause();
+          getGameplayMusic().play(world);
+          const currentMode = getCurrentGameMode();
+          const trackName = currentMode === GameMode.FIFA ? "Vettore - Silk.mp3" : "always-win.mp3";
+          world.chatManager.sendPlayerMessage(player, `✅ Switched to gameplay music (${currentMode} mode)`);
+          world.chatManager.sendPlayerMessage(player, `🎵 Playing: ${trackName} at volume 0.4`);
+        } catch (error) {
+          world.chatManager.sendPlayerMessage(player, `❌ Error playing music: ${error}`);
+          console.error("Music playback error:", error);
+        }
+      } else if (musicType === "test") {
+        // New test mode for direct track testing
+        const testMode = args[2]?.toLowerCase();
+        if (!testMode || (testMode !== 'fifa' && testMode !== 'arcade')) {
+          world.chatManager.sendPlayerMessage(player, "Usage: /music test <fifa|arcade>");
+          return;
+        }
+
+        world.chatManager.sendPlayerMessage(player, `🎵 Testing ${testMode.toUpperCase()} music directly...`);
+        
+        // Stop all music first
+        mainMusic?.pause();
+        arcadeGameplayMusic?.pause();
+        fifaGameplayMusic?.pause();
+
+        try {
+          if (testMode === 'fifa') {
+            if (fifaGameplayMusic) {
+              fifaGameplayMusic.play(world);
+              world.chatManager.sendPlayerMessage(player, "✅ FIFA music started (Vettore - Silk.mp3)");
+            } else {
+              world.chatManager.sendPlayerMessage(player, "❌ FIFA music instance not found!");
+            }
+          } else {
+            if (arcadeGameplayMusic) {
+              arcadeGameplayMusic.play(world);
+              world.chatManager.sendPlayerMessage(player, "✅ Arcade music started (always-win.mp3)");
+            } else {
+              world.chatManager.sendPlayerMessage(player, "❌ Arcade music instance not found!");
+            }
+          }
+          world.chatManager.sendPlayerMessage(player, "🔊 Volume: 0.4 (increased for audibility)");
+        } catch (error) {
+          world.chatManager.sendPlayerMessage(player, `❌ Error: ${error}`);
+          console.error("Music test error:", error);
+        }
       } else if (musicType === "status") {
         const currentMode = getCurrentGameMode();
-        const trackName = currentMode === GameMode.FIFA ? "hytopia-main.mp3" : "always-win.mp3";
+        const trackName = currentMode === GameMode.FIFA ? "Vettore - Silk.mp3" : "always-win.mp3";
         const crowdStatus = fifaCrowdManager.isActivated() ? "🏟️ Active" : "🔇 Inactive";
         
-        world.chatManager.sendPlayerMessage(player, `=== AUDIO STATUS ===`);
+        world.chatManager.sendPlayerMessage(player, `=== ENHANCED AUDIO STATUS ===`);
         world.chatManager.sendPlayerMessage(player, `Current Mode: ${currentMode.toUpperCase()}`);
         world.chatManager.sendPlayerMessage(player, `Gameplay Track: ${trackName}`);
+        world.chatManager.sendPlayerMessage(player, `Music Instances: Main:${mainMusic?'✅':'❌'} Arcade:${arcadeGameplayMusic?'✅':'❌'} FIFA:${fifaGameplayMusic?'✅':'❌'}`);
         world.chatManager.sendPlayerMessage(player, `Game In Progress: ${game ? (game.inProgress() ? "Yes" : "No") : "Not initialized"}`);
         world.chatManager.sendPlayerMessage(player, `FIFA Crowd: ${crowdStatus}`);
-        world.chatManager.sendPlayerMessage(player, `Commands: /crowd <action> | /music <action>`);
+        world.chatManager.sendPlayerMessage(player, `Music Volume: 0.4 (increased from 0.1)`);
+        world.chatManager.sendPlayerMessage(player, `Commands: /crowd <action> | /music <test|gameplay|status>`);
       } else {
         world.chatManager.sendPlayerMessage(
           player,
-          "Invalid option. Use 'opening', 'gameplay', or 'status'"
+          "Invalid option. Use 'opening', 'gameplay', 'test', or 'status'"
         );
       }
     });
@@ -1171,65 +2093,105 @@ startServer((world) => {
       }
     });
 
-    // Register observer mode commands
-    world.chatManager.registerCommand("/observer", (player, message) => {
-      if (!observerMode.isDeveloper(player.username)) {
+    // Register spectator mode commands
+    world.chatManager.registerCommand("/spectate", (player, message) => {
+      if (spectatorMode.isSpectator(player)) {
         world.chatManager.sendPlayerMessage(
           player,
-          "You don't have permission to use this command"
+          "You are already in spectator mode!"
         );
         return;
       }
       
-      observerMode.enable();
-      observerMode.setupObserver(player);
-      world.chatManager.sendPlayerMessage(
-        player,
-        "Observer mode enabled. Use /nextplayer and /nextcamera commands to change views."
-      );
+      spectatorMode.joinAsSpectator(player, world);
     });
 
     world.chatManager.registerCommand("/nextplayer", (player, message) => {
-      if (!observerMode.isEnabled() || !observerMode.isDeveloper(player.username)) {
+      if (!spectatorMode.isSpectator(player)) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Observer mode is not enabled or you don't have permission"
+          "You must be in spectator mode to use this command. Use /spectate to join."
         );
         return;
       }
       
-      observerMode.cycleNextPlayer(player);
+      spectatorMode.cycleNextTarget(player);
+    });
+
+    world.chatManager.registerCommand("/prevplayer", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "You must be in spectator mode to use this command. Use /spectate to join."
+        );
+        return;
+      }
+      
+      spectatorMode.cycleNextTarget(player); // For now, same as next (can be improved)
     });
 
     world.chatManager.registerCommand("/nextcamera", (player, message) => {
-      if (!observerMode.isEnabled() || !observerMode.isDeveloper(player.username)) {
+      if (!spectatorMode.isSpectator(player)) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Observer mode is not enabled or you don't have permission"
+          "You must be in spectator mode to use this command. Use /spectate to join."
         );
         return;
       }
       
-      observerMode.cycleCameraMode(player);
+      spectatorMode.cycleCameraMode(player);
     });
 
-    // Add command to start AI training match (AI vs AI)
-    world.chatManager.registerCommand("/aitraining", async (player, message) => {
-      if (!observerMode.isDeveloper(player.username)) {
+    world.chatManager.registerCommand("/prevcamera", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
         world.chatManager.sendPlayerMessage(
           player,
-          "You don't have permission to use this command"
+          "You must be in spectator mode to use this command. Use /spectate to join."
         );
         return;
       }
       
+      spectatorMode.cycleCameraMode(player); // For now, same as next (can be improved)
+    });
+
+    world.chatManager.registerCommand("/ballcam", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "You must be in spectator mode to use this command. Use /spectate to join."
+        );
+        return;
+      }
+      
+      spectatorMode.switchToBallCam(player);
+    });
+
+    world.chatManager.registerCommand("/stadium", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "You must be in spectator mode to use this command. Use /spectate to join."
+        );
+        return;
+      }
+      
+      spectatorMode.switchToStadiumView(player);
+    });
+
+    world.chatManager.registerCommand("/leavespectator", (player, message) => {
+      if (!spectatorMode.isSpectator(player)) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "You are not in spectator mode."
+        );
+        return;
+      }
+      
+      spectatorMode.removeSpectator(player);
       world.chatManager.sendPlayerMessage(
         player,
-        "Starting AI training match (all AI players)..."
+        "You have left spectator mode. You can now join a team if available."
       );
-      
-      // Setup for the AI-only match
-      await observerMode.startAITrainingMatch(world, player, game);
     });
 
     // Add a debug command to test goal detection
@@ -1237,57 +2199,70 @@ startServer((world) => {
       if (args.length < 2) {
         world.chatManager.sendPlayerMessage(
           player,
-          "Usage: /testgoal <red|blue> - Tests goal detection by placing ball in goal"
+          "Usage: /testgoal <red|blue> - Test goal detection for specified team's goal"
         );
         return;
       }
       
       const team = args[1].toLowerCase();
-      let testPosition;
+      if (team !== "red" && team !== "blue") {
+        world.chatManager.sendPlayerMessage(player, "Invalid team. Use 'red' or 'blue'");
+        return;
+      }
+      
+      // ENHANCED: Test new realistic goal boundaries
+      const GOAL_WIDTH = 10;
+      let testPosition: { x: number; y: number; z: number };
       
       if (team === "red") {
-        // Place ball in red goal (blue should score)
-        testPosition = { 
-          x: AI_GOAL_LINE_X_RED - 1, 
-          y: SAFE_SPAWN_Y, 
-          z: AI_FIELD_CENTER_Z 
+        // Test Red Goal (Blue scores here)
+        testPosition = {
+          x: AI_GOAL_LINE_X_RED - 1, // Inside red goal area
+          y: 2, // Valid goal height
+          z: AI_FIELD_CENTER_Z // Center of goal
         };
         world.chatManager.sendPlayerMessage(
           player,
-          `Placing ball in RED goal at X=${testPosition.x}. BLUE team should score.`
+          `🔴 Testing RED GOAL detection (Blue scores here)`
         );
-      } else if (team === "blue") {
-        // Place ball in blue goal (red should score)
-        testPosition = { 
-          x: AI_GOAL_LINE_X_BLUE + 1, 
-          y: SAFE_SPAWN_Y, 
-          z: AI_FIELD_CENTER_Z 
+      } else {
+        // Test Blue Goal (Red scores here)  
+        testPosition = {
+          x: AI_GOAL_LINE_X_BLUE + 1, // Inside blue goal area
+          y: 2, // Valid goal height
+          z: AI_FIELD_CENTER_Z // Center of goal
         };
         world.chatManager.sendPlayerMessage(
           player,
-          `Placing ball in BLUE goal at X=${testPosition.x}. RED team should score.`
+          `🔵 Testing BLUE GOAL detection (Red scores here)`
+        );
+      }
+      
+      // Test the goal detection
+      const goal = soccerMap.checkGoal(testPosition);
+      
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Test Position: X=${testPosition.x}, Y=${testPosition.y}, Z=${testPosition.z}`
+      );
+      
+      if (goal) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `✅ GOAL DETECTED! ${goal.team.toUpperCase()} team would score!`
         );
       } else {
         world.chatManager.sendPlayerMessage(
           player,
-          "Invalid team. Use 'red' or 'blue'"
+          `❌ NO GOAL - Position is outside goal boundaries`
         );
-        return;
       }
       
-      // Despawn and respawn ball at test position
-      if (soccerBall.isSpawned) {
-        soccerBall.despawn();
-      }
-      sharedState.setAttachedPlayer(null);
-      soccerBall.spawn(world, testPosition);
-      soccerBall.setLinearVelocity({ x: 0, y: 0, z: 0 });
-      soccerBall.setAngularVelocity({ x: 0, y: 0, z: 0 });
+      // Show current goal boundaries for reference
+      const redGoalBounds = `RED: X[${AI_GOAL_LINE_X_RED - 3} to ${AI_GOAL_LINE_X_RED + 1}], Z[${AI_FIELD_CENTER_Z - 5} to ${AI_FIELD_CENTER_Z + 5}]`;
+      const blueGoalBounds = `BLUE: X[${AI_GOAL_LINE_X_BLUE - 1} to ${AI_GOAL_LINE_X_BLUE + 3}], Z[${AI_FIELD_CENTER_Z - 5} to ${AI_FIELD_CENTER_Z + 5}]`;
       
-      world.chatManager.sendPlayerMessage(
-        player,
-        `Ball placed at X=${testPosition.x}, Y=${testPosition.y}, Z=${testPosition.z}. Check console for goal detection logs.`
-      );
+      world.chatManager.sendPlayerMessage(player, `Goal Boundaries: ${redGoalBounds}, ${blueGoalBounds}`);
     });
 
     // Add a command to check current ball position
@@ -1375,21 +2350,34 @@ startServer((world) => {
     world.chatManager.registerCommand("/goals", (player, args) => {
       world.chatManager.sendPlayerMessage(
         player,
-        "=== GOAL BOUNDARIES ==="
+        "=== GOAL BOUNDARIES (FIXED) ==="
       );
+      
+      // FIXED: Updated goal boundaries to reflect realistic dimensions
+      const GOAL_WIDTH = 10;
+      const RED_GOAL_MIN_X = AI_GOAL_LINE_X_RED - 3;
+      const RED_GOAL_MAX_X = AI_GOAL_LINE_X_RED + 1;
+      const BLUE_GOAL_MIN_X = AI_GOAL_LINE_X_BLUE - 1; 
+      const BLUE_GOAL_MAX_X = AI_GOAL_LINE_X_BLUE + 3;
+      const GOAL_MIN_Z = AI_FIELD_CENTER_Z - GOAL_WIDTH/2;
+      const GOAL_MAX_Z = AI_FIELD_CENTER_Z + GOAL_WIDTH/2;
       
       world.chatManager.sendPlayerMessage(
         player,
-        `RED GOAL (Blue scores here): X[${AI_GOAL_LINE_X_RED - 5} to ${AI_GOAL_LINE_X_RED + 3}], Z[${AI_FIELD_CENTER_Z - 20} to ${AI_FIELD_CENTER_Z + 20}], Y[-1 to 6]`
+        `RED GOAL (Blue scores here): X[${RED_GOAL_MIN_X} to ${RED_GOAL_MAX_X}], Z[${GOAL_MIN_Z} to ${GOAL_MAX_Z}], Y[0 to 4]`
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `BLUE GOAL (Red scores here): X[${AI_GOAL_LINE_X_BLUE - 3} to ${AI_GOAL_LINE_X_BLUE + 5}], Z[${AI_FIELD_CENTER_Z - 20} to ${AI_FIELD_CENTER_Z + 20}], Y[-1 to 6]`
+        `BLUE GOAL (Red scores here): X[${BLUE_GOAL_MIN_X} to ${BLUE_GOAL_MAX_X}], Z[${GOAL_MIN_Z} to ${GOAL_MAX_Z}], Y[0 to 4]`
       );
       
       world.chatManager.sendPlayerMessage(
         player,
         `Field boundaries: X[${FIELD_MIN_X} to ${FIELD_MAX_X}], Z[${FIELD_MIN_Z} to ${FIELD_MAX_Z}]`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        "✅ Goals are now realistic size: 10 blocks wide x 4 blocks high"
       );
       world.chatManager.sendPlayerMessage(
         player,
@@ -1506,6 +2494,61 @@ startServer((world) => {
       }
     });
 
+    // Add command to force pass (replaces old E/R key functionality)
+    world.chatManager.registerCommand("/pass", (player, args) => {
+      console.log(`🎯 SERVER: Received /pass command from ${player.username}`);
+      
+      // Find the player's entity
+      const playerEntity = world.entityManager.getAllPlayerEntities().find(
+        (entity) => entity.player.username === player.username
+      );
+      
+      if (playerEntity && playerEntity instanceof SoccerPlayerEntity) {
+        // Check if player has the ball
+        const attachedPlayer = sharedState.getAttachedPlayer();
+        const hasBall = attachedPlayer?.player?.username === player.username;
+        
+        if (hasBall) {
+          // Simulate a left mouse click to trigger the pass
+          const fakeInput = {
+            w: false, a: false, s: false, d: false, sp: false,
+            ml: true, // Left mouse click for pass
+            mr: false, q: false, sh: false, e: false, f: false,
+            "1": false
+          };
+          
+          // Call the controller's input handler directly with default camera orientation
+          if (playerEntity.controller && playerEntity.controller.tickWithPlayerInput) {
+            playerEntity.controller.tickWithPlayerInput(
+              playerEntity,
+              fakeInput,
+              { yaw: 0, pitch: 0 }, // Default camera orientation for pass
+              16 // 16ms delta time (roughly 60fps)
+            );
+            
+            console.log(`✅ SERVER: Force pass executed for ${player.username}`);
+            
+            // Send chat feedback
+            world.chatManager.sendPlayerMessage(
+              player,
+              "⚽ Pass executed!"
+            );
+          }
+        } else {
+          console.log(`❌ SERVER: ${player.username} doesn't have the ball`);
+          world.chatManager.sendPlayerMessage(
+            player,
+            "❌ You don't have the ball! Move close to the ball to pick it up first."
+          );
+        }
+      } else {
+        world.chatManager.sendPlayerMessage(
+          player,
+          "❌ Could not find your player entity. Make sure you've joined a team."
+        );
+      }
+    });
+
     // Add command to fix player position if stuck
     world.chatManager.registerCommand("/fixposition", (player, args) => {
       // Get current mode configuration info to display
@@ -1615,11 +2658,15 @@ startServer((world) => {
       // Switch music if game is in progress and mode actually changed
       if (previousMode !== GameMode.FIFA && game && game.inProgress()) {
         console.log("Switching to FIFA mode music during active game");
-        arcadeGameplayMusic.pause();
-        fifaGameplayMusic.play(world);
+        arcadeGameplayMusic?.pause();
+        fifaGameplayMusic?.play(world);
         
         // Start FIFA crowd atmosphere when switching to FIFA during active game
         fifaCrowdManager.start();
+        
+        // Deactivate pickup system when switching to FIFA mode
+        pickupManager.deactivate();
+        console.log("🚫 Pickup system deactivated for FIFA Mode");
         
         world.chatManager.sendPlayerMessage(
           player,
@@ -1648,11 +2695,15 @@ startServer((world) => {
       // Switch music if game is in progress and mode actually changed
       if (previousMode !== GameMode.ARCADE && game && game.inProgress()) {
         console.log("Switching to Arcade mode music during active game");
-        fifaGameplayMusic.pause();
-        arcadeGameplayMusic.play(world);
+        fifaGameplayMusic?.pause();
+        arcadeGameplayMusic?.play(world);
         
         // Stop FIFA crowd atmosphere when switching to arcade
         fifaCrowdManager.stop();
+        
+        // Activate pickup system when switching to Arcade mode
+        pickupManager.activate();
+        console.log("🎯 Pickup system activated for Arcade Mode");
         
         world.chatManager.sendPlayerMessage(
           player,
@@ -1662,7 +2713,7 @@ startServer((world) => {
       
       world.chatManager.sendPlayerMessage(
         player,
-        `🎪 Switched to Arcade Mode - Enhanced soccer with power-ups!`
+        `🎪 Switched to Arcade Mode - Enhanced soccer with physical power-up pickups!`
       );
       world.chatManager.sendPlayerMessage(
         player,
@@ -1670,8 +2721,260 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Features: Power-ups, abilities, enhanced physics, and special effects!`
+        `Features: Physical power-up pickups, enhanced physics, and special effects!`
       );
+    });
+
+    // /pickup command removed - physical pickups now integrated into Arcade mode
+
+    // Tournament Commands
+    world.chatManager.registerCommand("/tournament", (player, args) => {
+      const subCommand = args[0]?.toLowerCase();
+      
+      switch (subCommand) {
+        case "create":
+          const tournamentName = args[1] || `Tournament ${Date.now()}`;
+          const tournamentType = args[2] || "single-elimination";
+          const maxPlayers = parseInt(args[3]) || 8;
+          const gameMode = args[4] || "fifa";
+          
+          // Validate tournament type
+          if (!["single-elimination", "double-elimination", "round-robin"].includes(tournamentType)) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ Invalid tournament type. Use: single-elimination, double-elimination, or round-robin`
+            );
+            return;
+          }
+          
+          // Validate max players
+          if (![4, 8, 16, 32].includes(maxPlayers)) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ Invalid player count. Use: 4, 8, 16, or 32 players`
+            );
+            return;
+          }
+          
+          // Validate game mode
+          if (!["fifa", "arcade"].includes(gameMode)) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ Invalid game mode. Use: fifa or arcade`
+            );
+            return;
+          }
+          
+          try {
+            const tournament = tournamentManager.createTournament(
+              tournamentName,
+              tournamentType as any,
+              gameMode as any,
+              maxPlayers,
+              10, // 10 minutes registration time
+              player.username
+            );
+            
+            world.chatManager.sendPlayerMessage(
+              player,
+              `🏆 Tournament "${tournamentName}" created successfully!`
+            );
+            world.chatManager.sendPlayerMessage(
+              player,
+              `Type: ${tournamentType} | Players: ${maxPlayers} | Mode: ${gameMode}`
+            );
+            world.chatManager.sendBroadcastMessage(
+              `🏆 New tournament "${tournamentName}" created by ${player.username}! Join with /tournament join`
+            );
+          } catch (error: any) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ Failed to create tournament: ${error.message}`
+            );
+          }
+          break;
+          
+        case "join":
+          const tournamentId = args[1];
+          if (!tournamentId) {
+            // Show available tournaments
+            const tournaments = tournamentManager.getActiveTournaments();
+            if (tournaments.length === 0) {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `❌ No active tournaments available. Create one with /tournament create`
+              );
+            } else {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `🏆 Active Tournaments:`
+              );
+              tournaments.forEach(tournament => {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `• ${tournament.name} (${tournament.id}) - ${Object.keys(tournament.players).length}/${tournament.maxPlayers} players`
+                );
+              });
+              world.chatManager.sendPlayerMessage(
+                player,
+                `Use /tournament join [tournament-id] to join`
+              );
+            }
+          } else {
+            // Join specific tournament
+            try {
+              const success = tournamentManager.registerPlayer(tournamentId, player.username, player.username);
+              if (success) {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `✅ Successfully joined tournament!`
+                );
+                world.chatManager.sendBroadcastMessage(
+                  `🏆 ${player.username} joined the tournament!`
+                );
+              } else {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `❌ Failed to join tournament. It may be full or already started.`
+                );
+              }
+            } catch (error: any) {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `❌ Error joining tournament: ${error.message}`
+              );
+            }
+          }
+          break;
+          
+        case "leave":
+          const activeTournaments = tournamentManager.getPlayerActiveTournaments(player.username);
+          if (activeTournaments.length === 0) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ You are not in any tournaments`
+            );
+          } else {
+            const tournament = activeTournaments[0]; // Leave first active tournament
+            try {
+              const success = tournamentManager.unregisterPlayer(tournament.id, player.username);
+              if (success) {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `✅ Left tournament "${tournament.name}"`
+                );
+                world.chatManager.sendBroadcastMessage(
+                  `🏆 ${player.username} left the tournament`
+                );
+              } else {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `❌ Failed to leave tournament`
+                );
+              }
+            } catch (error: any) {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `❌ Error leaving tournament: ${error.message}`
+              );
+            }
+          }
+          break;
+          
+        case "ready":
+          const match = tournamentManager.getMatchForPlayer(player.username);
+          if (!match) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ You don't have any upcoming matches`
+            );
+          } else {
+            try {
+              const success = tournamentManager.setPlayerReady(
+                match.id.split('_')[0], // Extract tournament ID from match ID
+                match.id,
+                player.username,
+                true
+              );
+              if (success) {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `✅ Marked as ready for match!`
+                );
+              } else {
+                world.chatManager.sendPlayerMessage(
+                  player,
+                  `❌ Failed to mark as ready`
+                );
+              }
+            } catch (error: any) {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `❌ Error setting ready status: ${error.message}`
+              );
+            }
+          }
+          break;
+          
+        case "status":
+          const playerTournaments = tournamentManager.getPlayerActiveTournaments(player.username);
+          if (playerTournaments.length === 0) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ You are not in any tournaments`
+            );
+          } else {
+            const tournament = playerTournaments[0];
+            world.chatManager.sendPlayerMessage(
+              player,
+              `🏆 Tournament Status: ${tournament.name}`
+            );
+            world.chatManager.sendPlayerMessage(
+              player,
+              `Status: ${tournament.status} | Players: ${Object.keys(tournament.players).length}/${tournament.maxPlayers}`
+            );
+            world.chatManager.sendPlayerMessage(
+              player,
+              `Type: ${tournament.type} | Mode: ${tournament.gameMode}`
+            );
+            
+            const playerMatch = tournamentManager.getMatchForPlayer(player.username);
+            if (playerMatch) {
+              const opponent = playerMatch.player1 === player.username ? playerMatch.player2 : playerMatch.player1;
+              world.chatManager.sendPlayerMessage(
+                player,
+                `Next Match: vs ${opponent} | Status: ${playerMatch.status}`
+              );
+            }
+          }
+          break;
+          
+        case "list":
+        default:
+          const allTournaments = tournamentManager.getActiveTournaments();
+          if (allTournaments.length === 0) {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `❌ No active tournaments. Create one with /tournament create [name] [type] [maxplayers] [mode]`
+            );
+          } else {
+            world.chatManager.sendPlayerMessage(
+              player,
+              `🏆 Active Tournaments:`
+            );
+            allTournaments.forEach(tournament => {
+              world.chatManager.sendPlayerMessage(
+                player,
+                `• ${tournament.name} - ${Object.keys(tournament.players).length}/${tournament.maxPlayers} players (${tournament.status})`
+              );
+            });
+          }
+          world.chatManager.sendPlayerMessage(
+            player,
+            `Commands: /tournament create [name] [type] [maxplayers] [mode] | /tournament join [id] | /tournament leave | /tournament ready | /tournament status`
+          );
+          break;
+      }
     });
 
     world.chatManager.registerCommand("/mode", (player, args) => {
@@ -1704,7 +3007,7 @@ startServer((world) => {
       );
       world.chatManager.sendPlayerMessage(
         player,
-        `Commands: /fifa (realistic) | /arcade (enhanced)`
+        `Commands: /fifa (realistic) | /arcade (unlimited F-key) | /tournament (competitive brackets)`
       );
     });
 
@@ -1723,6 +3026,119 @@ startServer((world) => {
         player,
         `⚡ Speed enhancement activated for 15 seconds!`
       );
+    });
+
+    // Debug command for pickup system testing
+    world.chatManager.registerCommand("/debugpickups", (player, args) => {
+      world.chatManager.sendPlayerMessage(player, `=== PICKUP SYSTEM DEBUG ===`);
+      
+      // Check game mode
+      const currentMode = getCurrentGameMode();
+      world.chatManager.sendPlayerMessage(player, `Game Mode: ${currentMode}`);
+      world.chatManager.sendPlayerMessage(player, `Is Arcade Mode: ${isArcadeMode()}`);
+      
+      // Check pickup manager status
+      const isPickupActive = pickupManager.isPickupSystemActive();
+      const activeCount = pickupManager.getActivePickupCount();
+      world.chatManager.sendPlayerMessage(player, `Pickup System Active: ${isPickupActive}`);
+      world.chatManager.sendPlayerMessage(player, `Active Pickups: ${activeCount}`);
+      
+      // Check player collision groups
+      const playerEntity = world.entityManager.getAllPlayerEntities().find(
+        entity => entity instanceof SoccerPlayerEntity && entity.player.id === player.id
+      );
+      if (playerEntity instanceof SoccerPlayerEntity) {
+        world.chatManager.sendPlayerMessage(player, `Player Entity Type: SoccerPlayerEntity ✅`);
+        world.chatManager.sendPlayerMessage(player, `Player Position: ${JSON.stringify(playerEntity.position)}`);
+        world.chatManager.sendPlayerMessage(player, `Has Ability: ${playerEntity.abilityHolder.hasAbility()}`);
+        
+        if (playerEntity.abilityHolder.hasAbility()) {
+          const ability = playerEntity.abilityHolder.getAbility();
+          world.chatManager.sendPlayerMessage(player, `Current Ability: ${ability?.constructor.name || 'Unknown'}`);
+        }
+      } else {
+        world.chatManager.sendPlayerMessage(player, `Player Entity Type: ${playerEntity?.constructor.name || 'None'} ❌`);
+      }
+      
+      // Pickup positions
+      world.chatManager.sendPlayerMessage(player, `=== PICKUP POSITIONS ===`);
+      ABILITY_PICKUP_POSITIONS.forEach((pos: Vector3Like, i: number) => {
+        world.chatManager.sendPlayerMessage(player, `Position ${i}: ${JSON.stringify(pos)}`);
+      });
+      
+      // Force restart pickup system if in arcade mode
+      if (isArcadeMode() && args[0] === "restart") {
+        pickupManager.deactivate();
+        pickupManager.activate();
+        world.chatManager.sendPlayerMessage(player, `🔄 Pickup system restarted!`);
+      }
+      
+      world.chatManager.sendPlayerMessage(player, `Use "/debugpickups restart" to restart pickup system`);
+    });
+
+    // Add comprehensive speed test command
+    world.chatManager.registerCommand("/speedtest", (player, args) => {
+      const currentMode = getCurrentGameMode();
+      const config = getCurrentModeConfig();
+      
+      world.chatManager.sendPlayerMessage(
+        player,
+        `=== SPEED ENHANCEMENT TEST ===`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Current Mode: ${config.name}`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Base Player Speed: ${config.playerSpeed}x`
+      );
+      world.chatManager.sendPlayerMessage(
+        player,
+        `Sprint Multiplier: ${config.sprintMultiplier}x`
+      );
+      
+      if (isArcadeMode()) {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `🎮 ARCADE MODE ACTIVE - Enhanced speed enabled!`
+        );
+        world.chatManager.sendPlayerMessage(
+          player,
+          `Use /speed to get temporary speed boost (1.8x for 15s)`
+        );
+        world.chatManager.sendPlayerMessage(
+          player,
+          `Use F key for random power-ups (including speed)`
+        );
+        
+        // Check if player has active speed enhancement
+        const hasEnhancement = arcadeManager.hasActiveEnhancement(player.id);
+        if (hasEnhancement) {
+          const enhancement = arcadeManager.getPlayerEnhancement(player.id);
+          if (enhancement) {
+            const timeLeft = Math.max(0, enhancement.endTime - Date.now());
+            world.chatManager.sendPlayerMessage(
+              player,
+              `⚡ Active Enhancement: ${enhancement.type} (${Math.ceil(timeLeft/1000)}s remaining)`
+            );
+          }
+        } else {
+          world.chatManager.sendPlayerMessage(
+            player,
+            `No active speed enhancements`
+          );
+        }
+      } else {
+        world.chatManager.sendPlayerMessage(
+          player,
+          `🏆 FIFA MODE - Realistic speed (no enhancements)`
+        );
+        world.chatManager.sendPlayerMessage(
+          player,
+          `Switch to /arcade to test speed enhancements`
+        );
+      }
     });
 
     world.chatManager.registerCommand("/power", (player, args) => {

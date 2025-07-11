@@ -6,10 +6,17 @@
     "start": "bun run index.ts",
     "dev": "bun run index.ts",
     "setup": "npm install && echo Setup complete - you can now use bun run start",
-    "start:node": "npx tsx index.ts"
+    "start:node": "npx tsx index.ts",
+    "start:windows": "npx tsx index.ts",
+    "dev:windows": "npx tsx --watch index.ts",
+    "dev:node": "npx tsx --watch index.ts",
+    "install:deps": "npm install",
+    "clean:install": "rm -rf node_modules && npm install"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.2"
   },
   "peerDependencies": {
     "typescript": "^5.7.3"
@@ -17,7 +24,8 @@
   "dependencies": {
     "@gltf-transform/cli": "^4.2.0",
     "@hytopia.com/assets": "^0.2.21",
-    "hytopia": "^0.6.21"
+    "hytopia": "^0.6.32",
+    "mediasoup": "^3.16.5"
   },
   "trustedDependencies": [
     "mediasoup"

@@ -4,6 +4,7 @@ import sharedState from "../state/sharedState";
 import { getDirectionFromRotation } from "../utils/direction";
 import PlayerEntityController from "../controllers/SoccerPlayerController";
 import SoccerAgent from './SoccerAgent';
+import { getCurrentModeConfig } from "../state/gameModes";
 // Import the new constants reflecting swapped X/Z
 import {
   AI_FIELD_CENTER_X, // Added new Field Center X
@@ -206,11 +207,11 @@ const POSITION_DISCIPLINE_FACTOR = {
   'striker': 0.5          // Strikers have most freedom to roam
 };
 
-// Reduced pursuit distances to keep players in their areas more
-const GOALKEEPER_PURSUIT_DISTANCE = 8.0;   // Reduced from 10.0
-const DEFENDER_PURSUIT_DISTANCE = 12.0;    // Reduced from 15.0
-const MIDFIELDER_PURSUIT_DISTANCE = 16.0;  // Reduced from 20.0
-const STRIKER_PURSUIT_DISTANCE = 20.0;     // Reduced from 25.0
+// FIXED: Increased pursuit distances to allow better ball retrieval near boundaries (except goalkeeper)
+const GOALKEEPER_PURSUIT_DISTANCE = 8.0;   // Kept same to keep goalkeepers near goal
+const DEFENDER_PURSUIT_DISTANCE = 20.0;    // Increased from 12.0 to reach sideline balls
+const MIDFIELDER_PURSUIT_DISTANCE = 25.0;  // Increased from 16.0 for better field coverage
+const STRIKER_PURSUIT_DISTANCE = 30.0;     // Increased from 20.0 for aggressive ball pursuit
 
 // Reduced pursuit probabilities to maintain spacing
 const ROLE_PURSUIT_PROBABILITY = {
@@ -256,7 +257,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   public targetPosition: Vector3Like = { x: 0, y: 0, z: 0 }; // Changed to public for behavior tree
   private updateInterval: Timer | null = null;
   public aiRole: SoccerAIRole; // Changed to public for behavior tree access
-  private decisionInterval: number = 500; // milliseconds between AI decisions
+  private decisionInterval: number = 500; // milliseconds between AI decisions (reduced for goalkeepers in constructor)
   public isKickoffActive: boolean = true; // Changed to public for out-of-bounds reset
   // Track last position for animation state detection
   private lastAIPosition: Vector3Like | null = null;
@@ -268,7 +269,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
   private agent: SoccerAgent;
   private behaviorTree: BehaviorNode | null = null;
   // Flag to prevent handleTick rotation override after agent action
-  public _agentSetRotationThisTick: boolean = false; 
+  public hasRotationBeenSetThisTick: boolean = false; 
   // Last rotation update time
   private _lastRotationUpdateTime: number | null = null;
   // Track ball possession time for all players
@@ -320,6 +321,11 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     // This initializes the base SoccerPlayerEntity with the SDK's Entity systems
     super(aiPlayer, team, role);
     this.aiRole = role;
+    
+    // **GOALKEEPER ENHANCEMENT**: Much faster decision-making for goalkeepers
+    if (this.aiRole === 'goalkeeper') {
+      this.decisionInterval = 150; // 3x faster than field players for quick shot reactions
+    }
     
     // Create controller instance but don't attach it immediately
     // This avoids the stopModelAnimations error when the entity isn't spawned yet
@@ -382,7 +388,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     this.isKickoffActive = true; // Start with kickoff active to respect positioning
     this.lastAIPosition = this.position;
     this.currentAnimState = 'idle';
-    this._agentSetRotationThisTick = false;
+    this.hasRotationBeenSetThisTick = false;
 
     console.log(`AI ${this.player.username} (${this.aiRole}) activated with kickoff mode active`);
 
@@ -419,7 +425,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     this.isKickoffActive = false;
     this.lastAIPosition = null;
     this.currentAnimState = null;
-    this._agentSetRotationThisTick = false;
+    this.hasRotationBeenSetThisTick = false;
     
     // Clear any pending animations
     if (this.isSpawned) {
@@ -451,7 +457,16 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     const ballPosition = ball.position;
     const hasBall = sharedState.getAttachedPlayer() === this;
     
-
+    // **STAMINA CONSERVATION LOGIC**
+    // Check stamina levels and adjust behavior accordingly
+    const staminaPercentage = this.getStaminaPercentage();
+    const shouldConserveStamina = this.shouldConserveStamina(staminaPercentage);
+    
+    if (shouldConserveStamina) {
+      // When stamina is low, prioritize conservative play
+      this.handleStaminaConservation(ballPosition, hasBall, staminaPercentage);
+      return;
+    }
     
     // Check if a teammate has the ball - special case to prevent teammates from chasing player with ball
     const playerWithBall = sharedState.getAttachedPlayer();
@@ -645,7 +660,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     // ROTATION STABILITY: Reset agent rotation flag at the END of decision making
     // This ensures the agent's rotation choice persists until the next decision cycle
-    this._agentSetRotationThisTick = false;
+    this.hasRotationBeenSetThisTick = false;
   }
   
   /**
@@ -685,47 +700,120 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
 
   /**
    * Check if ball is heading towards goal based on velocity
+   * **ENHANCED**: Improved shot detection with lower thresholds and prediction
    */
   private isBallHeadingTowardsGoal(ballPosition: Vector3Like, ballVelocity: Vector3Like): boolean {
     const goalCenterX = this.team === 'red' ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
     const goalCenterZ = AI_FIELD_CENTER_Z;
     
-    // Check if ball is moving towards goal X coordinate
-    const isMovingTowardsGoalX = this.team === 'red' ? ballVelocity.x < -2 : ballVelocity.x > 2;
+    // **ENHANCED SHOT DETECTION**: Lowered thresholds for better coverage
+    const isMovingTowardsGoalX = this.team === 'red' ? ballVelocity.x < -1.0 : ballVelocity.x > 1.0; // Reduced from ±2 to ±1
     
-    // Check if ball is within goal Z range or moving towards it
-    const goalZMin = goalCenterZ - 6;
-    const goalZMax = goalCenterZ + 6;
-    const isInGoalZRange = ballPosition.z >= goalZMin && ballPosition.z <= goalZMax;
+    // **PREDICTIVE POSITIONING**: Check where ball will be in 0.3 seconds
+    const predictionTime = 0.3;
+    const predictedZ = ballPosition.z + (ballVelocity.z * predictionTime);
+    
+    // **EXPANDED GOAL RANGE**: Larger detection area for better coverage
+    const goalZMin = goalCenterZ - 12; // Increased from 6 to 12
+    const goalZMax = goalCenterZ + 12; // Increased from 6 to 12
+    const isInGoalZRange = predictedZ >= goalZMin && predictedZ <= goalZMax;
     
     return isMovingTowardsGoalX && isInGoalZRange;
   }
 
   /**
+   * **NEW METHOD**: Calculate where goalkeeper should position to intercept ball
+   * This is the core of improved goalkeeper AI
+   */
+  private calculateBallInterceptionPoint(ballPosition: Vector3Like, ballVelocity: Vector3Like): Vector3Like | null {
+    const goalCenterX = this.team === 'red' ? AI_GOAL_LINE_X_RED : AI_GOAL_LINE_X_BLUE;
+    const goalCenterZ = AI_FIELD_CENTER_Z;
+    const currentPos = this.position;
+    
+    // **BALL TRAJECTORY PREDICTION**: Calculate where ball will cross goal line
+    const goalLineX = goalCenterX;
+    const timeToGoalLine = Math.abs((goalLineX - ballPosition.x) / ballVelocity.x);
+    
+    // **IGNORE UNREALISTIC TRAJECTORIES**: Don't chase balls going away or too slow
+    if (timeToGoalLine <= 0 || timeToGoalLine > 3.0) return null;
+    
+    // **PREDICTED BALL POSITION**: Where ball will be when it reaches goal line
+    const predictedGoalZ = ballPosition.z + (ballVelocity.z * timeToGoalLine);
+    
+    // **GOALKEEPER REACH CALCULATION**: Can the goalkeeper get there in time?
+    const goalkeeperSpeed = 8.0; // Goalkeeper movement speed
+    const maxReachableDistance = goalkeeperSpeed * timeToGoalLine;
+    
+    // **INTERCEPTION POINT**: Position slightly in front of goal line
+    const interceptX = goalLineX + (this.team === 'red' ? 2 : -2); // 2 units in front
+    const interceptZ = Math.max(goalCenterZ - 8, Math.min(goalCenterZ + 8, predictedGoalZ)); // Clamp to goal width
+    
+    // **REACHABILITY CHECK**: Only attempt saves within reach
+    const distanceToIntercept = Math.sqrt(
+      (interceptX - currentPos.x) ** 2 + (interceptZ - currentPos.z) ** 2
+    );
+    
+    if (distanceToIntercept <= maxReachableDistance) {
+      return { x: interceptX, y: currentPos.y, z: interceptZ };
+    }
+    
+    return null; // Ball is unreachable
+  }
+
+  /**
    * Apply rapid response movement for fast incoming shots
+   * **COMPLETELY REWRITTEN**: Now uses direct ball interception with explosive movement
    */
   private applyRapidResponse(ballVelocity: Vector3Like): void {
+    const ball = sharedState.getSoccerBall();
+    if (!ball) return;
+    
     const ballSpeed = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
     
-    if (ballSpeed > 8.0) { // Fast shot incoming
-      // Temporarily boost movement speed for urgent response
-      const currentVelocity = this.linearVelocity;
-      this.setLinearVelocity({
-        x: currentVelocity.x * 1.4,
-        y: currentVelocity.y,
-        z: currentVelocity.z * 1.4
-      });
+    // **ENHANCED SHOT DETECTION**: React to medium-speed shots too
+    if (ballSpeed > 2.0) { // Reduced from 8.0 to 2.0 for much better coverage
+      // **DIRECT BALL INTERCEPTION**: Calculate exact interception point
+      const interceptionPoint = this.calculateBallInterceptionPoint(ball.position, ballVelocity);
       
-      // Play diving animation (using kick as substitute)
-      if (this.isSpawned) {
-        this.startModelOneshotAnimations(['kick']);
+      if (interceptionPoint) {
+        // **IMMEDIATE GOALKEEPER POSITIONING**: Set target directly to interception point
+        this.targetPosition = interceptionPoint;
         
-        // Stop the animation after a short duration
-        setTimeout(() => {
+        // **EXPLOSIVE GOALKEEPER MOVEMENT**: Apply immediate velocity toward interception
+        const currentPos = this.position;
+        const directionToIntercept = {
+          x: interceptionPoint.x - currentPos.x,
+          z: interceptionPoint.z - currentPos.z
+        };
+        
+        const distanceToIntercept = Math.sqrt(directionToIntercept.x * directionToIntercept.x + directionToIntercept.z * directionToIntercept.z);
+        
+        if (distanceToIntercept > 0.5) {
+          // **GOALKEEPER DIVE MECHANICS**: Apply explosive movement
+          const urgentSpeed = 10.0; // Much faster than normal movement
+          const normalizedX = directionToIntercept.x / distanceToIntercept;
+          const normalizedZ = directionToIntercept.z / distanceToIntercept;
+          
+          // **DIRECT VELOCITY APPLICATION**: Bypass gradual physics for urgent saves
+          this.setLinearVelocity({
+            x: normalizedX * urgentSpeed,
+            y: this.linearVelocity?.y || 0,
+            z: normalizedZ * urgentSpeed
+          });
+          
+          console.log(`🥅 GOALKEEPER DIVE: ${this.player.username} diving to intercept (speed: ${urgentSpeed.toFixed(1)})`);
+          
+          // **GOALKEEPER SAVE ANIMATION**: Visual feedback
           if (this.isSpawned) {
-            this.stopModelAnimations(['kick']);
+            this.startModelOneshotAnimations(['kick']); // Using kick as diving animation
+            
+            setTimeout(() => {
+              if (this.isSpawned) {
+                this.stopModelAnimations(['kick']);
+              }
+            }, 800);
           }
-        }, 800);
+        }
       }
     }
   }
@@ -755,14 +843,26 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     // Distance from goalkeeper to ball
     const distanceToBall = this.distanceBetween(ballPosition, myPosition);
     
-    // Enhanced shot detection
+    // **ENHANCED SHOT DETECTION**: Lower thresholds for better coverage
     const isShotOnGoal = this.isBallHeadingTowardsGoal(ballPosition, ballVelocity);
-    const isFastShot = ballSpeed > 8.0;
-    const isMediumShot = ballSpeed > 5.0;
+    const isFastShot = ballSpeed > 5.0; // Reduced from 8.0
+    const isMediumShot = ballSpeed > 2.0; // Reduced from 5.0
     
-    // Apply rapid response for fast shots
-    if (isFastShot && isShotOnGoal) {
+    // **PRIORITY 1: URGENT SHOT RESPONSE**
+    if (isShotOnGoal && (isFastShot || isMediumShot)) {
+      console.log(`🥅 URGENT SAVE: ${this.player.username} responding to shot (speed: ${ballSpeed.toFixed(1)})`);
       this.applyRapidResponse(ballVelocity);
+      return; // Skip normal positioning logic
+    }
+    
+    // **PRIORITY 2: BALL INTERCEPTION**
+    if (ballSpeed > 1.0 && distanceToBall < 15) {
+      const interceptionPoint = this.calculateBallInterceptionPoint(ballPosition, ballVelocity);
+      if (interceptionPoint) {
+        console.log(`🎯 INTERCEPTION: ${this.player.username} moving to intercept ball`);
+        this.targetPosition = interceptionPoint;
+        return;
+      }
     }
     
     // New: Check if the ball is in a corner
@@ -2177,6 +2277,18 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
    * Enhanced to prevent center-field clustering and maintain realistic soccer formations.
    * Changed to public for use in behavior tree
    */
+  /**
+   * Adjusts AI player positioning to maintain proper spacing and formation discipline
+   * 
+   * This function applies multiple spatial adjustments to prevent AI clustering:
+   * - Teammate repulsion: Prevents players from getting too close to each other
+   * - Center field avoidance: Reduces clustering around the center circle
+   * - Formation discipline: Pulls players back toward their assigned positions
+   * - Role-based jitter: Adds small positional variations based on player role
+   * 
+   * @param targetPos The desired target position before spacing adjustments
+   * @returns The adjusted position with spacing and formation considerations applied
+   */
   public adjustPositionForSpacing(targetPos: Vector3Like): Vector3Like {
     const teammates = sharedState.getAITeammates(this);
     let adjustment = { x: 0, y: 0, z: 0 };
@@ -2947,8 +3059,28 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     }
 
     const controller = this.controller as PlayerEntityController; 
-    const maxSpeed = controller?.runVelocity || 5.5; 
+    let baseMaxSpeed = controller?.runVelocity || 5.5;
+    
+    // **GOALKEEPER ENHANCEMENT**: Boost base speed for goalkeepers
+    if (this.aiRole === 'goalkeeper') {
+      baseMaxSpeed = 6.5; // 18% faster than field players for quick reactions
+    }
+    
+    // Apply FIFA mode speed multipliers to match human players
+    const currentModeConfig = getCurrentModeConfig();
+    const speedMultiplier = currentModeConfig.sprintMultiplier || 1.0; // Default to 1.0 if not defined
+    let maxSpeed = baseMaxSpeed * speedMultiplier;
+    
+    // Apply stamina-based speed penalty (same as human players)
+    const staminaMultiplier = this.getStaminaSpeedMultiplier();
+    maxSpeed *= staminaMultiplier;
+    
     const mass = this._mass > 0 ? this._mass : 1.0; // Ensure valid mass
+    
+    // Log speed enhancement for debugging (very occasional)
+    if (Math.random() < 0.001) { // Very rare logging
+      console.log(`🤖 AI SPEED: ${this.player.username} (${this.aiRole}) - Base: ${baseMaxSpeed.toFixed(1)}, FIFA Enhanced: ${(baseMaxSpeed * speedMultiplier).toFixed(1)}, Final (with stamina): ${maxSpeed.toFixed(1)} (stamina: ${this.getStaminaPercentage().toFixed(0)}%)`);
+    }
     
     // Calculate direction towards the target position (X and Z only)
     const direction = { 
@@ -2996,7 +3128,7 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     // Increase cooldown when player has the ball to reduce oscillation
     const rotationUpdateCooldown = hasBall ? 500 : 250; // Longer cooldown when having ball
     
-    if (!this._agentSetRotationThisTick && 
+    if (!this.hasRotationBeenSetThisTick && 
         (!this._lastRotationUpdateTime || 
         currentTime - this._lastRotationUpdateTime > rotationUpdateCooldown)) {
          
@@ -3361,8 +3493,22 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
       }
     }
     
-    // Maximum simultaneous pursuers
-    const maxSimultaneousPursuers = 2;
+    // **ENHANCED STATIONARY BALL LOGIC**
+    // Be more aggressive when ball is stationary
+    const isBallStationary = sharedState.isBallStationary();
+    const stationaryDuration = sharedState.getBallStationaryDuration();
+    
+    // Adjust pursuit limits based on ball stationary status
+    let maxSimultaneousPursuers = 2; // Default
+    if (isBallStationary) {
+      if (stationaryDuration > 10000) { // 10+ seconds
+        maxSimultaneousPursuers = 4; // Very aggressive team response
+      } else if (stationaryDuration > 7000) { // 7+ seconds  
+        maxSimultaneousPursuers = 3; // More aggressive
+      } else {
+        maxSimultaneousPursuers = 3; // Still more aggressive than normal
+      }
+    }
     
     // Always allow pursuit if we're the closest teammate to the ball
     if (this.isClosestTeammateToPosition(ballPosition)) {
@@ -3403,7 +3549,14 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     }
     
     // Only allow pursuit if we're within the pursuit limit by rank
-    return myPursuitRank <= maxSimultaneousPursuers;
+    const shouldPursue = myPursuitRank <= maxSimultaneousPursuers;
+    
+    // Log enhanced coordination for stationary balls
+    if (isBallStationary && shouldPursue) {
+      console.log(`${this.player.username} (${this.aiRole}) ENHANCED pursuit coordination for stationary ball: rank ${myPursuitRank}/${maxSimultaneousPursuers}, pursuers: ${pursuingCount}, duration: ${(stationaryDuration/1000).toFixed(1)}s`);
+    }
+    
+    return shouldPursue;
   }
 
   /**
@@ -3429,6 +3582,95 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     // At this point we've verified the ball is truly loose (not possessed by anyone)
     
+    // **ENHANCED STATIONARY BALL DETECTION**
+    // Check if ball is stationary anywhere on the field (not just boundaries)
+    const isBallStationary = sharedState.isBallStationary();
+    const stationaryDuration = sharedState.getBallStationaryDuration();
+    
+    if (isBallStationary) {
+      const distanceToBall = this.distanceBetween(this.position, ballPosition);
+      
+      // For stationary balls, be much more aggressive with pursuit
+      let maxStationaryDistance = 40; // Base distance for stationary balls
+      
+      // Increase pursuit distance based on how long ball has been stationary
+      if (stationaryDuration > 10000) { // 10+ seconds
+        maxStationaryDistance = 60; // Very aggressive pursuit
+      } else if (stationaryDuration > 7000) { // 7+ seconds
+        maxStationaryDistance = 50; // More aggressive
+      }
+      
+      // Allow more players to pursue stationary balls
+      const teammates = this.getVisibleTeammates();
+      let playersCloser = 0;
+      
+      for (const teammate of teammates) {
+        if (teammate instanceof AIPlayerEntity && teammate.isSpawned) {
+          const teammateDistance = this.distanceBetween(teammate.position, ballPosition);
+          if (teammateDistance < distanceToBall) {
+            playersCloser++;
+          }
+        }
+      }
+      
+      // Allow up to 3 players to pursue stationary balls (vs normal 2)
+      const shouldPursueStationary = playersCloser < 3 && distanceToBall < maxStationaryDistance;
+      
+      if (shouldPursueStationary) {
+        console.log(`${this.player.username} (${this.aiRole}) pursuing STATIONARY ball (idle for ${(stationaryDuration/1000).toFixed(1)}s, distance: ${distanceToBall.toFixed(1)})`);
+        return true;
+      }
+    }
+    
+    // SPECIAL CASE: Stuck balls in corners/boundaries (existing logic)
+    // Check if ball is near boundaries and stationary
+    const BOUNDARY_THRESHOLD = 12;
+    const nearMinX = Math.abs(ballPosition.x - FIELD_MIN_X) < BOUNDARY_THRESHOLD;
+    const nearMaxX = Math.abs(ballPosition.x - FIELD_MAX_X) < BOUNDARY_THRESHOLD;
+    const nearMinZ = Math.abs(ballPosition.z - FIELD_MIN_Z) < BOUNDARY_THRESHOLD;
+    const nearMaxZ = Math.abs(ballPosition.z - FIELD_MAX_Z) < BOUNDARY_THRESHOLD;
+    
+    const isNearBoundary = nearMinX || nearMaxX || nearMinZ || nearMaxZ;
+    const isInCorner = (nearMinX || nearMaxX) && (nearMinZ || nearMaxZ);
+    
+    // Check if ball is stationary (indicating it's stuck)
+    const ball = sharedState.getSoccerBall();
+    const isStuck = ball && ball.linearVelocity ? 
+      Math.sqrt(ball.linearVelocity.x * ball.linearVelocity.x + ball.linearVelocity.z * ball.linearVelocity.z) < 0.5 :
+      false;
+    
+    // For stuck balls near boundaries, be much more aggressive
+    if (isNearBoundary && isStuck) {
+      const distanceToBall = this.distanceBetween(this.position, ballPosition);
+      
+      // Allow much larger pursuit distances for stuck balls
+      let maxStuckBallDistance = 35; // Base distance for boundary balls
+      if (isInCorner) {
+        maxStuckBallDistance = 45; // Even more aggressive for corner balls
+      }
+      
+      // Be one of the closest players to the stuck ball
+      const teammates = this.getVisibleTeammates();
+      let playersCloser = 0;
+      
+      for (const teammate of teammates) {
+        if (teammate instanceof AIPlayerEntity && teammate.isSpawned) {
+          const teammateDistance = this.distanceBetween(teammate.position, ballPosition);
+          if (teammateDistance < distanceToBall) {
+            playersCloser++;
+          }
+        }
+      }
+      
+      // Allow up to 2 players to pursue stuck balls (closest 2)
+      const shouldPursueStuck = playersCloser < 2 && distanceToBall < maxStuckBallDistance;
+      
+      if (shouldPursueStuck) {
+        console.log(`${this.player.username} (${this.aiRole}) recognizing stuck ball in ${isInCorner ? 'corner' : 'boundary'} as loose ball in area (distance: ${distanceToBall.toFixed(1)})`);
+        return true;
+      }
+    }
+    
     // Check if the ball is within this player's preferred area
     const inPreferredArea = this.isPositionInPreferredArea(ballPosition, this.aiRole);
     
@@ -3441,6 +3683,18 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
       case 'central-midfielder-1':
       case 'central-midfielder-2': maxPursuitDistance = MIDFIELDER_PURSUIT_DISTANCE; break;
       case 'striker': maxPursuitDistance = STRIKER_PURSUIT_DISTANCE; break;
+    }
+    
+    // **ENHANCED: Increase pursuit distance for stationary balls**
+    const ballIsStationary = sharedState.isBallStationary();
+    if (ballIsStationary) {
+      const stationaryDuration = sharedState.getBallStationaryDuration();
+      if (stationaryDuration > 7000) { // 7+ seconds
+        maxPursuitDistance *= 2.5; // Very extended range
+      } else {
+        maxPursuitDistance *= 2.0; // Extended range
+      }
+      console.log(`${this.player.username} (${this.aiRole}) using EXTENDED pursuit distance ${maxPursuitDistance.toFixed(1)} for stationary ball`);
     }
     
     const withinDistance = this.distanceBetween(this.position, ballPosition) < maxPursuitDistance;
@@ -3476,6 +3730,17 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
       case 'striker': maxPursuitDistance = STRIKER_PURSUIT_DISTANCE; break;
     }
     
+    // **ENHANCED: Increase pursuit distance for stationary balls in chase calculations**
+    const ballStationaryStatus = sharedState.isBallStationary();
+    if (ballStationaryStatus) {
+      const stationaryDuration = sharedState.getBallStationaryDuration();
+      if (stationaryDuration > 7000) { // 7+ seconds
+        maxPursuitDistance *= 2.5; // Very extended range
+      } else {
+        maxPursuitDistance *= 2.0; // Extended range
+      }
+    }
+    
     // Calculate distance from ball to edge of preferred area
     const roleDefinition = ROLE_DEFINITIONS[this.aiRole];
     const roleArea = roleDefinition.preferredArea;
@@ -3508,15 +3773,18 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     const distanceFromArea = Math.max(distanceToMinX, distanceToMaxX, distanceToMinZ, distanceToMaxZ);
     
-    // Special case for corners - always allow players to pursue balls in corners
-    // Increased corner detection range from 5 to 10 units to catch more corner situations
-    const isInCorner = (
-      (Math.abs(ballPosition.x - FIELD_MIN_X) < 10 || Math.abs(ballPosition.x - FIELD_MAX_X) < 10) &&
-      (Math.abs(ballPosition.z - FIELD_MIN_Z) < 10 || Math.abs(ballPosition.z - FIELD_MAX_Z) < 10)
-    );
+    // FIXED: Improved boundary detection - check for ANY boundary proximity, not just corners
+    const nearXBoundary = Math.abs(ballPosition.x - FIELD_MIN_X) < 15 || Math.abs(ballPosition.x - FIELD_MAX_X) < 15;
+    const nearZBoundary = Math.abs(ballPosition.z - FIELD_MIN_Z) < 15 || Math.abs(ballPosition.z - FIELD_MAX_Z) < 15;
     
-    // For corner situations, allow the closest 2 players to pursue (not just 1)
-    if (isInCorner) {
+    // Ball is near ANY boundary (not just corners) 
+    const isNearBoundary = nearXBoundary || nearZBoundary;
+    
+    // Special case for corners - both X and Z boundaries
+    const isInCorner = nearXBoundary && nearZBoundary;
+    
+    // For near-boundary situations, allow more players to pursue
+    if (isNearBoundary) {
       const teammates = this.getVisibleTeammates();
       const myDistanceToBall = this.distanceBetween(this.position, ballPosition);
       let playersCloserThanMe = 0;
@@ -3530,18 +3798,26 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
         }
       }
       
-      // Allow up to 2 players to pursue corner balls (closest 2)
-      if (playersCloserThanMe < 2) {
-        return false; // Never too far if ball is in corner and we're one of the 2 closest
+      // Allow up to 3 players to pursue near-boundary balls (closest 3)
+      // For corners, allow up to 2 players
+      const maxPursuers = isInCorner ? 2 : 3;
+      if (playersCloserThanMe < maxPursuers) {
+        console.log(`Player ${this.player.username} (${this.aiRole}) pursuing near-boundary ball (${playersCloserThanMe + 1} of ${maxPursuers})`);
+        return false; // Never too far if ball is near boundary and we're one of the allowed pursuers
       }
     }
     
-    // For corner situations, significantly increase pursuit distance to ensure ball retrieval
-    let maxAllowedDistance = maxPursuitDistance * 1.3; // Increased buffer from 1.2 to 1.3
+    // Calculate allowed pursuit distance with boundary bonuses
+    let maxAllowedDistance = maxPursuitDistance * 1.5; // Base increase from 1.3 to 1.5
     
-    // Special corner pursuit boost - double the allowed distance for corner balls
+    // Additional bonuses for boundary situations
+    if (isNearBoundary) {
+      maxAllowedDistance = maxPursuitDistance * 2.0; // Generous for near-boundary situations
+      console.log(`Player ${this.player.username} (${this.aiRole}) using extended boundary pursuit distance: ${maxAllowedDistance}`);
+    }
+    
     if (isInCorner) {
-      maxAllowedDistance = maxPursuitDistance * 2.5; // Much more generous for corners
+      maxAllowedDistance = maxPursuitDistance * 3.0; // Extra generous for corners
       console.log(`Player ${this.player.username} (${this.aiRole}) using extended corner pursuit distance: ${maxAllowedDistance}`);
     }
     
@@ -3599,5 +3875,121 @@ export default class AIPlayerEntity extends SoccerPlayerEntity {
     
     return targetPosition.x >= safeMinX && targetPosition.x <= safeMaxX &&
            targetPosition.z >= safeMinZ && targetPosition.z <= safeMaxZ;
+  }
+
+  /**
+   * STAMINA CONSERVATION SYSTEM
+   * Determines if the AI should conserve stamina based on current levels
+   * @param staminaPercentage Current stamina as a percentage (0-100)
+   * @returns True if stamina should be conserved
+   */
+  private shouldConserveStamina(staminaPercentage: number): boolean {
+    // Different stamina thresholds based on role
+    let conservationThreshold = 30; // Default threshold
+    
+    switch (this.aiRole) {
+      case 'goalkeeper':
+        conservationThreshold = 20; // Goalkeepers conserve less aggressively
+        break;
+      case 'striker':
+        conservationThreshold = 40; // Strikers need to conserve more to be effective
+        break;
+      case 'central-midfielder-1':
+      case 'central-midfielder-2':
+        conservationThreshold = 35; // Midfielders balance defense and attack
+        break;
+      case 'left-back':
+      case 'right-back':
+        conservationThreshold = 25; // Defenders can be more aggressive with stamina
+        break;
+    }
+    
+    // More aggressive conservation as the game progresses
+    // In the second half, players should be more conservative with their stamina
+    // For now, we'll use a consistent threshold regardless of game phase
+    
+    return staminaPercentage < conservationThreshold;
+  }
+  
+  /**
+   * STAMINA CONSERVATION HANDLER
+   * Handles AI behavior when stamina is low, prioritizing recovery and conservative play
+   * @param ballPosition Current ball position
+   * @param hasBall Whether this AI has the ball
+   * @param staminaPercentage Current stamina percentage
+   */
+  private handleStaminaConservation(ballPosition: Vector3Like, hasBall: boolean, staminaPercentage: number): void {
+    // Log conservation behavior occasionally
+    if (Math.random() < 0.02) { // 2% chance to log
+      console.log(`💨 STAMINA CONSERVATION: ${this.player.username} (${this.aiRole}) conserving stamina (${staminaPercentage.toFixed(0)}%)`);
+    }
+    
+    if (hasBall) {
+      // If we have the ball and low stamina, prioritize quick pass over dribbling
+      const passSuccess = this.passBall();
+      if (passSuccess) {
+        console.log(`⚡ STAMINA CONSERVATION: ${this.player.username} made quick pass to preserve stamina`);
+        return;
+      }
+      
+      // If passing failed, hold position and slow down
+      this.targetPosition = {
+        x: this.position.x,
+        y: this.position.y,
+        z: this.position.z
+      };
+      return;
+    }
+    
+    // When we don't have the ball, prioritize positioning over aggressive pursuit
+    const roleDef = ROLE_DEFINITIONS[this.aiRole];
+    const distanceToBall = this.distanceBetween(this.position, ballPosition);
+    
+    // Reduce effective pursuit based on stamina levels
+    const staminaFactor = Math.max(0.3, staminaPercentage / 100); // Never go below 30% pursuit
+    const adjustedPursuitTendency = roleDef.pursuitTendency * staminaFactor;
+    
+    // Only pursue if we're very close to the ball or if we're the designated role
+    const shouldPursue = distanceToBall < 8 && Math.random() < adjustedPursuitTendency;
+    
+    if (shouldPursue && this.isClosestTeammateToPosition(ballPosition)) {
+      // Pursue the ball but with reduced intensity
+      this.targetPosition = {
+        x: ballPosition.x,
+        y: ballPosition.y,
+        z: ballPosition.z
+      };
+    } else {
+      // Move to a conservative position that allows stamina recovery
+      const formationPosition = this.getRoleBasedPosition();
+      
+      // Move towards formation position but prioritize standing still for stamina recovery
+      const distanceToFormation = this.distanceBetween(this.position, formationPosition);
+      
+      if (distanceToFormation < 3) {
+        // If close to formation position, hold position for stamina recovery
+        this.targetPosition = {
+          x: this.position.x,
+          y: this.position.y,
+          z: this.position.z
+        };
+      } else {
+        // Move slowly towards formation position
+        const direction = {
+          x: formationPosition.x - this.position.x,
+          z: formationPosition.z - this.position.z
+        };
+        const distance = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+        
+        if (distance > 0.1) {
+          const moveDistance = Math.min(2, distance); // Move only 2 units at a time
+          this.targetPosition = {
+            x: this.position.x + (direction.x / distance) * moveDistance,
+            y: this.position.y,
+            z: this.position.z + (direction.z / distance) * moveDistance
+          };
+        }
+      }
+    }
   }
 }

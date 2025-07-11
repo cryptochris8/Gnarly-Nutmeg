@@ -250,7 +250,7 @@ export class ProjectileEntity extends Entity {
     // Play energy sound
     if (this.world) {
       new Audio({
-        uri: "audio/sfx/liquid/water-freeze.mp3",
+        uri: "audio/sfx/liquid/large-splash.mp3",
         loop: false,
         volume: 0.7
       }).play(this.world);

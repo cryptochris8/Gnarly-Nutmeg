@@ -79,23 +79,23 @@ export const BALL_CONFIG = {
   FRICTION: 0.4, // Increased from 0.3 to slow down ball movement more
 
   // Movement damping - increase to slow the ball down faster
-  LINEAR_DAMPING: 0.8, // Increased from 0.7 to slow ball down faster
-  ANGULAR_DAMPING: 3.5, // Increased from 3.0 to prevent more spinning
+  LINEAR_DAMPING: 0.7, // Reduced from 0.8 for better crossbar bouncing
+  ANGULAR_DAMPING: 3.0, // Reduced from 3.5 for more natural ball rotation
 
-  // Impact forces - reduce these for gentler bounces
-  HORIZONTAL_FORCE: 0.3, // Reduced from 0.4 for less bouncing
-  VERTICAL_FORCE: 0.5, // Reduced from 0.6 for less bouncing
-  UPWARD_BIAS: 0.15, // Reduced from 0.2 for less upward bounce
+  // ENHANCED: Impact forces for realistic crossbar bouncing
+  HORIZONTAL_FORCE: 0.4, // Increased from 0.3 for better bounce response
+  VERTICAL_FORCE: 0.6, // Increased from 0.5 for better upward bounce off crossbar
+  UPWARD_BIAS: 0.2, // Increased from 0.15 for more realistic ball trajectory
 };
 
-export const ABILITY_RESPAWN_TIME = 15 * 1000;
+export const ABILITY_RESPAWN_TIME = 8 * 1000; // Reduced from 15s to 8s for faster testing
 
-// Ability pickup positions for large stadium
+// Ability pickup positions for large stadium - ENHANCED for better visibility and spacing
 export const ABILITY_PICKUP_POSITIONS = [
-  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z },
-  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z },
-  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z + 11 },
-  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z + 11 },
-  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z - 11 },
-  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y, z: AI_FIELD_CENTER_Z - 11 },
+  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z },      // Left center
+  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z },      // Right center  
+  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z + 12 }, // Left top
+  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z + 12 }, // Right top
+  { x: AI_FIELD_CENTER_X - 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z - 12 }, // Left bottom
+  { x: AI_FIELD_CENTER_X + 15, y: SAFE_SPAWN_Y + 0.5, z: AI_FIELD_CENTER_Z - 12 }, // Right bottom
 ];

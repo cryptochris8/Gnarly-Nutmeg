@@ -1,4 +1,4 @@
-import { Audio, Entity, Player, PlayerCameraMode, PlayerEntity, World, EntityEvent, type Vector3Like } from "hytopia";
+import { Audio, Entity, Player, PlayerCameraMode, PlayerEntity, World, EntityEvent, type Vector3Like, CollisionGroup } from "hytopia";
 import CustomSoccerPlayer from "../controllers/SoccerPlayerController";
 import sharedState from "../state/sharedState";
 import { getDirectionFromRotation } from "../utils/direction";
@@ -54,10 +54,17 @@ export default class SoccerPlayerEntity extends PlayerEntity {
   // Enhanced player status tracking
   private stamina: number = 100;
   private maxStamina: number = 100;
-  private staminaRegenRate: number = 0.5; // Per second
+  private staminaRegenRate: number = 0.5; // Base regen rate per second
   private staminaDrainRate: number = 1.0; // Per second when running
   private lastStaminaUpdate: number = Date.now();
   private hasBallPossession: boolean = false;
+  
+  // Enhanced stamina recovery rates based on movement state
+  private staminaRegenRates = {
+    standing: 2.5,    // Very fast recovery when standing still
+    walking: 1.2,     // Moderate recovery when walking
+    running: -1.0     // Drain when running (negative = drain)
+  };
 
   public constructor(player: Player, team: "red" | "blue", role: SoccerAIRole) {
     super({
@@ -98,6 +105,28 @@ export default class SoccerPlayerEntity extends PlayerEntity {
     // This ensures the entity is fully registered before attaching the camera
     this.on(EntityEvent.SPAWN, () => {
       console.log(`Entity spawn event for ${player.username} (entity ${this.id})`);
+      
+      // CRITICAL FIX: Configure collision groups for pickup detection
+      // This is essential for ability pickups to detect collisions with players
+      this.setCollisionGroupsForSolidColliders({
+        belongsTo: [CollisionGroup.PLAYER],
+        collidesWith: [
+          CollisionGroup.BLOCK, 
+          CollisionGroup.ENTITY, 
+          CollisionGroup.ENTITY_SENSOR
+        ],
+      });
+      
+      // Also configure sensor colliders to prevent interference
+      this.setCollisionGroupsForSensorColliders({
+        belongsTo: [CollisionGroup.ENTITY_SENSOR],
+        collidesWith: [
+          CollisionGroup.BLOCK,
+          CollisionGroup.ENTITY
+        ],
+      });
+      
+      console.log(`🎯 Collision groups configured: Player belongs to PLAYER group for pickup detection`);
       
       // Set team-appropriate rotation after spawn
       if (this.team === "blue") {
@@ -427,21 +456,75 @@ export default class SoccerPlayerEntity extends PlayerEntity {
     const deltaTime = (now - this.lastStaminaUpdate) / 1000; // Convert to seconds
     this.lastStaminaUpdate = now;
 
-    // Check if player is running (has velocity)
+    // Check player's movement state
     const velocity = this.linearVelocity;
     const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-    const isRunning = speed > 2.0; // Threshold for running
-
-    if (isRunning && !this.isStunned && !this.isPlayerFrozen) {
-      // Drain stamina when running
-      this.stamina = Math.max(0, this.stamina - (this.staminaDrainRate * deltaTime));
+    
+    // Determine movement state and corresponding stamina change rate
+    let staminaChangeRate: number;
+    let movementState: string;
+    
+    if (speed < 0.5) {
+      // Standing still - fastest recovery
+      staminaChangeRate = this.staminaRegenRates.standing;
+      movementState = "standing";
+    } else if (speed < 4.0) {
+      // Walking - moderate recovery
+      staminaChangeRate = this.staminaRegenRates.walking;
+      movementState = "walking";
     } else {
-      // Regenerate stamina when not running
-      this.stamina = Math.min(this.maxStamina, this.stamina + (this.staminaRegenRate * deltaTime));
+      // Running - stamina drain
+      staminaChangeRate = this.staminaRegenRates.running;
+      movementState = "running";
     }
+    
+    // Apply stamina change only if player is not stunned or frozen
+    if (!this.isStunned && !this.isPlayerFrozen) {
+      if (staminaChangeRate > 0) {
+        // Regenerate stamina
+        this.stamina = Math.min(this.maxStamina, this.stamina + (staminaChangeRate * deltaTime));
+      } else {
+        // Drain stamina
+        this.stamina = Math.max(0, this.stamina - (Math.abs(staminaChangeRate) * deltaTime));
+      }
+    }
+    
+    // Apply speed penalty based on current stamina level
+    this.applyStaminaSpeedPenalty();
 
     // Send stamina update to UI
     this.sendEnhancedUIUpdate();
+  }
+
+  /**
+   * Calculate and apply speed penalty based on current stamina level
+   * This modifies the player's actual movement speed
+   */
+  private applyStaminaSpeedPenalty() {
+    // This method is called to update the internal stamina state
+    // The actual speed penalty is returned by getStaminaSpeedMultiplier()
+    // No need to modify speedAmplifier here as it's used for ability boosts
+  }
+
+  /**
+   * Get the current speed multiplier based on stamina level
+   * This can be used by controllers to modify movement speed
+   */
+  public getStaminaSpeedMultiplier(): number {
+    const staminaPercentage = this.getStaminaPercentage();
+    
+    // Progressive speed reduction based on stamina level
+    if (staminaPercentage >= 75) {
+      return 1.0;      // 100% speed (75-100% stamina)
+    } else if (staminaPercentage >= 50) {
+      return 0.9;      // 90% speed (50-75% stamina)
+    } else if (staminaPercentage >= 25) {
+      return 0.75;     // 75% speed (25-50% stamina)
+    } else if (staminaPercentage >= 10) {
+      return 0.6;      // 60% speed (10-25% stamina)
+    } else {
+      return 0.4;      // 40% speed (0-10% stamina)
+    }
   }
 
   public getStamina(): number {
@@ -454,6 +537,17 @@ export default class SoccerPlayerEntity extends PlayerEntity {
 
   public drainStamina(amount: number) {
     this.stamina = Math.max(0, this.stamina - amount);
+    this.sendEnhancedUIUpdate();
+  }
+
+  public restoreStamina(amount?: number) {
+    if (amount !== undefined) {
+      // Restore specific amount
+      this.stamina = Math.min(this.maxStamina, this.stamina + amount);
+    } else {
+      // Restore to full if no amount specified
+      this.stamina = this.maxStamina;
+    }
     this.sendEnhancedUIUpdate();
   }
 

@@ -21,9 +21,10 @@ import {
 } from "../utils/direction";
 import { PASS_FORCE, BALL_SPAWN_POSITION as GLOBAL_BALL_SPAWN_POSITION, FIELD_MIN_X, FIELD_MAX_X, FIELD_MIN_Z, FIELD_MAX_Z, FIELD_MIN_Y, FIELD_MAX_Y, AI_GOAL_LINE_X_RED, AI_GOAL_LINE_X_BLUE } from "../state/gameConfig";
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
-import { isArcadeMode } from "../state/gameModes";
+import { isArcadeMode, getCurrentModeConfig } from "../state/gameModes";
+import { getArcadePlayerSpeed } from "../state/arcadeEnhancements";
 
-/** Options for creating a PlayerEntityController instance. @public */
+/** Options for creating a CustomSoccerPlayer instance. @public */
 export interface PlayerEntityControllerOptions {
   /** A function allowing custom logic to determine if the entity can jump. */
   canJump?: () => boolean;
@@ -63,13 +64,13 @@ const GOALKEEPER_HEADER_FORCE = 15; // Force applied during headers
 const HIGH_BALL_THRESHOLD = 2.0; // Height threshold for considering ball "high"
 const GOALKEEPER_JUMP_BOOST = 2.0; // Extra jump velocity for goalkeepers going for headers
 
-export default class PlayerEntityController extends BaseEntityController {
+export default class CustomSoccerPlayer extends BaseEntityController {
   /**
    * A function allowing custom logic to determine if the entity can walk.
    * @param playerEntityController - The entity controller instance.
    * @returns Whether the entity of the entity controller can walk.
    */
-  public canWalk: (playerEntityController: PlayerEntityController) => boolean =
+  public canWalk: (playerEntityController: CustomSoccerPlayer) => boolean =
     () => true;
 
   /**
@@ -77,7 +78,7 @@ export default class PlayerEntityController extends BaseEntityController {
    * @param playerEntityController - The entity controller instance.
    * @returns Whether the entity of the entity controller can run.
    */
-  public canRun: (playerEntityController: PlayerEntityController) => boolean =
+  public canRun: (playerEntityController: CustomSoccerPlayer) => boolean =
     () => true;
 
   /**
@@ -85,7 +86,7 @@ export default class PlayerEntityController extends BaseEntityController {
    * @param playerEntityController - The entity controller instance.
    * @returns Whether the entity of the entity controller can jump.
    */
-  public canJump: (playerEntityController: PlayerEntityController) => boolean =
+  public canJump: (playerEntityController: CustomSoccerPlayer) => boolean =
     () => true;
 
   /** The upward velocity applied to the entity when it jumps. */
@@ -199,12 +200,20 @@ export default class PlayerEntityController extends BaseEntityController {
     });
 
     entity.lockAllRotations(); // prevent physics from applying rotation to the entity, we can still explicitly set it.
-    this._powerBarUI = new SceneUI({
-      templateId: "power-bar",
-      attachedToEntity: entity,
-      state: { isCharging: false, startTime: 0 },
-      offset: { x: 0, y: 1.05, z: 0 },
-    });
+    
+    // Create power bar UI with error handling to prevent player freezing
+    try {
+      this._powerBarUI = new SceneUI({
+        templateId: "power-bar",
+        attachedToEntity: entity,
+        state: { percentage: 0 },
+        offset: { x: 0, y: 1.05, z: 0 },
+      });
+    } catch (error) {
+      console.error("Failed to create power-bar SceneUI:", error);
+      console.log("Game will continue without power-bar display");
+      this._powerBarUI = undefined;
+    }
   }
 
   /**
@@ -274,8 +283,8 @@ export default class PlayerEntityController extends BaseEntityController {
     });
 
     // Start ball stuck detection when first entity spawns
-    if (!PlayerEntityController._ballStuckCheckInterval) {
-      PlayerEntityController._ballStuckCheckInterval = setInterval(() => {
+    if (!CustomSoccerPlayer._ballStuckCheckInterval) {
+      CustomSoccerPlayer._ballStuckCheckInterval = setInterval(() => {
         this.checkForStuckBall(entity.world as World);
       }, BALL_STUCK_CHECK_INTERVAL);
     }
@@ -296,27 +305,56 @@ export default class PlayerEntityController extends BaseEntityController {
     cameraOrientation: PlayerCameraOrientation,
     deltaTimeMs: number
   ) {
+    // Safety check
+    if (!entity.isSpawned || (entity instanceof SoccerPlayerEntity && entity.isPlayerFrozen)) {
+      // Clear any charging state if player is not properly spawned or frozen
+      if (this._holdingQ !== null) {
+        this._clearPowerChargeIfNeeded(entity);
+      }
+      return;
+    }
+
+    // Check for charging state when ball possession is lost
+    const soccerBall = sharedState.getSoccerBall();
+    const hasBall = sharedState.getAttachedPlayer() === entity;
+    
+    // **CRITICAL FIX**: Clear charging state if player no longer has ball
+    if (this._holdingQ !== null && !hasBall) {
+      console.log(`🔧 SHOT METER FIX: Clearing charging state for ${entity.player?.username || 'unknown'} - lost ball possession`);
+      this._clearPowerChargeIfNeeded(entity);
+      
+      // Stop wind-up animation if it's playing
+      if (entity.modelLoopedAnimations.has("wind_up")) {
+        entity.stopModelAnimations(["wind_up"]);
+      }
+    }
+
     try {
       // Early return if entity or world is invalid
       if (!entity?.isSpawned || !entity.world) {
+        console.log("❌ Controller: Entity not spawned or no world");
         return;
       }
 
       // Ensure input and cameraOrientation are valid before proceeding
       if (!input) {
-        // console.log("SoccerPlayerController: Input is undefined, skipping tick.");
+        console.log("❌ Controller: Input is undefined, skipping tick.");
         return;
       }
       if (!cameraOrientation) {
-        // console.log("SoccerPlayerController: cameraOrientation is undefined, skipping tick.");
+        console.log("❌ Controller: cameraOrientation is undefined, skipping tick.");
         return;
       }
 
-      if (!(entity instanceof SoccerPlayerEntity)) return;
+      if (!(entity instanceof SoccerPlayerEntity)) {
+        console.log("❌ Controller: Entity is not SoccerPlayerEntity");
+        return;
+      }
 
       // Get ball reference and check validity
       const soccerBall = sharedState.getSoccerBall();
       if (!soccerBall?.isSpawned || !soccerBall.world) {
+        console.log("❌ Controller: Soccer ball not spawned or no world");
         return;
       }
 
@@ -416,6 +454,13 @@ export default class PlayerEntityController extends BaseEntityController {
             const elapsed = Date.now() - this._chargeStartTime;
             const percentage = Math.min((elapsed / 1500) * 100, 100);
 
+            // **SHOT METER FIX**: Add failsafe timeout after 3 seconds
+            if (elapsed > 3000) {
+              console.log(`🔧 SHOT METER FAILSAFE: Auto-clearing stuck charging state after 3s for ${entity.player?.username || 'unknown'}`);
+              this._clearPowerChargeIfNeeded(entity);
+              return;
+            }
+
             this._powerBarUI?.setState({
                isCharging: true,
                startTime: this._chargeStartTime, 
@@ -482,36 +527,44 @@ export default class PlayerEntityController extends BaseEntityController {
         this._chargeStartTime = null;
       }
 
-      if (input["1"] && !hasBall) {
-        // Check cooldown before allowing axe throw
-        if(entity.abilityHolder.hasAbility()) {
-          // Use the ability
-          const direction = {x: entity.player.camera.facingDirection.x, y: entity.player.camera.facingDirection.y + 0.1, z: entity.player.camera.facingDirection.z};
-          entity.abilityHolder.getAbility()?.use(
-            entity.position,
-            direction,
-            entity 
-          );
-        }
+      // Handle collected ability activation with F key (pickup mode only)
+      if (input["f"] && !hasBall && entity.abilityHolder.hasAbility()) {
+        // Use the collected ability (from pickup system)
+        const direction = {x: entity.player.camera.facingDirection.x, y: entity.player.camera.facingDirection.y + 0.1, z: entity.player.camera.facingDirection.z};
+        entity.abilityHolder.getAbility()?.use(
+          entity.position,
+          direction,
+          entity 
+        );
+        
+        // Cancel the input to prevent any conflicts
+        input["f"] = false;
+        return; // Exit early to prevent other systems from activating
       }
 
-      // Handle power-up activation with F key (only in arcade mode)
+      // Handle teammate pass request with F key (replaces power-up activation)
       if (input["f"]) {
-        console.log(`🎮 F key pressed by ${entity.player?.username || 'unknown'}`);
+        console.log(`🎯 F key pressed by ${entity.player?.username || 'unknown'} - requesting pass from teammate`);
         
         // Check cooldown to prevent spam
         const currentTime = Date.now();
-        if (currentTime - this._lastPowerUpTime >= PlayerEntityController.POWER_UP_COOLDOWN_MS) {
+        if (currentTime - this._lastPowerUpTime >= CustomSoccerPlayer.POWER_UP_COOLDOWN_MS) {
           this._lastPowerUpTime = currentTime;
-          this._activateRandomPowerUp(entity);
+          
+          // Send request-pass message to server
+          entity.player.ui.sendData({
+            type: "request-pass"
+          });
+          
+          console.log(`✅ Pass request sent by ${entity.player?.username || 'unknown'}`);
           
           // Cancel the input to prevent multiple activations
           input["f"] = false;
         } else {
           // Still on cooldown, cancel the input
           input["f"] = false;
-          const remainingCooldown = Math.ceil((PlayerEntityController.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
-          console.log(`🎮 Power-up on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
+          const remainingCooldown = Math.ceil((CustomSoccerPlayer.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
+          console.log(`🎯 Pass request on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
         }
       }
 
@@ -557,7 +610,37 @@ export default class PlayerEntityController extends BaseEntityController {
         !this._holdingQ
       ) {
         let velocity = isRunning ? this.runVelocity : this.walkVelocity;
+        
+        // Apply additive speed boosts (power-ups, abilities)
         velocity += entity.getSpeedAmplifier();
+        
+        // Apply game mode speed enhancements
+        const currentModeConfig = getCurrentModeConfig();
+        const baseSpeedMultiplier = isRunning ? currentModeConfig.sprintMultiplier : currentModeConfig.playerSpeed;
+        velocity *= baseSpeedMultiplier;
+        
+        // Apply arcade-specific speed enhancements if in arcade mode
+        if (isArcadeMode()) {
+          // Get arcade enhancement manager from the world
+          const arcadeManager = (entity.world as any)._arcadeManager;
+          const enhancedVelocity = getArcadePlayerSpeed(velocity, entity.player.username, arcadeManager);
+          velocity = enhancedVelocity;
+          
+          // Log speed enhancement for debugging
+          if (Math.random() < 0.001) { // Very occasional logging
+            console.log(`🏃 ARCADE SPEED: ${entity.player.username} - Base: ${(isRunning ? this.runVelocity : this.walkVelocity).toFixed(1)}, Enhanced: ${velocity.toFixed(1)}`);
+          }
+        }
+        
+        // Apply stamina-based speed penalty (multiplicative)
+        const staminaMultiplier = entity.getStaminaSpeedMultiplier();
+        velocity *= staminaMultiplier;
+        
+        // Log stamina effect for debugging (occasionally)
+        if (Math.random() < 0.002 && staminaMultiplier < 1.0) { // Only log when stamina is affecting speed
+          console.log(`💨 STAMINA: ${entity.player.username} - Stamina: ${entity.getStaminaPercentage().toFixed(0)}%, Speed: ${(staminaMultiplier * 100).toFixed(0)}%`);
+        }
+        
         if (w) {
           targetVelocities.x -= velocity * Math.sin(yaw);
           targetVelocities.z -= velocity * Math.cos(yaw);
@@ -782,7 +865,7 @@ export default class PlayerEntityController extends BaseEntityController {
 
       // Handle tackle
       if (mr && !this._holdingQ && !hasBall) {
-        const cooldownMap = PlayerEntityController._tackleCooldownMap;
+        const cooldownMap = CustomSoccerPlayer._tackleCooldownMap;
 
         if (cooldownMap.has(entity.player.username)) {
           const cooldown = cooldownMap.get(entity.player.username);
@@ -823,7 +906,7 @@ export default class PlayerEntityController extends BaseEntityController {
 
       if (sp && !this._holdingQ && hasBall) {
         // Dribble/dodge move when has ball
-        const cooldownMap = PlayerEntityController._tackleCooldownMap;
+        const cooldownMap = CustomSoccerPlayer._tackleCooldownMap;
 
         if (cooldownMap.has(entity.player.username)) {
           const cooldown = cooldownMap.get(entity.player.username);
@@ -967,23 +1050,52 @@ export default class PlayerEntityController extends BaseEntityController {
 
   /**
    * Clean up power charge related state if needed
+   * **ENHANCED**: Now properly resets all charging state to prevent freeze bugs
    */
   private _clearPowerChargeIfNeeded(player: PlayerEntity) {
+    console.log(`🔧 SHOT METER CLEANUP: Clearing all charging state for ${player.player?.username || 'unknown'}`);
+    
     // Clear charge interval if it exists
     this.clearChargeInterval();
     
     // Clear any charge UI if it exists
     if (this._powerBarUI) {
       try {
+        this._powerBarUI.setState({
+          isCharging: false,
+          startTime: null,
+          percentage: 0,
+        });
+        this._powerBarUI.unload();
         this._powerBarUI = undefined;
       } catch (error) {
-        // Ignore errors
+        console.log("Error clearing power bar UI:", error);
+      }
+    }
+    
+    // **CRITICAL**: Reset all charging state variables
+    this._holdingQ = null;
+    this._chargeStartTime = null;
+    
+    // Stop wind-up animation if it's playing
+    if (player instanceof SoccerPlayerEntity && player.modelLoopedAnimations.has("wind_up")) {
+      try {
+        player.stopModelAnimations(["wind_up"]);
+        console.log(`🔧 SHOT METER CLEANUP: Stopped wind_up animation for ${player.player?.username || 'unknown'}`);
+      } catch (error) {
+        console.log("Error stopping wind_up animation:", error);
       }
     }
   }
 
   public detach(entity: Entity) {
     try {
+      // **SHOT METER FIX**: Clear any charging state when detaching
+      if (this._holdingQ !== null && entity instanceof PlayerEntity) {
+        console.log(`🔧 SHOT METER FIX: Clearing charging state during detach for ${entity.player?.username || 'unknown'}`);
+        this._clearPowerChargeIfNeeded(entity);
+      }
+
       // Clear any pending animations or intervals
       if (entity instanceof SoccerPlayerEntity) {
         try {
@@ -995,9 +1107,9 @@ export default class PlayerEntityController extends BaseEntityController {
 
       // Clear intervals
       this.clearChargeInterval();
-      if (PlayerEntityController._ballStuckCheckInterval) {
-        clearInterval(PlayerEntityController._ballStuckCheckInterval);
-        PlayerEntityController._ballStuckCheckInterval = null;
+      if (CustomSoccerPlayer._ballStuckCheckInterval) {
+        clearInterval(CustomSoccerPlayer._ballStuckCheckInterval);
+        CustomSoccerPlayer._ballStuckCheckInterval = null;
       }
 
       super.detach(entity);
@@ -1010,34 +1122,34 @@ export default class PlayerEntityController extends BaseEntityController {
     try {
       const soccerBall = sharedState.getSoccerBall();
       if (!soccerBall?.isSpawned) {
-        PlayerEntityController._ballStuckStartTime = 0; 
+        CustomSoccerPlayer._ballStuckStartTime = 0; 
         return;
       }
 
       const currentTime = Date.now();
 
-      if (PlayerEntityController._ballStuckCheckInterval === null && typeof setInterval === 'function') {
+      if (CustomSoccerPlayer._ballStuckCheckInterval === null && typeof setInterval === 'function') {
         // Initialize the interval if it hasn't been, and if setInterval is available (node environment)
         // This static interval might be better handled outside or passed in, but for now, let's try to make it work.
-        // @ts-ignore: setInterval might not be available in all Hytopia environments directly on PlayerEntityController static side.
-        PlayerEntityController._ballStuckCheckInterval = setInterval(() => {
+        // @ts-ignore: setInterval might not be available in all Hytopia environments directly on CustomSoccerPlayer static side.
+        CustomSoccerPlayer._ballStuckCheckInterval = setInterval(() => {
             // This function will be called by the interval, 
             // but the main logic is outside. This interval setup is likely flawed for a static method.
             // The original call to checkForStuckBall should be driven by a game loop or tick.
-            // For now, the check below `currentTime - PlayerEntityController._lastBallCheckTime` manages frequency.
+            // For now, the check below `currentTime - CustomSoccerPlayer._lastBallCheckTime` manages frequency.
         }, BALL_STUCK_CHECK_INTERVAL);
       }
 
-      if (currentTime - PlayerEntityController._lastBallCheckTime < BALL_STUCK_CHECK_INTERVAL) {
+      if (currentTime - CustomSoccerPlayer._lastBallCheckTime < BALL_STUCK_CHECK_INTERVAL) {
           return;
       }
-      PlayerEntityController._lastBallCheckTime = currentTime;
+      CustomSoccerPlayer._lastBallCheckTime = currentTime;
       
       const currentPosition = soccerBall.position;
       const currentVelocity = soccerBall.linearVelocity; 
 
       if (!currentVelocity) {
-        PlayerEntityController._ballStuckStartTime = 0;
+        CustomSoccerPlayer._ballStuckStartTime = 0;
         return;
       }
       // This threshold should be validated against actual goal trigger zone X boundaries.
@@ -1052,16 +1164,16 @@ export default class PlayerEntityController extends BaseEntityController {
       const isPotentiallyStuck = (isAboveGoalHeight || isInGoalArea) && isEffectivelyStationary;
 
       if (isPotentiallyStuck) {
-        if (PlayerEntityController._ballStuckStartTime === 0) {
-          PlayerEntityController._ballStuckStartTime = currentTime;
-        } else if (currentTime - PlayerEntityController._ballStuckStartTime > BALL_STUCK_TIME_THRESHOLD) { 
+        if (CustomSoccerPlayer._ballStuckStartTime === 0) {
+          CustomSoccerPlayer._ballStuckStartTime = currentTime;
+        } else if (currentTime - CustomSoccerPlayer._ballStuckStartTime > BALL_STUCK_TIME_THRESHOLD) { 
           console.log("Ball stuck detected - resetting position to global spawn.");
           soccerBall.despawn();
           sharedState.setAttachedPlayer(null); 
           soccerBall.spawn(world, GLOBAL_BALL_SPAWN_POSITION); 
           soccerBall.setLinearVelocity({ x: 0, y: 0, z: 0 });
           soccerBall.setAngularVelocity({ x: 0, y: 0, z: 0 });
-          PlayerEntityController._ballStuckStartTime = 0; 
+          CustomSoccerPlayer._ballStuckStartTime = 0; 
           
           new Audio({
             uri: "audio/sfx/soccer/whistle.mp3",
@@ -1070,14 +1182,14 @@ export default class PlayerEntityController extends BaseEntityController {
           }).play(world);
         }
       } else {
-        PlayerEntityController._ballStuckStartTime = 0; 
+        CustomSoccerPlayer._ballStuckStartTime = 0; 
       }
 
-      PlayerEntityController._lastBallPosition = { ...currentPosition };
+      CustomSoccerPlayer._lastBallPosition = { ...currentPosition };
 
     } catch (error) {
       console.warn("Error in checkForStuckBall:", error);
-      PlayerEntityController._ballStuckStartTime = 0; 
+      CustomSoccerPlayer._ballStuckStartTime = 0; 
     }
   }
 
@@ -1396,7 +1508,7 @@ export default class PlayerEntityController extends BaseEntityController {
       console.log("🎮 Found arcade manager, activating powerup directly");
       
       // Get available power-ups
-      const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield'];
+      const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield', 'stamina'];
       const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
       
       // Try direct activation first
@@ -1425,7 +1537,7 @@ export default class PlayerEntityController extends BaseEntityController {
     // This will be handled in the main server loop where the arcade manager is available
     
     // Get available power-ups
-    const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield'];
+    const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield', 'stamina'];
     const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
     
     // Send power-up activation request to the server through UI messaging

@@ -1,0 +1,698 @@
+{
+  "tournament_1752100145745": {
+    "id": "tournament_1752100145745",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752100145746,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752100745746,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752100515380": {
+    "id": "tournament_1752100515380",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752100515380,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752101115380,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752101841389": {
+    "id": "tournament_1752101841389",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752101841389,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752102441389,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752102386774": {
+    "id": "tournament_1752102386774",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-2",
+    "createdAt": 1752102386776,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752102986776,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752102680585": {
+    "id": "tournament_1752102680585",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752102680585,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752103280585,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752103149230": {
+    "id": "tournament_1752103149230",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752103149230,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752103749230,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752103545085": {
+    "id": "tournament_1752103545085",
+    "name": "Official",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752103545089,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752104145089,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752103569872": {
+    "id": "tournament_1752103569872",
+    "name": "Official",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752103569872,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752104169872,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752103600496": {
+    "id": "tournament_1752103600496",
+    "name": "Official",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752103600496,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752104200496,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752103821377": {
+    "id": "tournament_1752103821377",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-3",
+    "createdAt": 1752103821377,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752104421377,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752104587760": {
+    "id": "tournament_1752104587760",
+    "name": "123",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-3",
+    "createdAt": 1752104587760,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752105187760,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752106552364": {
+    "id": "tournament_1752106552364",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752106552364,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752107152364,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752106926234": {
+    "id": "tournament_1752106926234",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752106926234,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752108726234,
+    "players": {
+      "player-1": {
+        "username": "player-1",
+        "displayName": "player-1",
+        "isOnline": true,
+        "isReady": false,
+        "joinedAt": 1752106936750,
+        "stats": {
+          "wins": 0,
+          "losses": 0,
+          "goals": 0,
+          "matchesPlayed": 0
+        }
+      }
+    },
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752107146662": {
+    "id": "tournament_1752107146662",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-2",
+    "createdAt": 1752107146663,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752107746663,
+    "players": {
+      "player-2": {
+        "username": "player-2",
+        "displayName": "player-2",
+        "isOnline": true,
+        "isReady": false,
+        "joinedAt": 1752107154451,
+        "stats": {
+          "wins": 0,
+          "losses": 0,
+          "goals": 0,
+          "matchesPlayed": 0
+        }
+      }
+    },
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752107170577": {
+    "id": "tournament_1752107170577",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-2",
+    "createdAt": 1752107170577,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752107770577,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752107877702": {
+    "id": "tournament_1752107877702",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752107877702,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752109677702,
+    "players": {
+      "player-1": {
+        "username": "player-1",
+        "displayName": "player-1",
+        "isOnline": true,
+        "isReady": false,
+        "joinedAt": 1752107887861,
+        "stats": {
+          "wins": 0,
+          "losses": 0,
+          "goals": 0,
+          "matchesPlayed": 0
+        }
+      }
+    },
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752108597631": {
+    "id": "tournament_1752108597631",
+    "name": "123",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752108597631,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752109197631,
+    "players": {
+      "player-1": {
+        "username": "player-1",
+        "displayName": "player-1",
+        "isOnline": true,
+        "isReady": false,
+        "joinedAt": 1752108603372,
+        "stats": {
+          "wins": 0,
+          "losses": 0,
+          "goals": 0,
+          "matchesPlayed": 0
+        }
+      }
+    },
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752108616674": {
+    "id": "tournament_1752108616674",
+    "name": "123",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752108616674,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752109216674,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752109003126": {
+    "id": "tournament_1752109003126",
+    "name": "goaf",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-2",
+    "createdAt": 1752109003126,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752109603126,
+    "players": {
+      "player-2": {
+        "username": "player-2",
+        "displayName": "player-2",
+        "isOnline": true,
+        "isReady": false,
+        "joinedAt": 1752109008418,
+        "stats": {
+          "wins": 0,
+          "losses": 0,
+          "goals": 0,
+          "matchesPlayed": 0
+        }
+      }
+    },
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752109029713": {
+    "id": "tournament_1752109029713",
+    "name": "goaf",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-2",
+    "createdAt": 1752109029713,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752109629713,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752109357708": {
+    "id": "tournament_1752109357708",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752109357708,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752109957708,
+    "players": {
+      "player-1": {
+        "username": "player-1",
+        "displayName": "player-1",
+        "isOnline": true,
+        "isReady": false,
+        "joinedAt": 1752109364229,
+        "stats": {
+          "wins": 0,
+          "losses": 0,
+          "goals": 0,
+          "matchesPlayed": 0
+        }
+      }
+    },
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752109378657": {
+    "id": "tournament_1752109378657",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752109378657,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752109978657,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752109865617": {
+    "id": "tournament_1752109865617",
+    "name": "123",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-2",
+    "createdAt": 1752109865617,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752110465617,
+    "players": {
+      "player-2": {
+        "username": "player-2",
+        "displayName": "player-2",
+        "isOnline": true,
+        "isReady": false,
+        "joinedAt": 1752109876244,
+        "stats": {
+          "wins": 0,
+          "losses": 0,
+          "goals": 0,
+          "matchesPlayed": 0
+        }
+      }
+    },
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752109987182": {
+    "id": "tournament_1752109987182",
+    "name": "123",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-2",
+    "createdAt": 1752109987182,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752110587182,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752110048505": {
+    "id": "tournament_1752110048505",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752110048505,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752110648505,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  },
+  "tournament_1752110081126": {
+    "id": "tournament_1752110081126",
+    "name": "Official Tourney #1",
+    "type": "single-elimination",
+    "gameMode": "fifa",
+    "status": "registration",
+    "createdBy": "player-1",
+    "createdAt": 1752110081126,
+    "maxPlayers": 8,
+    "registrationDeadline": 1752110681126,
+    "players": {},
+    "bracket": [],
+    "currentRound": 1,
+    "rules": [
+      "All matches must be played to completion",
+      "No artificial enhancements or cheating allowed",
+      "Players must be ready within 5 minutes of ready check",
+      "Forfeits will be awarded for no-shows",
+      "Disputes will be handled by tournament administrator",
+      "FIFA mode - realistic soccer simulation",
+      "Single elimination - one loss eliminates player"
+    ]
+  }
+}

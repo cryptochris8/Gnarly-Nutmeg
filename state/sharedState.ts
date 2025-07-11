@@ -10,6 +10,14 @@ interface GameState {
     // Add other properties as needed
 }
 
+// Ball stationary detection system to prevent balls sitting idle
+interface BallStationaryTracker {
+    lastPosition: { x: number; y: number; z: number } | null;
+    lastMoveTime: number;
+    isStationary: boolean;
+    stationaryDuration: number;
+}
+
 class SharedState {
     private static instance: SharedState;
     private attachedPlayer: PlayerEntity | null = null;
@@ -21,6 +29,19 @@ class SharedState {
     private ballHasMovedFromSpawn: boolean = false;
     private _aiSystem: AISystem = 'agent'; // Default to agent
     private gameState: GameState | null = null; // Reference to current game state
+    
+    // Ball stationary detection system
+    private ballStationaryTracker: BallStationaryTracker = {
+        lastPosition: null,
+        lastMoveTime: Date.now(),
+        isStationary: false,
+        stationaryDuration: 0
+    };
+    
+    // Configuration for stationary ball detection
+    private readonly STATIONARY_THRESHOLD = 1.0; // Ball must move less than 1 unit to be considered stationary
+    private readonly STATIONARY_TIME_LIMIT = 5000; // 5 seconds before ball is considered idle
+    private readonly STATIONARY_CHECK_INTERVAL = 1000; // Check every 1 second
 
     private constructor() {}
 
@@ -41,6 +62,10 @@ class SharedState {
             this.lastPlayerWithBall = this.attachedPlayer;
             this.attachedPlayer = null;
             
+            // Reset ball stationary tracking when ball becomes loose
+            // This ensures fresh tracking when ball is released
+            this.resetBallStationaryStatus();
+            
             // this.soccerBall?.setParent(undefined);
         } else {
             // Set ball possession for new player
@@ -57,6 +82,10 @@ class SharedState {
             if(this.lastPlayerWithBall == null) {
                 this.lastPlayerWithBall = player;
             }
+            
+            // Reset ball stationary tracking when ball is picked up
+            // This prevents false positives when player has control
+            this.resetBallStationaryStatus();
         }
     }
 
@@ -155,6 +184,100 @@ class SharedState {
         return this.gameState;
     }
     // --- End Game State Management ---
+
+    // --- Ball Stationary Detection System ---
+    /**
+     * Update ball stationary tracking - call this regularly during gameplay
+     * @param ballPosition Current position of the ball
+     */
+    public updateBallStationaryStatus(ballPosition: { x: number; y: number; z: number }): void {
+        const currentTime = Date.now();
+        
+        // Skip tracking if ball is possessed by a player
+        if (this.attachedPlayer !== null) {
+            this.resetBallStationaryStatus();
+            return;
+        }
+        
+        // Skip tracking during halftime or non-playing states
+        const gameState = this.getGameState();
+        if (gameState && (gameState.isHalftime || gameState.status !== 'playing')) {
+            this.resetBallStationaryStatus();
+            return;
+        }
+        
+        if (this.ballStationaryTracker.lastPosition === null) {
+            // First time tracking this ball position
+            this.ballStationaryTracker.lastPosition = { ...ballPosition };
+            this.ballStationaryTracker.lastMoveTime = currentTime;
+            this.ballStationaryTracker.isStationary = false;
+            this.ballStationaryTracker.stationaryDuration = 0;
+            return;
+        }
+        
+        // Calculate distance moved since last check
+        const lastPos = this.ballStationaryTracker.lastPosition;
+        const distanceMoved = Math.sqrt(
+            Math.pow(ballPosition.x - lastPos.x, 2) +
+            Math.pow(ballPosition.y - lastPos.y, 2) +
+            Math.pow(ballPosition.z - lastPos.z, 2)
+        );
+        
+        // Check if ball has moved significantly
+        if (distanceMoved > this.STATIONARY_THRESHOLD) {
+            // Ball has moved - reset stationary tracking
+            this.ballStationaryTracker.lastPosition = { ...ballPosition };
+            this.ballStationaryTracker.lastMoveTime = currentTime;
+            this.ballStationaryTracker.isStationary = false;
+            this.ballStationaryTracker.stationaryDuration = 0;
+        } else {
+            // Ball hasn't moved much - update stationary duration
+            this.ballStationaryTracker.stationaryDuration = currentTime - this.ballStationaryTracker.lastMoveTime;
+            
+            // Check if ball has been stationary long enough to be considered idle
+            if (this.ballStationaryTracker.stationaryDuration >= this.STATIONARY_TIME_LIMIT) {
+                if (!this.ballStationaryTracker.isStationary) {
+                    this.ballStationaryTracker.isStationary = true;
+                    console.log(`⚠️  Ball detected as stationary for ${this.ballStationaryTracker.stationaryDuration}ms at position (${ballPosition.x.toFixed(1)}, ${ballPosition.z.toFixed(1)}) - AI should retrieve it`);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Check if the ball is currently stationary and needs to be retrieved
+     * @returns True if ball is stationary and should be pursued aggressively
+     */
+    public isBallStationary(): boolean {
+        return this.ballStationaryTracker.isStationary;
+    }
+    
+    /**
+     * Get how long the ball has been stationary (in milliseconds)
+     * @returns Duration in milliseconds, or 0 if ball is not stationary
+     */
+    public getBallStationaryDuration(): number {
+        return this.ballStationaryTracker.stationaryDuration;
+    }
+    
+    /**
+     * Reset ball stationary tracking (call when ball is picked up or game state changes)
+     */
+    public resetBallStationaryStatus(): void {
+        this.ballStationaryTracker.lastPosition = null;
+        this.ballStationaryTracker.lastMoveTime = Date.now();
+        this.ballStationaryTracker.isStationary = false;
+        this.ballStationaryTracker.stationaryDuration = 0;
+    }
+    
+    /**
+     * Get ball position for stationary tracking purposes
+     * @returns Current tracked ball position or null if not being tracked
+     */
+    public getTrackedBallPosition(): { x: number; y: number; z: number } | null {
+        return this.ballStationaryTracker.lastPosition;
+    }
+    // --- End Ball Stationary Detection System ---
 }
 
 export default SharedState.getInstance(); 

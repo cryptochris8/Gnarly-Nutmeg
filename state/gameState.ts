@@ -25,14 +25,13 @@ import {
   HALF_DURATION,
   TOTAL_HALVES,
   HALFTIME_DURATION
-  // ABILITY_PICKUP_POSITIONS 
 } from "./gameConfig";
+import { getCurrentGameMode, GameMode } from "./gameModes";
 import sharedState from "./sharedState";
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
-// import { AbilityConsumable } from "../abilities/AbilityConsumable";
-// import { shurikenThrowOptions, speedBoostOptions } from "../abilities/itemTypes";
 import AIPlayerEntity from "../entities/AIPlayerEntity";
 import { ArcadeEnhancementManager } from "./arcadeEnhancements";
+import observerMode from "../utils/observerMode";
 
 // Custom events for the SoccerGame
 declare module "hytopia" {
@@ -63,6 +62,13 @@ const TICKING_AUDIO = new Audio({
   duration: 5,
 });
 
+const STOPPAGE_TIME_AUDIO = new Audio({
+  uri: "audio/sfx/crowd/stoppage-time.mp3",
+  loop: false,
+  volume: 0.7,
+  duration: 3,
+});
+
 // Team statistics interface
 export interface TeamStats {
   goals: number;
@@ -89,6 +95,10 @@ export interface GameState {
   halfTimeRemaining: number; // Time remaining in current half (in seconds)
   isHalftime: boolean; // True during halftime break
   halftimeTimeRemaining: number; // Time remaining in halftime break (in seconds)
+  
+  // Stoppage time system
+  stoppageTimeAdded: number; // Additional stoppage time in seconds
+  stoppageTimeNotified: boolean; // Whether stoppage time notification has been sent
   
   // Match info
   timeRemaining: number; // Total time remaining (for backward compatibility)
@@ -121,7 +131,6 @@ export class SoccerGame {
   private soccerBall: Entity;
   private attachedPlayer: PlayerEntity | null = null;
   private gameLoopInterval: Timer | null = null;
-  // private abilityPickups: AbilityConsumable[] = [];
   private aiPlayersList: AIPlayerEntity[] = [];
   private arcadeManager: ArcadeEnhancementManager | null = null;
   private fifaCrowdManager: any | null = null; // FIFA crowd manager for stadium atmosphere
@@ -151,6 +160,8 @@ export class SoccerGame {
       halfTimeRemaining: HALF_DURATION,
       isHalftime: false,
       halftimeTimeRemaining: 0,
+      stoppageTimeAdded: 0,
+      stoppageTimeNotified: false,
       matchDuration: MATCH_DURATION,
       overtimeTimeRemaining: 0,
       maxPlayersPerTeam: 6,
@@ -397,11 +408,14 @@ export class SoccerGame {
   private beginMatch() {
     console.log("Beginning match - Starting 1st Quarter");
     
-    // Send game starting notification to UI for respawn handling
-    this.sendDataToAllPlayers({
-      type: "game-starting",
-      message: "New match starting - 1st Quarter begins!"
-    });
+    // Switch music from opening to gameplay theme
+    this.switchToGameplayMusic();
+    
+    // Send game starting notification to UI for respawn handling - DISABLED
+    // this.sendDataToAllPlayers({
+    //   type: "game-starting",
+    //   message: "New match starting - 1st Quarter begins!"
+    // });
     
     // First reset ball position - check and ensure proper spawn
     console.log("Ball position before reset:", this.soccerBall.isSpawned ? 
@@ -459,8 +473,17 @@ export class SoccerGame {
     this.state.isHalftime = false;
     this.state.halftimeTimeRemaining = 0;
     
+    // Initialize stoppage time system for first half
+    this.state.stoppageTimeAdded = 0;
+    this.state.stoppageTimeNotified = false;
+    
     console.log(`🏟️ Starting 1st Half - ${HALF_DURATION} seconds per half, ${MATCH_DURATION} seconds total`);
     
+    // Update spectator cameras for game start
+    if (observerMode && typeof observerMode.updateSpectatorsForGameEvent === 'function') {
+      observerMode.updateSpectatorsForGameEvent("game-start");
+    }
+
     // Start the game loop for time tracking
     this.gameLoopInterval = setInterval(() => {
       this.gameLoop();
@@ -468,6 +491,8 @@ export class SoccerGame {
   }
 
   private gameLoop() {
+
+    
     // Update arcade enhancements (only active in arcade mode)
     if (this.arcadeManager) {
       this.arcadeManager.update();
@@ -504,26 +529,72 @@ export class SoccerGame {
         console.log(`⏰ OVERTIME: ${this.state.halfTimeRemaining}s remaining, Score: ${this.state.score.red}-${this.state.score.blue}`);
       }
     } else {
-      // Handle regular half time countdown
-      if (this.state.halfTimeRemaining <= 0) {
-        console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Score: ${this.state.score.red}-${this.state.score.blue}`);
+      // Handle regular half time countdown with continuous timer and stoppage time
+      
+      // Always update timers (continuous running clock)
+      this.state.halfTimeRemaining--;
+      this.state.timeRemaining--;
+      
+      // Check if we need to add stoppage time (when 60 seconds remaining)
+      if (this.state.halfTimeRemaining === 60 && !this.state.stoppageTimeNotified) {
+        const stoppageTime = Math.floor(Math.random() * 45) + 15; // Random 15-59 seconds
+        this.state.stoppageTimeAdded = stoppageTime;
+        this.state.stoppageTimeNotified = true;
+        
+        console.log(`⏱️ STOPPAGE TIME: ${stoppageTime} seconds added to ${this.state.currentHalf === 1 ? 'first' : 'second'} half`);
+        console.log(`⏱️ Game will end when timer reaches -${stoppageTime} seconds (after ${stoppageTime} seconds of stoppage time)`);
+        
+        // Play stoppage time audio notification
+        STOPPAGE_TIME_AUDIO.play(this.world);
+        
+        // Send stoppage time notification to all players
+        this.sendDataToAllPlayers({
+          type: "stoppage-time-notification",
+          stoppageTimeAdded: stoppageTime,
+          message: `${stoppageTime} seconds of stoppage time added`,
+          half: this.state.currentHalf
+        });
+      }
+      
+      // IMPROVED STOPPAGE TIME LOGIC - Only end when full stoppage time has elapsed
+      // Calculate the exact endpoint: negative stoppage time value
+      const stoppageTimeEndpoint = 0 - this.state.stoppageTimeAdded;
+      
+      // Only end half if we've added stoppage time AND reached the endpoint
+      if (this.state.stoppageTimeNotified && this.state.halfTimeRemaining <= stoppageTimeEndpoint) {
+        console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Timer: ${this.state.halfTimeRemaining}s, Required: ${stoppageTimeEndpoint}s`);
+        console.log(`⏰ Stoppage time fully elapsed: ${this.state.stoppageTimeAdded}s added, ${Math.abs(this.state.halfTimeRemaining)}s played`);
         this.handleHalfEnd();
         return;
       }
-
-      // Update timers only if not in goal-scored state
-      if (this.state.status !== "goal-scored") {
-        this.state.halfTimeRemaining--;
-        this.state.timeRemaining--;
+      
+      // Alternative end condition: if no stoppage time and regular time is up
+      if (!this.state.stoppageTimeNotified && this.state.halfTimeRemaining <= 0) {
+        console.log(`⏰ HALF ${this.state.currentHalf} ENDED! Regular time finished, no stoppage time added`);
+        this.handleHalfEnd();
+        return;
       }
       
-      // Log every 30 seconds during regular time
-      if (this.state.halfTimeRemaining % 30 === 0 && this.state.status !== "goal-scored") {
-        console.log(`⏰ HALF ${this.state.currentHalf}: ${this.state.halfTimeRemaining}s remaining, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+      // Log every 30 seconds during regular time, and every 10 seconds during stoppage time
+      const isStoppageTime = this.state.halfTimeRemaining <= 0;
+      const logInterval = isStoppageTime ? 10 : 30;
+      
+      if (this.state.halfTimeRemaining % logInterval === 0) {
+        if (isStoppageTime) {
+          const stoppageSeconds = Math.abs(this.state.halfTimeRemaining);
+          console.log(`⏱️ STOPPAGE TIME: 5+${stoppageSeconds}s (${stoppageSeconds}s into stoppage, ${this.state.stoppageTimeAdded}s total), Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+        } else {
+          console.log(`⏰ HALF ${this.state.currentHalf}: ${this.state.halfTimeRemaining}s remaining, Status: ${this.state.status}, Score: ${this.state.score.red}-${this.state.score.blue}`);
+        }
       }
 
-      // Play ticking sound in last 5 seconds of half
+      // Play ticking sound in last 5 seconds of regulation OR last 5 seconds of stoppage time
       if (this.state.halfTimeRemaining === 5) {
+        TICKING_AUDIO.play(this.world);
+      }
+      
+      // Also play ticking sound 5 seconds before stoppage time ends
+      if (this.state.stoppageTimeNotified && this.state.halfTimeRemaining === (stoppageTimeEndpoint + 5)) {
         TICKING_AUDIO.play(this.world);
       }
     }
@@ -536,19 +607,19 @@ export class SoccerGame {
       }
     });
 
-    // Send game state to UI - but skip during goal-scored to prevent score conflicts
-    if (this.state.status !== "goal-scored") {
-      this.sendDataToAllPlayers({
-        type: "game-state",
-        timeRemaining: this.state.timeRemaining,
-        halfTimeRemaining: this.state.halfTimeRemaining,
-        currentHalf: this.state.currentHalf,
-        halftimeTimeRemaining: this.state.halftimeTimeRemaining,
-        isHalftime: this.state.isHalftime,
-        score: this.state.score,
-        status: this.state.status,
-      });
-    }
+    // Send game state to UI (now including stoppage time information)
+    this.sendDataToAllPlayers({
+      type: "game-state",
+      timeRemaining: this.state.timeRemaining,
+      halfTimeRemaining: this.state.halfTimeRemaining,
+      currentHalf: this.state.currentHalf,
+      halftimeTimeRemaining: this.state.halftimeTimeRemaining,
+      isHalftime: this.state.isHalftime,
+      stoppageTimeAdded: this.state.stoppageTimeAdded,
+      stoppageTimeNotified: this.state.stoppageTimeNotified,
+      score: this.state.score,
+      status: this.state.status,
+    });
 
     // Send player stats update every 5 seconds during gameplay
     if (this.state.status === "playing" && this.state.timeRemaining % 5 === 0) {
@@ -649,12 +720,30 @@ export class SoccerGame {
       console.log(`🎯 Pointer unlocked for ${player.username} - Halftime UI interaction enabled`);
     });
 
-    // Send halftime stats display to UI
+    // Collect current player stats for halftime display
+    const playerStats = this.world.entityManager
+      .getAllPlayerEntities()
+      .filter(
+        (entity): entity is SoccerPlayerEntity =>
+          entity instanceof SoccerPlayerEntity
+      )
+      .map((player) => player.getPlayerStats());
+
+    // Send halftime stats display to UI with complete data
     this.sendDataToAllPlayers({
       type: "halftime-stats",
       message: "Halftime Stats - Click 'Start Second Half' to continue",
-      canStartSecondHalf: true
+      canStartSecondHalf: true,
+      redScore: this.state.score.red,
+      blueScore: this.state.score.blue,
+      playerStats,
+      half: this.state.currentHalf
     });
+
+    // Update spectator cameras for halftime
+    if (observerMode && typeof observerMode.updateSpectatorsForGameEvent === 'function') {
+      observerMode.updateSpectatorsForGameEvent("half-end");
+    }
 
     // DON'T restart the game loop - wait for manual button click
     console.log("🏟️ Halftime started - waiting for manual 'Start Second Half' button click");
@@ -694,7 +783,12 @@ export class SoccerGame {
     this.state.halftimeTimeRemaining = 0;
     this.state.currentHalf = 2;
     this.state.halfTimeRemaining = HALF_DURATION;
+    this.state.timeRemaining = HALF_DURATION; // CRITICAL FIX: Reset timeRemaining for second half
     this.state.status = "playing";
+    
+    // Reset stoppage time for second half
+    this.state.stoppageTimeAdded = 0;
+    this.state.stoppageTimeNotified = false;
 
     // ✨ CRITICAL: Send game state update immediately to remove halftime overlay
     this.sendDataToAllPlayers({
@@ -709,6 +803,7 @@ export class SoccerGame {
       message: "Starting 2nd Half"
     });
     console.log("✅ Game state update sent - halftime overlay should be removed");
+    console.log(`✅ Second half timing reset: timeRemaining=${this.state.timeRemaining}s, halfTimeRemaining=${this.state.halfTimeRemaining}s`);
 
     // Announce start of 2nd half
     this.world.chatManager.sendBroadcastMessage("2nd Half starting!");
@@ -921,6 +1016,11 @@ export class SoccerGame {
       score: this.state.score,
       kickoffTeam: this.state.kickoffTeam, // Also send kickoff team to UI
     });
+
+    // Update spectator cameras for goal events
+    if (observerMode && typeof observerMode.updateSpectatorsForGameEvent === 'function') {
+      observerMode.updateSpectatorsForGameEvent("goal-scored", { team, score: this.state.score });
+    }
     
     // Play goal celebration sounds
     new Audio({
@@ -988,27 +1088,8 @@ export class SoccerGame {
     // This prevents conflicts with the UI scoreboard updates
     console.log(`📊 Score updated internally - UI will receive score via goal-scored event`);
 
-    // Only end game in overtime if score difference is extreme (10+ goals)
-    // Or if it's a normal mercy rule but ONLY in the final 2 minutes
-    const finalTwoMinutes = this.state.timeRemaining <= 120; // 2 minutes = 120 seconds
-    const extremeScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 10;
-    const moderateScoreDifference = Math.abs(this.state.score["red"] - this.state.score["blue"]) >= 5;
-    
-    if (this.state.status === "overtime") {
-      // In overtime, only end if score difference becomes extreme (10+)
-      if (extremeScoreDifference) {
-        console.log(`🏁 Game ended due to extreme score difference in overtime: ${this.state.score.red}-${this.state.score.blue}`);
-        this.endGame();
-      }
-    } else if (extremeScoreDifference) {
-      // Extreme difference (10+ goals) ends game any time
-      console.log(`🏁 Game ended due to extreme score difference: ${this.state.score.red}-${this.state.score.blue}`);
-      this.endGame();
-    } else if (moderateScoreDifference && finalTwoMinutes) {
-      // Moderate difference (5+ goals) only ends game in final 2 minutes
-      console.log(`🏁 Game ended due to mercy rule in final minutes: ${this.state.score.red}-${this.state.score.blue} with ${this.state.timeRemaining}s remaining`);
-      this.endGame();
-    }
+    // Mercy rule removed - games are short (2x 5-minute halves) so let them play to completion
+    console.log(`⚽ Goal scored by ${team} team - game will continue to completion`);
   }
 
   private endGame() {
@@ -1028,6 +1109,9 @@ export class SoccerGame {
 
     // Set game status to finished
     this.state.status = "finished";
+    
+    // Switch back to opening music
+    this.switchToOpeningMusic();
     
     // Play FIFA game end announcement if in FIFA mode and crowd manager is available
     if (this.fifaCrowdManager && this.fifaCrowdManager.playGameEndAnnouncement) {
@@ -1163,6 +1247,13 @@ export class SoccerGame {
     this.playerMomentum.clear();
     console.log("🔄 Reset momentum tracking for new game");
 
+    // Clean up ability pickups (disabled)
+    // this.abilityPickups.forEach(pickup => {
+    //   pickup.destroy();
+    // });
+    // this.abilityPickups = [];
+    // console.log("🔄 Cleaned up ability pickups for new game");
+
     // Deactivate all AI players first to clear their intervals
     this.aiPlayersList.forEach(ai => {
       if (ai.isSpawned) {
@@ -1218,6 +1309,8 @@ export class SoccerGame {
       halfTimeRemaining: HALF_DURATION,
       isHalftime: false,
       halftimeTimeRemaining: 0,
+      stoppageTimeAdded: 0,
+      stoppageTimeNotified: false,
       matchDuration: MATCH_DURATION,
       overtimeTimeRemaining: 0,
       maxPlayersPerTeam: 6,
@@ -1257,6 +1350,35 @@ export class SoccerGame {
 
   public getState(): GameState {
     return this.state;
+  }
+
+
+
+  /**
+   * Get current player statistics for UI display
+   * @returns Array of player statistics
+   */
+  public getPlayerStatsForUI(): any[] {
+    const stats: any[] = [];
+    
+    this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+      if (entity instanceof SoccerPlayerEntity) {
+        const playerStats = entity.getPlayerStats();
+        stats.push({
+          name: entity.player.username,
+          team: entity.team,
+          role: entity.role,
+          goals: entity.getGoalsScored(),
+          tackles: playerStats.tackles,
+          passes: playerStats.passes,
+          shots: playerStats.shots,
+          saves: playerStats.saves,
+          distanceTraveled: Math.round(playerStats.distanceTraveled)
+        });
+      }
+    });
+    
+    return stats;
   }
 
   public attachBallToPlayer(player: PlayerEntity) {
@@ -1307,20 +1429,22 @@ export class SoccerGame {
     console.log("Arcade manager set for SoccerGame");
   }
 
+  public setPickupManager(pickupManager: any): void {
+    (this as any).pickupManager = pickupManager;
+    console.log("Pickup manager set for SoccerGame");
+  }
+
   public setFIFACrowdManager(fifaCrowdManager: any): void {
     this.fifaCrowdManager = fifaCrowdManager;
     console.log("FIFA crowd manager set for SoccerGame");
   }
 
-  /**
-   * Get ability pickup position based on current game mode
-   * @param index - Index of the pickup position (0 or 1)
-   */
-  // private getAbilityPickupPosition(index: number): { x: number; y: number; z: number } {
-  //   // Large stadium ability pickup positions only
-  //   const positions = ABILITY_PICKUP_POSITIONS;
-  //   return positions[index] || positions[0];
-  // }
+  public setTournamentManager(tournamentManager: any): void {
+    (this as any).tournamentManager = tournamentManager;
+    console.log("🏆 Tournament manager set for SoccerGame");
+  }
+
+
 
   // Perform coin toss and determine which team kicks off
   public performCoinToss(playerChoice?: { playerId: string, choice: "heads" | "tails" }): void {
@@ -1846,5 +1970,104 @@ export class SoccerGame {
       });
       console.log(`Players unfrozen, kickoff can begin`);
     }, 2000); // 2 second delay
+  }
+
+  /**
+   * Switch from opening music to gameplay music based on current game mode
+   */
+  private switchToGameplayMusic(): void {
+    console.log("🎵 Switching to gameplay music");
+    
+    // Get the music instances from the index.ts global scope
+    const mainMusic = (this.world as any)._mainMusic;
+    const arcadeGameplayMusic = (this.world as any)._arcadeGameplayMusic;
+    const fifaGameplayMusic = (this.world as any)._fifaGameplayMusic;
+    
+    // Enhanced debugging for music system
+    console.log("🎵 Music instance check:");
+    console.log(`  - mainMusic: ${mainMusic ? 'EXISTS' : 'MISSING'}`);
+    console.log(`  - arcadeGameplayMusic: ${arcadeGameplayMusic ? 'EXISTS' : 'MISSING'}`);
+    console.log(`  - fifaGameplayMusic: ${fifaGameplayMusic ? 'EXISTS' : 'MISSING'}`);
+    
+    if (!mainMusic || !arcadeGameplayMusic || !fifaGameplayMusic) {
+      console.error("❌ Music system not properly initialized - MUSIC WILL NOT PLAY");
+      console.error("Check that music instances are created in index.ts startup");
+      return;
+    }
+    
+    // Stop opening music
+    try {
+      mainMusic.pause();
+      console.log("✅ Paused opening music successfully");
+    } catch (error) {
+      console.error("❌ Error pausing opening music:", error);
+    }
+    
+    // Start appropriate gameplay music based on current mode
+    const currentMode = getCurrentGameMode();
+    console.log(`🎵 Current game mode: ${currentMode}`);
+    
+    if (currentMode === GameMode.FIFA) {
+      try {
+        fifaGameplayMusic.play(this.world);
+        console.log("✅ Started FIFA gameplay music successfully");
+        console.log(`   - File: Vettore - Silk.mp3`);
+        console.log(`   - Volume: 0.4 (increased for audibility)`);
+      } catch (error) {
+        console.error("❌ Error starting FIFA gameplay music:", error);
+      }
+      
+      // Start FIFA crowd atmosphere
+      if (this.fifaCrowdManager) {
+        this.fifaCrowdManager.start();
+        console.log("🏟️ Started FIFA crowd atmosphere");
+        
+        // Play game start announcement
+        if (this.fifaCrowdManager.playGameStart) {
+          this.fifaCrowdManager.playGameStart();
+          console.log("🎙️ Playing FIFA game start announcement");
+        }
+      }
+    } else {
+      try {
+        arcadeGameplayMusic.play(this.world);
+        console.log("✅ Started Arcade gameplay music successfully");
+        console.log(`   - File: always-win.mp3`);
+        console.log(`   - Volume: 0.4 (increased for audibility)`);
+      } catch (error) {
+        console.error("❌ Error starting Arcade gameplay music:", error);
+      }
+      
+      // Stop FIFA crowd atmosphere for non-FIFA modes
+      if (this.fifaCrowdManager) {
+        this.fifaCrowdManager.stop();
+      }
+    }
+  }
+
+  /**
+   * Switch back to opening music when game ends
+   */
+  private switchToOpeningMusic(): void {
+    console.log("🎵 Switching back to opening music");
+    
+    // Get the music instances from the index.ts global scope
+    const mainMusic = (this.world as any)._mainMusic;
+    const arcadeGameplayMusic = (this.world as any)._arcadeGameplayMusic;
+    const fifaGameplayMusic = (this.world as any)._fifaGameplayMusic;
+    
+    if (!mainMusic || !arcadeGameplayMusic || !fifaGameplayMusic) {
+      console.error("Music system not properly initialized");
+      return;
+    }
+    
+    // Stop all gameplay music
+    arcadeGameplayMusic.pause();
+    fifaGameplayMusic.pause();
+    console.log("🎵 Paused all gameplay music");
+    
+    // Start opening music
+    mainMusic.play(this.world);
+    console.log("🎵 Started opening music");
   }
 }

@@ -6,7 +6,8 @@ import { HALF_DURATION, TOTAL_HALVES, HALFTIME_DURATION } from './gameConfig';
 
 export enum GameMode {
   FIFA = "fifa",
-  ARCADE = "arcade"
+  ARCADE = "arcade",
+  TOURNAMENT = "tournament"
 }
 
 // FIFA Mode Configuration - Realistic Soccer
@@ -40,10 +41,10 @@ export const FIFA_MODE_CONFIG = {
   enhancedPhysics: false
 };
 
-// Arcade Mode Configuration - Enhanced Fun Soccer
+// Arcade Mode Configuration - Enhanced Fun Soccer with Physical Pickups
 export const ARCADE_MODE_CONFIG = {
   name: 'Arcade Mode',
-  description: 'Fast-paced soccer with power-ups and special abilities',
+  description: 'Fast-paced enhanced soccer with collectible ability pickups scattered on the field',
   
   // Timing system - Same 2 halves but faster pace
   halfDuration: HALF_DURATION, // 5 minutes per half (consistent with FIFA)
@@ -58,21 +59,76 @@ export const ARCADE_MODE_CONFIG = {
   },
   
   playerSpeed: 1.2,
-  sprintMultiplier: 2.0,
+  sprintMultiplier: 1.5,
   
   // Arcade features
   crowdAudio: true,
   announcerCommentary: false, // Focus on gameplay over commentary
   realisticPhysics: false,
   
-  // Arcade enhancements
-  powerUps: true,
-  specialAbilities: true,
+  // Arcade enhancements - now includes physical pickup system
+  powerUps: false, // No random power-ups - physical pickups only
+  specialAbilities: true, // Collected abilities from pickups
   enhancedPhysics: true,
+  abilityPickups: true, // Physical Mario/Sonic-style pickups on field
   
   // Special arcade timing features
   fastPacedGameplay: true,
   quickRestarts: true
+};
+
+// Pickup Mode removed - physical pickups now integrated into Arcade Mode
+
+// Tournament Mode Configuration - Competitive Bracket-Based Soccer
+export const TOURNAMENT_MODE_CONFIG = {
+  name: 'Tournament Mode',
+  description: 'Competitive bracket-based soccer with professional rules and player coordination',
+  
+  // Tournament timing system - Professional match timing
+  halfDuration: HALF_DURATION, // 5 minutes per half
+  totalHalves: TOTAL_HALVES, // 2 halves
+  halftimeDuration: HALFTIME_DURATION, // 2 minutes halftime break
+  
+  // Professional physics for competitive play
+  ballPhysics: {
+    damping: 0.95,
+    friction: 0.8,
+    bounciness: 0.6
+  },
+  
+  playerSpeed: 1.0,
+  sprintMultiplier: 1.5,
+  
+  // Tournament features
+  crowdAudio: true,
+  announcerCommentary: true,
+  realisticPhysics: true,
+  
+  // Tournament-specific settings
+  powerUps: false, // No power-ups in competitive play
+  specialAbilities: false, // No special abilities in competitive play
+  enhancedPhysics: false, // Realistic physics for fair competition
+  
+  // Tournament timing features
+  fastPacedGameplay: false,
+  quickRestarts: false,
+  competitiveMode: true,
+  
+  // Tournament coordination features
+  playerReadyCheck: true, // Players must ready up before matches
+  matchScheduling: true, // Matches are scheduled in advance
+  bracketProgression: true, // Automatic bracket advancement
+  statisticsTracking: true, // Detailed match statistics
+  
+  // Tournament rules
+  forfeitOnNoShow: true, // Players forfeit if not ready
+  readyCheckTimeout: 300000, // 5 minutes to ready up
+  matchSchedulingDelay: 120000, // 2 minutes between matches
+  
+  // Tournament data persistence
+  persistTournamentData: true,
+  persistPlayerStats: true,
+  persistMatchHistory: true
 };
 
 // Current game mode (defaults to FIFA for safety)
@@ -83,7 +139,16 @@ export const getCurrentGameMode = (): GameMode => currentGameMode;
 
 // Safe getter for current config
 export const getCurrentModeConfig = () => {
-  return currentGameMode === GameMode.FIFA ? FIFA_MODE_CONFIG : ARCADE_MODE_CONFIG;
+  switch (currentGameMode) {
+    case GameMode.FIFA:
+      return FIFA_MODE_CONFIG;
+    case GameMode.ARCADE:
+      return ARCADE_MODE_CONFIG;
+    case GameMode.TOURNAMENT:
+      return TOURNAMENT_MODE_CONFIG;
+    default:
+      return FIFA_MODE_CONFIG; // Default fallback
+  }
 };
 
 // Safe mode switching function
@@ -95,6 +160,7 @@ export const setGameMode = (mode: GameMode): void => {
 // Helper functions for mode checking (used throughout codebase)
 export const isFIFAMode = (): boolean => currentGameMode === GameMode.FIFA;
 export const isArcadeMode = (): boolean => currentGameMode === GameMode.ARCADE;
+export const isTournamentMode = (): boolean => currentGameMode === GameMode.TOURNAMENT;
 
 // Enhanced ball physics for arcade mode only (FIFA uses existing BALL_CONFIG)
 export const ARCADE_BALL_CONFIG = {

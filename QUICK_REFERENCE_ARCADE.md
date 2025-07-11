@@ -14,13 +14,14 @@
 | Icon | Name | Effect | Duration |
 |------|------|--------|----------|
 | 🧊 | **Freeze Blast** | Freeze nearby enemies (5 units) | 4 seconds |
-| 🥷 | **Shuriken** | Stunning projectile | Until hit |
+| 🥷 | **Shuriken** | Stunning projectile (dodgeable) | Until hit |
 | 🔥 | **Fireball** | Explosive projectile + knockback | Until hit |
 | ⚽ | **Mega Kick** | 3x ball power | 10 sec / 1 kick |
 | 🛡️ | **Shield** | Block next attack | 30 seconds |
 | ⚡ | **Speed Boost** | 2x movement speed | 10 seconds |
 | 🎯 | **Precision** | +30% accuracy | 10 seconds |
 | 💪 | **Power** | Enhanced shot/pass power | 10 seconds |
+| 🧪 | **Stamina** | Restore stamina to full | Instant |
 
 ---
 
