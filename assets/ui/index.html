@@ -9021,7 +9021,7 @@
   
   // Initialize mobile controls
   function initializeMobileControls() {
-    if (mobileControlsInitialized) {
+    if (mobileControlsInitialized || !detectMobileDevice()) {
       return;
     }
     
@@ -9032,7 +9032,7 @@
     mobileControlsContainer.id = 'mobile-controls-container';
     mobileControlsContainer.className = 'mobile-controls mobile-active';
     
-    // Force visibility for all devices
+    // Show mobile controls only on mobile devices
     mobileControlsContainer.style.display = 'block';
     mobileControlsContainer.style.visibility = 'visible';
     
@@ -9051,40 +9051,32 @@
     const mobileActions = document.createElement('div');
     mobileActions.className = 'mobile-actions';
     
-    // Shoot button (Hytopia-compliant with onclick attributes)
+    // Shoot button (Hytopia-compliant - onclick only)
     const shootButton = document.createElement('button');
     shootButton.className = 'mobile-action-btn primary';
     shootButton.id = 'mobile-shoot-btn';
     shootButton.textContent = 'KICK';
-    shootButton.setAttribute('ontouchstart', 'handleMobileAction("shoot", true)');
-    shootButton.setAttribute('ontouchend', 'handleMobileAction("shoot", false)');
     shootButton.setAttribute('onclick', 'handleMobileQuickAction("shoot")');
     
-    // Pass button (Hytopia-compliant with onclick attributes)
+    // Pass button (Hytopia-compliant - onclick only)
     const passButton = document.createElement('button');
     passButton.className = 'mobile-action-btn secondary';
     passButton.id = 'mobile-pass-btn';
     passButton.textContent = 'PASS';
-    passButton.setAttribute('ontouchstart', 'handleMobileAction("pass", true)');
-    passButton.setAttribute('ontouchend', 'handleMobileAction("pass", false)');
     passButton.setAttribute('onclick', 'handleMobileQuickAction("pass")');
     
-    // Tackle button (Hytopia-compliant with onclick attributes)
+    // Tackle button (Hytopia-compliant - onclick only)
     const tackleButton = document.createElement('button');
     tackleButton.className = 'mobile-action-btn';
     tackleButton.id = 'mobile-tackle-btn';
     tackleButton.textContent = 'TACKLE';
-    tackleButton.setAttribute('ontouchstart', 'handleMobileAction("tackle", true)');
-    tackleButton.setAttribute('ontouchend', 'handleMobileAction("tackle", false)');
     tackleButton.setAttribute('onclick', 'handleMobileQuickAction("tackle")');
     
-    // Dodge button (Hytopia-compliant with onclick attributes)
+    // Dodge button (Hytopia-compliant - onclick only)
     const dodgeButton = document.createElement('button');
     dodgeButton.className = 'mobile-action-btn';
     dodgeButton.id = 'mobile-dodge-btn';
     dodgeButton.textContent = 'DODGE';
-    dodgeButton.setAttribute('ontouchstart', 'handleMobileAction("dodge", true)');
-    dodgeButton.setAttribute('ontouchend', 'handleMobileAction("dodge", false)');
     dodgeButton.setAttribute('onclick', 'handleMobileQuickAction("dodge")');
     
     // Add buttons to actions container
@@ -9131,192 +9123,201 @@
     console.log('✅ Mobile controls initialized successfully');
   }
   
-  // Initialize joystick touch events
+  // Initialize SDK-COMPLIANT VIRTUAL JOYSTICK - MOVEMENT INPUT INJECTION
   function initializeJoystickEvents() {
     const joystick = document.getElementById('virtual-joystick');
     const knob = document.getElementById('joystick-knob');
     
-    if (!joystick || !knob) return;
+    if (!joystick || !knob) {
+      console.warn('📱 Joystick elements not found');
+      return;
+    }
+    
+    console.log('📱 Initializing SDK-compliant virtual joystick...');
+    
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let currentMovement = { w: false, a: false, s: false, d: false };
+    const maxDistance = 35; // Maximum distance knob can move from center
+    const threshold = 0.3; // Movement threshold (dead zone)
     
     // Store joystick center position
-    const joystickRect = joystick.getBoundingClientRect();
-    joystickCenter = {
-      x: joystickRect.left + joystickRect.width / 2,
-      y: joystickRect.top + joystickRect.height / 2
+    function updateJoystickCenter() {
+      const joystickRect = joystick.getBoundingClientRect();
+      startX = joystickRect.left + joystickRect.width / 2;
+      startY = joystickRect.top + joystickRect.height / 2;
+    }
+    
+    updateJoystickCenter();
+    
+    // Update movement input using SDK-compliant hytopia.pressInput()
+    function updateMovementInput(newMovement) {
+      // Only update inputs that have changed
+      Object.keys(newMovement).forEach(key => {
+        if (currentMovement[key] !== newMovement[key]) {
+          if (typeof hytopia !== 'undefined' && hytopia.pressInput) {
+            hytopia.pressInput(key, newMovement[key]);
+            console.log(`📱 Movement input: ${key} = ${newMovement[key]}`);
+          }
+          currentMovement[key] = newMovement[key];
+        }
+      });
+    }
+    
+    // Update joystick position and calculate movement
+    function updateJoystickPosition(clientX, clientY) {
+      updateJoystickCenter(); // Recalculate center in case of orientation change
+      
+      // Calculate distance from center
+      const deltaX = clientX - startX;
+      const deltaY = clientY - startY;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // Limit to max distance
+      let finalX = deltaX;
+      let finalY = deltaY;
+      
+      if (distance > maxDistance) {
+        finalX = (deltaX / distance) * maxDistance;
+        finalY = (deltaY / distance) * maxDistance;
+      }
+      
+      // Update knob position
+      knob.style.transform = `translate(${finalX}px, ${finalY}px)`;
+      
+      // Calculate movement direction (normalized)
+      const normalizedX = finalX / maxDistance;
+      const normalizedY = -finalY / maxDistance; // Invert Y for proper direction
+      
+      // Determine WASD input based on joystick position
+      const newMovement = {
+        w: normalizedY > threshold,
+        s: normalizedY < -threshold,
+        a: normalizedX < -threshold,
+        d: normalizedX > threshold
+      };
+      
+      // Update input only if movement changed
+      updateMovementInput(newMovement);
+    }
+    
+    // Reset joystick to center
+    function resetJoystick() {
+      // Reset knob to center
+      knob.style.transform = 'translate(0px, 0px)';
+      
+      // Stop all movement
+      const stopMovement = { w: false, a: false, s: false, d: false };
+      updateMovementInput(stopMovement);
+    }
+    
+    // Mouse events (for testing on desktop)
+    joystick.onclick = function(e) {
+      e.preventDefault();
+      isDragging = true;
+      updateJoystickPosition(e.clientX, e.clientY);
     };
     
-    // DISABLED: Joystick touch event listeners (violate Hytopia SDK InputManager)
-    // NOTE: Joystick controls should be handled through Hytopia SDK input system
-    console.log("⚠️ Joystick touch and window resize event listeners disabled - violate Hytopia SDK InputManager rules");
+    document.onmousemove = function(e) {
+      if (isDragging) {
+        updateJoystickPosition(e.clientX, e.clientY);
+      }
+    };
+    
+    document.onmouseup = function(e) {
+      if (isDragging) {
+        isDragging = false;
+        resetJoystick();
+      }
+    };
+    
+    // Touch events for mobile devices
+    joystick.ontouchstart = function(e) {
+      e.preventDefault();
+      isDragging = true;
+      
+      const touch = e.touches[0];
+      updateJoystickPosition(touch.clientX, touch.clientY);
+    };
+    
+    document.ontouchmove = function(e) {
+      if (isDragging && e.touches.length > 0) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        updateJoystickPosition(touch.clientX, touch.clientY);
+      }
+    };
+    
+    document.ontouchend = function(e) {
+      if (isDragging) {
+        e.preventDefault();
+        isDragging = false;
+        resetJoystick();
+      }
+    };
+    
+    // Handle window resize to update joystick center
+    window.onresize = function() {
+      updateJoystickCenter();
+    };
+    
+    console.log('✅ SDK-compliant virtual joystick initialized successfully');
   }
   
-  // Handle mobile action quick press (for onclick events) - Hytopia-compliant
+  // Handle mobile action quick press (for onclick events) - SDK-COMPLIANT INPUT INJECTION
   function handleMobileQuickAction(action) {
-    console.log(`📱 Quick action: ${action}`);
-    // Simulate press and release for onclick events
-    handleMobileAction(action, true);
-    setTimeout(function() {
-      handleMobileAction(action, false);
-    }, 100);
-  }
-  
-  // Update joystick position and input - ENHANCED WITH DEADZONE & SENSITIVITY
-  function updateJoystickPosition(touch) {
-    const knob = document.getElementById('joystick-knob');
-    if (!knob) return;
-    
-    // Input throttling for performance
-    const currentTime = Date.now();
-    if (currentTime - joystickConfig.lastInputTime < joystickConfig.inputThrottle) {
-      return; // Skip this update to prevent spam
-    }
-    joystickConfig.lastInputTime = currentTime;
-    
-    const deltaX = touch.clientX - joystickCenter.x;
-    const deltaY = touch.clientY - joystickCenter.y;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const maxDistance = joystickConfig.maxDistance;
-    
-    let limitedX = deltaX;
-    let limitedY = deltaY;
-    let actualDistance = distance;
-    
-    // Limit to max distance
-    if (distance > maxDistance) {
-      const angle = Math.atan2(deltaY, deltaX);
-      limitedX = Math.cos(angle) * maxDistance;
-      limitedY = Math.sin(angle) * maxDistance;
-      actualDistance = maxDistance;
-    }
-    
-    // Update visual knob position
-    knob.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
-    
-    // Calculate normalized input (-1 to 1)
-    let normalizedX = limitedX / maxDistance;
-    let normalizedY = limitedY / maxDistance;
-    
-    // Apply deadzone - no input if within deadzone
-    const normalizedDistance = actualDistance / maxDistance;
-    if (normalizedDistance < joystickConfig.deadzone) {
-      normalizedX = 0;
-      normalizedY = 0;
+    try {
+      console.log(`📱 Quick action: ${action}`);
       
-      // Visual feedback for deadzone
-      knob.style.opacity = '0.6';
-    } else {
-      // Scale input to remove deadzone effect
-      const adjustedDistance = (normalizedDistance - joystickConfig.deadzone) / (1 - joystickConfig.deadzone);
-      const scaleFactor = adjustedDistance / normalizedDistance;
+      // Map mobile actions to player input keys
+      const inputKeyMap = {
+        'shoot': 'ml',    // Left mouse click
+        'pass': 'mr',     // Right mouse click  
+        'tackle': 'e',    // Interaction key
+        'dodge': 'space'  // Space/jump key
+      };
       
-      normalizedX *= scaleFactor;
-      normalizedY *= scaleFactor;
-      
-      // Apply dynamic sensitivity - more sensitive at edges
-      if (joystickConfig.dynamicSensitivity) {
-        const sensitivityMultiplier = 0.5 + (adjustedDistance * 0.5); // 0.5x to 1.0x sensitivity
-        normalizedX *= sensitivityMultiplier;
-        normalizedY *= sensitivityMultiplier;
+      const inputKey = inputKeyMap[action];
+      if (!inputKey) {
+        console.warn(`📱 Unknown quick action: ${action}`);
+        return;
       }
       
-      // Visual feedback for active input
-      knob.style.opacity = '1.0';
-    }
-    
-    // Apply base sensitivity
-    normalizedX *= joystickConfig.sensitivity;
-    normalizedY *= joystickConfig.sensitivity;
-    
-    // Apply smoothing to previous input
-    if (joystickConfig.smoothing > 0) {
-      const smoothing = joystickConfig.smoothing;
-      joystickInput.x = joystickInput.x * smoothing + normalizedX * (1 - smoothing);
-      joystickInput.y = joystickInput.y * smoothing + normalizedY * (1 - smoothing);
-    } else {
-      joystickInput.x = normalizedX;
-      joystickInput.y = normalizedY;
-    }
-    
-    // Update mobile input state
-    mobileInputState.movement.x = joystickInput.x;
-    mobileInputState.movement.y = -joystickInput.y; // Invert Y for game coordinates
-    
-    // Only send data if input is significant (prevents network spam)
-    const inputMagnitude = Math.sqrt(joystickInput.x * joystickInput.x + joystickInput.y * joystickInput.y);
-    if (inputMagnitude > 0.01) {
-      // Send movement data to server
-      hytopia.sendData({
-        type: "mobile-movement-input",
-        movement: mobileInputState.movement,
-        inputMagnitude: inputMagnitude // Include magnitude for server-side optimization
-      });
-    }
-  }
-  
-  // Reset joystick to center - ENHANCED
-  function resetJoystick() {
-    const knob = document.getElementById('joystick-knob');
-    if (knob) {
-      // Smooth visual reset if auto-recenter is enabled
-      if (joystickConfig.autoRecenter) {
-        knob.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
-        knob.style.transform = 'translate(0px, 0px)';
-        knob.style.opacity = '0.8';
-        
-        // Remove transition after animation
-        setTimeout(() => {
-          knob.style.transition = '';
-        }, 200);
+      // INJECT QUICK INPUT (press and release immediately) - SDK-Compliant
+      if (typeof hytopia !== 'undefined' && hytopia.pressInput) {
+        hytopia.pressInput(inputKey, true);
+        setTimeout(() => hytopia.pressInput(inputKey, false), 50);
+        console.log(`📱 Quick input: ${inputKey}`);
       } else {
-        knob.style.transform = 'translate(0px, 0px)';
-        knob.style.opacity = '0.8';
+        console.warn('📱 hytopia.pressInput not available');
+        return;
       }
-    }
-    
-    // Reset input state with smoothing
-    if (joystickConfig.smoothing > 0) {
-      // Gradually reduce input to zero for smooth stopping
-      const smoothSteps = 5;
-      const stepDelay = joystickConfig.inputThrottle;
       
-      for (let i = 1; i <= smoothSteps; i++) {
+      // Visual feedback
+      const button = document.getElementById(`mobile-${action}-btn`);
+      if (button) {
+        button.style.transform = 'scale(0.95)';
         setTimeout(() => {
-          const factor = (smoothSteps - i) / smoothSteps;
-          joystickInput.x *= factor;
-          joystickInput.y *= factor;
-          mobileInputState.movement.x = joystickInput.x;
-          mobileInputState.movement.y = joystickInput.y;
-          
-          // Send gradual stop to server
-          if (i === smoothSteps) {
-            // Final stop
-            joystickInput.x = 0;
-            joystickInput.y = 0;
-            mobileInputState.movement.x = 0;
-            mobileInputState.movement.y = 0;
-          }
-          
-          hytopia.sendData({
-            type: "mobile-movement-input",
-            movement: { x: mobileInputState.movement.x, y: mobileInputState.movement.y },
-            inputMagnitude: Math.sqrt(mobileInputState.movement.x * mobileInputState.movement.x + 
-                                   mobileInputState.movement.y * mobileInputState.movement.y)
-          });
-        }, i * stepDelay);
+          button.style.transform = 'scale(1)';
+        }, 100);
       }
-    } else {
-      // Immediate stop
-      joystickInput.x = 0;
-      joystickInput.y = 0;
-      mobileInputState.movement.x = 0;
-      mobileInputState.movement.y = 0;
       
-      hytopia.sendData({
-        type: "mobile-movement-input",
-        movement: { x: 0, y: 0 },
-        inputMagnitude: 0
-      });
+    } catch (error) {
+      console.error('📱 Error handling quick action:', error);
     }
+  }
+  
+  // LEGACY FUNCTION - REPLACED BY SDK-COMPLIANT VERSION IN initializeJoystickEvents()
+  // This function is kept for compatibility but is no longer used
+  function updateJoystickPosition(touch) {
+    console.warn('📱 Legacy updateJoystickPosition called - using SDK-compliant version instead');
+  }
+  
+  // LEGACY FUNCTION - REPLACED BY SDK-COMPLIANT VERSION IN initializeJoystickEvents()
+  // This function is kept for compatibility but is no longer used
+  function resetJoystick() {
+    console.warn('📱 Legacy resetJoystick called - using SDK-compliant version instead');
   }
   
   // Initialize mobile camera controls - BACKGROUND CAMERA SYSTEM (NO OVERLAY)
@@ -9347,42 +9348,36 @@
     console.log('✅ Mobile camera controls initialized (background mode)');
   }
   
-  // Handle mobile action button presses with enhanced error handling
+  // Handle mobile action button presses - SDK-COMPLIANT INPUT INJECTION
   function handleMobileAction(action, pressed) {
     try {
       console.log(`📱 Mobile action: ${action} ${pressed ? 'pressed' : 'released'}`);
       
-      // Update input state
-      const actionKey = action === 'shoot' ? 'shooting' : 
-                       action === 'pass' ? 'passing' : 
-                       action === 'tackle' ? 'tackling' : 'dodging';
+      // Map mobile actions to player input keys
+      const inputKeyMap = {
+        'shoot': 'ml',    // Left mouse click
+        'pass': 'mr',     // Right mouse click  
+        'tackle': 'e',    // Interaction key
+        'dodge': 'space'  // Space/jump key
+      };
       
-      if (mobileInputState && mobileInputState.actions) {
-        mobileInputState.actions[actionKey] = pressed;
+      const inputKey = inputKeyMap[action];
+      if (!inputKey) {
+        console.warn(`📱 Unknown mobile action: ${action}`);
+        return;
       }
       
-      // Send action to server with error handling
-      if (typeof hytopia !== 'undefined' && hytopia.sendData) {
-        hytopia.sendData({
-          type: "mobile-action-input",
-          action: action,
-          pressed: pressed,
-          timestamp: Date.now()
-        });
+      // INJECT INPUT INTO PLAYER INPUT SYSTEM (SDK-Compliant)
+      if (typeof hytopia !== 'undefined' && hytopia.pressInput) {
+        hytopia.pressInput(inputKey, pressed);
+        console.log(`📱 Injected input: ${inputKey} = ${pressed}`);
       } else {
-        console.warn('📱 Hytopia not available for mobile action:', action);
+        console.warn('📱 hytopia.pressInput not available');
+        return;
       }
       
-      // Visual feedback with error handling
+      // Visual feedback
       if (pressed) {
-        try {
-          if (typeof playUISound === 'function') {
-            playUISound('button-click');
-          }
-        } catch (soundError) {
-          console.warn('📱 Sound error:', soundError);
-        }
-        
         // Add visual feedback to button
         const button = document.getElementById(`mobile-${action}-btn`);
         if (button) {
@@ -9493,6 +9488,78 @@
     return isMobileDevice;
   }
   
+  // Test mobile controls function (for debugging)
+  function testMobileControls() {
+    console.log('📱 Testing mobile controls...');
+    
+    // Force mobile detection
+    isMobileDevice = true;
+    
+    // Force initialization
+    mobileControlsInitialized = false;
+    initializeMobileControls();
+    
+    // Test button visibility
+    const controls = document.getElementById('mobile-controls-container');
+    if (controls) {
+      controls.style.display = 'block';
+      controls.style.visibility = 'visible';
+      controls.style.zIndex = '99999';
+      console.log('📱 Mobile controls forced visible');
+      
+      // Add red debug border
+      controls.style.border = '3px solid red';
+      setTimeout(() => {
+        controls.style.border = 'none';
+      }, 3000);
+      
+      // Test button events (Hytopia-compliant onclick)
+      setTimeout(() => {
+        console.log('📱 Testing button events...');
+        const shootBtn = document.getElementById('mobile-shoot-btn');
+        if (shootBtn) {
+          console.log('📱 Simulating shoot button click (Hytopia-compliant)...');
+          handleMobileQuickAction('shoot');
+        }
+      }, 1000);
+      
+      return 'Mobile controls test completed - should be visible now with button test';
+    } else {
+      console.error('📱 Mobile controls container not found');
+      return 'Mobile controls container not found';
+    }
+  }
+  
+  // Check mobile controls status
+  function checkMobileControlsStatus() {
+    const shootButton = document.getElementById('mobile-shoot-btn');
+    const status = {
+      isMobileDevice: isMobileDevice,
+      controlsInitialized: mobileControlsInitialized,
+      controlsContainer: !!document.getElementById('mobile-controls-container'),
+      joystick: !!document.getElementById('virtual-joystick'),
+      shootButton: !!shootButton,
+      passButton: !!document.getElementById('mobile-pass-btn'),
+      tackleButton: !!document.getElementById('mobile-tackle-btn'),
+      dodgeButton: !!document.getElementById('mobile-dodge-btn'),
+      screenWidth: window.innerWidth,
+      screenHeight: window.innerHeight,
+      touchCapable: 'ontouchstart' in window,
+      hytopiaAvailable: typeof hytopia !== 'undefined',
+      buttonEventsSet: shootButton ? !!shootButton.getAttribute('onclick') : false
+    };
+    
+    console.log('📱 Mobile Controls Status:', status);
+    
+    // Test button events if available (Hytopia-compliant)
+    if (shootButton) {
+      console.log('📱 Testing shoot button event setup (Hytopia-compliant)...');
+      console.log('📱 Shoot button onclick:', shootButton.getAttribute('onclick'));
+    }
+    
+    return status;
+  }
+
   // Make mobile functions globally accessible (Hytopia-compliant)
   window.initializeMobileControls = initializeMobileControls;
   window.handleMobileAction = handleMobileAction;
