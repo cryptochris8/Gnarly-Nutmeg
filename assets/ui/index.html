@@ -8669,67 +8669,42 @@
     }, 2000);
   }
 
-  // Show arcade mode UI when in arcade mode (enhanced)
+  // Show arcade mode UI when in arcade mode (pickup-only mode)
   function showArcadeModeUI() {
     const indicator = document.getElementById('arcade-mode-indicator');
     const container = document.getElementById('powerup-container');
+    const pickupInfo = document.getElementById('pickup-info');
     
     if (indicator) {
       indicator.classList.add('visible');
     }
+    
+    // Hide power-up buttons (pickup-only mode)
     if (container) {
-      container.style.display = 'flex';
-      
-      // Add entrance animation for power-up buttons
-      const buttons = container.querySelectorAll('.powerup-button');
-      buttons.forEach((button, index) => {
-        button.style.opacity = '0';
-        button.style.transform = 'scale(0.5) translateY(20px)';
-        setTimeout(() => {
-          button.style.transition = 'all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-          button.style.opacity = '1';
-          button.style.transform = 'scale(1) translateY(0)';
-        }, index * 100);
-      });
+      container.style.display = 'none';
     }
     
-    // Set up keyboard controls
-    setupPowerupKeyboardControls();
+    // Show pickup notification for pickup-only mode
+    if (pickupInfo) {
+      pickupInfo.style.display = 'block';
+      pickupInfo.innerHTML = '⭐ PHYSICAL PICKUPS ACTIVE<br><small>Run through pickups on the field to collect abilities!</small>';
+    }
     
-    // Initialize enhanced visual effects
-    initializeEnhancedPowerUpSystem();
-    
-    console.log('🎪 Enhanced Arcade Mode UI activated!');
+    console.log('🎪 Arcade Mode UI activated - Pickup-only mode!');
   }
 
-  // Initialize enhanced power-up system
+  // Initialize enhanced power-up system - DISABLED for pickup-only mode
   function initializeEnhancedPowerUpSystem() {
-    // Reset all cooldown states
-    Object.keys(powerupCooldownStates).forEach(powerUp => {
-      powerupCooldownStates[powerUp] = { onCooldown: false, endTime: 0 };
-      
-      // Reset button states
-      const button = document.getElementById(`${powerUp.replace('_', '-')}-btn`);
-      if (button) {
-        button.classList.remove('on-cooldown', 'activating', 'ready');
-        
-        // Add ready glow effect for available power-ups
-        setTimeout(() => {
-          if (!powerupCooldownStates[powerUp].onCooldown) {
-            button.classList.add('ready');
-            setTimeout(() => button.classList.remove('ready'), 2000);
-          }
-        }, 1000);
-      }
-    });
-    
-    console.log('✨ Enhanced power-up system initialized');
+    // Disabled for pickup-only mode
+    console.log('✨ Enhanced power-up system disabled - using pickup-only mode');
+    return;
   }
 
   // Hide arcade mode UI when in FIFA mode
   function hideArcadeModeUI() {
     const indicator = document.getElementById('arcade-mode-indicator');
     const container = document.getElementById('powerup-container');
+    const pickupInfo = document.getElementById('pickup-info');
     
     if (indicator) {
       indicator.classList.remove('visible');
@@ -8738,7 +8713,12 @@
       container.style.display = 'none';
     }
     
-    console.log('🏆 FIFA Mode - Power-up UI hidden');
+    // Hide pickup notification when leaving arcade mode
+    if (pickupInfo) {
+      pickupInfo.style.display = 'none';
+    }
+    
+    console.log('🏆 FIFA Mode - Arcade UI hidden');
   }
 
   // DISABLED: Keyboard controls for power-ups (violates Hytopia SDK InputManager)
@@ -8749,28 +8729,16 @@
     console.log("⚠️ Power-up keyboard controls disabled - handled by Hytopia SDK input system");
   }
 
-  // Activate specific power-up (enhanced version)
+  // Activate specific power-up - DISABLED for pickup-only mode
   function activatePowerUp(powerUpType) {
-    console.log(`🎮 Attempting to activate power-up: ${powerUpType}`);
-    
-    // Use the enhanced activation system
-    const success = activatePowerUpWithEffects(powerUpType);
-    
-    if (success) {
-      playUISound("button-click");
-    }
+    console.log(`🎮 Power-up activation disabled - using pickup-only mode`);
+    return false;
   }
 
-      // Activate random power-up (UI button functionality) - enhanced version
+      // Activate random power-up - DISABLED for pickup-only mode
   function activateRandomPowerUp() {
-    console.log(`🎲 Attempting to activate random power-up`);
-    
-    // Use the enhanced activation system
-    const success = activatePowerUpWithEffects('random_powerup');
-    
-    if (success) {
-      playUISound("button-click");
-    }
+    console.log(`🎲 Random power-up activation disabled - using pickup-only mode`);
+    return false;
   }
 
   // Start cooldown for a power-up
