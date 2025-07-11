@@ -9,20 +9,18 @@ export class AbilityHolder {
     private isAIPlayer: boolean = false;
 
     constructor(player: Player) {
-        this.ability = new ItemThrowAbility(shurikenThrowOptions);
+        // Players should start with NO abilities in pickup-only mode
+        this.ability = null;
         
         // Check if this is likely an AI player (missing UI methods)
         try {
             if (player.ui && typeof player.ui.sendData === 'function') {
-                player.ui.sendData({
-                    type: "ability-icon",
-                    icon: this.ability?.getIcon(),
-                });
+                this.isAIPlayer = false;
             } else {
                 this.isAIPlayer = true;
             }
         } catch (e) {
-            console.log("Could not send ability icon data", e);
+            console.log("Could not check player UI methods", e);
             this.isAIPlayer = true;
         }
     }
@@ -36,12 +34,13 @@ export class AbilityHolder {
     }
 
     public setAbility(ability: Ability) {
-        if(!this.ability) {
-            this.ability = ability;
-        }
+        // Always set the ability (replace existing one if any)
+        this.ability = ability;
+        console.log(`✅ Ability set: ${ability.getIcon()}`);
     }
 
     public removeAbility() {
+        console.log(`🗑️ Ability removed: ${this.ability?.getIcon() || 'none'}`);
         this.ability = null;
     }
 

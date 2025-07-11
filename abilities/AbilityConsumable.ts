@@ -98,6 +98,10 @@ export class AbilityConsumable {
                             
                             console.log(`🎯 Valid player collision detected: ${targetPlayer.player.username}`);
                             
+                            // Debug pickup collision
+                            console.log(`🔍 PICKUP COLLISION: Player ${targetPlayer.player.username} touched ${this.abilityOptions.name} pickup`);
+                            console.log(`   Current ability: ${targetPlayer.abilityHolder.hasAbility() ? targetPlayer.abilityHolder.getAbility()?.getIcon() : 'none'}`);
+                            
                             // Check if player already has an ability
                             if (!targetPlayer.abilityHolder.hasAbility()) {
                                 console.log(`✅ PICKUP SUCCESS: Giving ${this.abilityOptions.name} to ${targetPlayer.player.username}`);
@@ -105,7 +109,7 @@ export class AbilityConsumable {
                                 this.despawn();
                                 this.startRespawnTimer();
                             } else {
-                                console.log(`❌ Player ${targetPlayer.player.username} already has an ability`);
+                                console.log(`❌ Player ${targetPlayer.player.username} already has an ability: ${targetPlayer.abilityHolder.getAbility()?.getIcon()}`);
                                 // Optional: Show feedback to player
                                 try {
                                     targetPlayer.player.ui.sendData({
