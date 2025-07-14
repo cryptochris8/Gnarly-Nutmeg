@@ -537,19 +537,17 @@ export default function createSoccerBall(world: World) {
 
   soccerBall.on(EntityEvent.BLOCK_COLLISION, ({ entity, blockType, started }) => {
     if (started) {
-      const blocks = [0, 7, 24, 27];
-      if(!blocks.includes(blockType.id)) {
-        // Realistic soccer ball bounce - maintain forward momentum with slight damping
-        const velocity = entity.linearVelocity;
-        const dampingFactor = 0.85; // Reduce speed slightly on bounce
-        entity.setLinearVelocity({
-          x: velocity.x * dampingFactor, // Keep forward momentum, just reduce speed
-          y: Math.abs(velocity.y) * 0.6, // Bounce up with reduced height
-          z: velocity.z * dampingFactor, // Keep lateral momentum, just reduce speed
-        });
-        // Reset angular velocity to prevent unwanted spinning from collision
-        entity.setAngularVelocity({ x: 0, y: 0, z: 0 });
-      }
+      // Allow ball to bounce off ALL blocks to prevent falling through ground
+      // Realistic soccer ball bounce - maintain forward momentum with slight damping
+      const velocity = entity.linearVelocity;
+      const dampingFactor = 0.85; // Reduce speed slightly on bounce
+      entity.setLinearVelocity({
+        x: velocity.x * dampingFactor, // Keep forward momentum, just reduce speed
+        y: Math.abs(velocity.y) * 0.6, // Bounce up with reduced height
+        z: velocity.z * dampingFactor, // Keep lateral momentum, just reduce speed
+      });
+      // Reset angular velocity to prevent unwanted spinning from collision
+      entity.setAngularVelocity({ x: 0, y: 0, z: 0 });
     }
   });
 
