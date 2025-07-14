@@ -357,6 +357,40 @@ export class ArcadeEnhancementManager {
           console.log(`🎮 ARCADE: Executing shuriken throw for ${playerId}`);
           this.executeShuriken(playerId);
           break;
+        
+        // Enhanced power-ups
+        case 'time_slow':
+          console.log(`🎮 ARCADE: Executing time slow for ${playerId}`);
+          this.executeEnhancedPowerUp(playerId, 'Time Slow');
+          break;
+        case 'ball_magnet':
+          console.log(`🎮 ARCADE: Executing ball magnet for ${playerId}`);
+          this.executeEnhancedPowerUp(playerId, 'Ball Magnet');
+          break;
+        case 'star_rain':
+          console.log(`🎮 ARCADE: Executing star rain for ${playerId}`);
+          this.executeEnhancedPowerUp(playerId, 'Star Rain');
+          break;
+        case 'crystal_barrier':
+          console.log(`🎮 ARCADE: Executing crystal barrier for ${playerId}`);
+          this.executeEnhancedPowerUp(playerId, 'Crystal Barrier');
+          break;
+        case 'elemental_mastery':
+          console.log(`🎮 ARCADE: Executing elemental mastery for ${playerId}`);
+          this.executeEnhancedPowerUp(playerId, 'Elemental Mastery');
+          break;
+        case 'tidal_wave':
+          console.log(`🎮 ARCADE: Executing tidal wave for ${playerId}`);
+          this.executeEnhancedPowerUp(playerId, 'Tidal Wave');
+          break;
+        case 'reality_warp':
+          console.log(`🎮 ARCADE: Executing reality warp for ${playerId}`);
+          this.executeEnhancedPowerUp(playerId, 'Reality Warp');
+          break;
+        case 'honey_trap':
+          console.log(`🎮 ARCADE: Executing honey trap for ${playerId}`);
+          this.executeEnhancedPowerUp(playerId, 'Honey Trap');
+          break;
         case 'speed':
         case 'power':
         case 'precision':
@@ -999,6 +1033,96 @@ export class ArcadeEnhancementManager {
     }
   }
 
+  // Execute enhanced power-up by directly giving it to player
+  private executeEnhancedPowerUp(playerId: string, powerUpName: string): void {
+    console.log(`🌟 ENHANCED POWER-UP: ${playerId} activating ${powerUpName}!`);
+    
+    const playerEntity = this.findPlayerEntity(playerId);
+    if (!playerEntity) {
+      console.error(`Player entity not found for enhanced power-up: ${playerId}`);
+      return;
+    }
+
+    // Import the enhanced power-up options dynamically
+    import('../abilities/itemTypes').then(({ ALL_POWERUP_OPTIONS }) => {
+      const powerUpOption = ALL_POWERUP_OPTIONS.find(option => option.name === powerUpName);
+      if (!powerUpOption) {
+        console.error(`Enhanced power-up option not found: ${powerUpName}`);
+        return;
+      }
+
+      // Import the appropriate ability class and create instance
+      this.createEnhancedAbility(powerUpOption, playerEntity);
+    }).catch(error => {
+      console.error(`Failed to load enhanced power-up: ${error}`);
+    });
+  }
+
+  private createEnhancedAbility(options: any, player: any): void {
+    try {
+      // Dynamic import to avoid circular dependencies
+      import('../abilities/TimeSlowAbility').then(({ TimeSlowAbility }) => {
+        import('../abilities/BallMagnetAbility').then(({ BallMagnetAbility }) => {
+          import('../abilities/StarRainAbility').then(({ StarRainAbility }) => {
+            import('../abilities/CrystalBarrierAbility').then(({ CrystalBarrierAbility }) => {
+              import('../abilities/EnhancedPowerAbility').then(({ EnhancedPowerAbility }) => {
+                
+                let ability: any;
+                
+                switch (options.name) {
+                  case "Time Slow":
+                    ability = new TimeSlowAbility(options);
+                    break;
+                  case "Ball Magnet":
+                    ability = new BallMagnetAbility(options);
+                    break;
+                  case "Star Rain":
+                    ability = new StarRainAbility(options);
+                    break;
+                  case "Crystal Barrier":
+                    ability = new CrystalBarrierAbility(options);
+                    break;
+                  case "Elemental Mastery":
+                  case "Tidal Wave":
+                  case "Reality Warp":
+                  case "Honey Trap":
+                    ability = new EnhancedPowerAbility(options);
+                    break;
+                  default:
+                    console.error(`Unknown enhanced ability: ${options.name}`);
+                    return;
+                }
+
+                // Give ability to player and show UI
+                player.abilityHolder.setAbility(ability);
+                player.abilityHolder.showAbilityUI(player.player);
+                
+                // Play pickup sound
+                try {
+                  import('hytopia').then(({ Audio }) => {
+                    const pickupAudio = new Audio({
+                      uri: 'audio/sfx/ui/inventory-grab-item.mp3',
+                      volume: 0.8,
+                      position: player.position
+                    });
+                    pickupAudio.play(this.world);
+                  });
+                } catch (e) {
+                  console.log("Could not play enhanced power-up sound:", e);
+                }
+                
+                console.log(`🌟 ENHANCED: ${player.player.username} received ${options.name} ability!`);
+                
+              });
+            });
+          });
+        });
+      });
+    } catch (error) {
+      console.error("❌ CREATE ENHANCED ABILITY ERROR:", error);
+    }
+  }
+
   // Execute shuriken throw power-up
   private executeShuriken(playerId: string): void {
     console.log(`🥷 SHURIKEN: ${playerId} activating shuriken throw!`);
@@ -1420,8 +1544,9 @@ export class ArcadeEnhancementManager {
   }
 }
 
-// Enhancement types - expanded for arcade power-ups
-export type EnhancementType = 'speed' | 'power' | 'precision' | 'freeze_blast' | 'fireball' | 'mega_kick' | 'shield' | 'stamina' | 'shuriken';
+// Enhancement types - expanded for arcade power-ups including enhanced abilities
+export type EnhancementType = 'speed' | 'power' | 'precision' | 'freeze_blast' | 'fireball' | 'mega_kick' | 'shield' | 'stamina' | 'shuriken' | 
+                               'time_slow' | 'ball_magnet' | 'star_rain' | 'crystal_barrier' | 'elemental_mastery' | 'tidal_wave' | 'reality_warp' | 'honey_trap';
 
 // Player enhancement interface
 export interface PlayerEnhancement {

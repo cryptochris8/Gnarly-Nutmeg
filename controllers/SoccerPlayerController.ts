@@ -528,13 +528,21 @@ export default class CustomSoccerPlayer extends BaseEntityController {
       }
 
       // Handle collected ability activation with F key (pickup mode only)
-      if (input["f"] && !hasBall && entity.abilityHolder.hasAbility()) {
-        console.log(`🎮 F key pressed by ${entity.player?.username || 'unknown'} - activating ability: ${entity.abilityHolder.getAbility()?.getIcon() || 'unknown'}`);
+      // Note: Removed !hasBall restriction to allow ability use while holding ball
+      if (input["f"] && entity.abilityHolder.hasAbility()) {
+        const ability = entity.abilityHolder.getAbility();
+        console.log(`🎮 F key pressed by ${entity.player?.username || 'unknown'} - activating ability: ${ability?.getIcon() || 'unknown'}`);
+        console.log(`🔍 Ability details: type=${ability?.constructor.name}, has use method=${typeof ability?.use === 'function'}`);
+        console.log(`🔍 Current game mode check: isArcadeMode()=${isArcadeMode()}`);
+        console.log(`🔍 Player has ball: ${hasBall} (ability activation now allowed regardless)`);
+        console.log(`🔍 Player position: ${JSON.stringify(entity.position)}`);
+        console.log(`🔍 Camera direction: ${JSON.stringify(entity.player.camera.facingDirection)}`);
         
         // Use the collected ability (from pickup system)
         const direction = {x: entity.player.camera.facingDirection.x, y: entity.player.camera.facingDirection.y + 0.1, z: entity.player.camera.facingDirection.z};
         try {
-          entity.abilityHolder.getAbility()?.use(
+          console.log(`🚀 About to call ability.use() with origin=${JSON.stringify(entity.position)}, direction=${JSON.stringify(direction)}`);
+          ability?.use(
             entity.position,
             direction,
             entity 
@@ -542,6 +550,7 @@ export default class CustomSoccerPlayer extends BaseEntityController {
           console.log(`✅ Ability used successfully by ${entity.player?.username || 'unknown'}`);
         } catch (e) {
           console.error(`❌ Error using ability for ${entity.player?.username || 'unknown'}:`, e);
+          console.error(`❌ Error stack:`, e.stack);
         }
         
         // Cancel the input to prevent any conflicts
@@ -639,6 +648,24 @@ export default class CustomSoccerPlayer extends BaseEntityController {
         const currentModeConfig = getCurrentModeConfig();
         const baseSpeedMultiplier = isRunning ? currentModeConfig.sprintMultiplier : currentModeConfig.playerSpeed;
         velocity *= baseSpeedMultiplier;
+
+        // Apply time slow effects (enhanced power-up)
+        if (isArcadeMode() && entity instanceof SoccerPlayerEntity) {
+          const customProps = (entity as any).customProperties;
+          if (customProps && customProps.get('hasTimeSlowEffect')) {
+            const timeSlowScale = customProps.get('timeSlowScale') || 1.0;
+            const endTime = customProps.get('timeSlowEndTime') || 0;
+            
+            if (Date.now() < endTime) {
+              velocity *= timeSlowScale; // Reduce speed for time slow effect
+              
+              // Log occasionally for debugging
+              if (Math.random() < 0.002) {
+                console.log(`⏰ TIME SLOW: ${entity.player.username} - Speed reduced to ${(timeSlowScale * 100).toFixed(0)}%`);
+              }
+            }
+          }
+        }
         
         // Apply arcade-specific speed enhancements if in arcade mode
         if (isArcadeMode()) {
@@ -1528,8 +1555,9 @@ export default class CustomSoccerPlayer extends BaseEntityController {
     if (arcadeManager) {
       console.log("🎮 Found arcade manager, activating powerup directly");
       
-      // Get available power-ups
-      const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield', 'stamina'];
+      // Get available power-ups (including enhanced abilities)
+      const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield', 'stamina', 
+                       'time_slow', 'ball_magnet', 'star_rain', 'crystal_barrier', 'elemental_mastery', 'tidal_wave', 'reality_warp', 'honey_trap'];
       const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
       
       // Try direct activation first
@@ -1557,8 +1585,9 @@ export default class CustomSoccerPlayer extends BaseEntityController {
     // Fallback: Use UI messaging system to trigger server-side power-up activation
     // This will be handled in the main server loop where the arcade manager is available
     
-    // Get available power-ups
-    const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield', 'stamina'];
+    // Get available power-ups (including enhanced abilities)
+    const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield', 'stamina',
+                     'time_slow', 'ball_magnet', 'star_rain', 'crystal_barrier', 'elemental_mastery', 'tidal_wave', 'reality_warp', 'honey_trap'];
     const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
     
     // Send power-up activation request to the server through UI messaging

@@ -148,8 +148,147 @@ export const staminaBoostOptions: ItemAbilityOptions = {
     idleAnimation: "idle",   // Default idle animation (if available)
 };
 
+// ====== ENHANCED POWER-UPS ======
+
+/**
+ * Time Manipulation Power-Up (Clock)
+ * Slows down all other players while you move normally
+ */
+export const timeSlowOptions: ItemAbilityOptions = {
+    name: "Time Slow",
+    speed: 0.3,              // Time scale factor for other players
+    damage: 8000,            // Duration in milliseconds
+    modelUri: "models/items/clock.gltf",
+    modelScale: 0.6,
+    projectileRadius: 0,
+    knockback: 0,
+    lifeTime: 8.0,           // 8 second effect duration
+    icon: "time-slow",
+    idleAnimation: "floating",
+};
+
+/**
+ * Magnetic Field Control Power-Up (Compass)
+ * Ball automatically follows you like a magnet
+ */
+export const ballMagnetOptions: ItemAbilityOptions = {
+    name: "Ball Magnet",
+    speed: 10,               // Magnetic pull force
+    damage: 10000,           // Duration in milliseconds
+    modelUri: "models/items/compass.gltf",
+    modelScale: 0.5,
+    projectileRadius: 5.0,   // Magnetic field radius
+    knockback: 0,
+    lifeTime: 10.0,          // 10 second effect duration
+    icon: "ball-magnet",
+    idleAnimation: "floating",
+};
+
+/**
+ * Celestial Star Power (Golden Apple)
+ * Creates star rain and allows stellar dash teleportation
+ */
+export const starRainOptions: ItemAbilityOptions = {
+    name: "Star Rain",
+    speed: 15,               // Teleport range
+    damage: 20,              // Star projectile damage
+    modelUri: "models/items/golden-apple.gltf",
+    modelScale: 0.4,
+    projectileRadius: 2.0,   // Star explosion radius
+    knockback: 1.2,          // Star knockback force
+    lifeTime: 3.0,           // Star rain duration
+    icon: "star-rain",
+    idleAnimation: "floating",
+};
+
+/**
+ * Crystal Resonance Power-Up (Diamond Sword)
+ * Creates crystal barriers and allows phasing through objects
+ */
+export const crystalBarrierOptions: ItemAbilityOptions = {
+    name: "Crystal Barrier",
+    speed: 5,                // Phase duration in seconds
+    damage: 15000,           // Barrier duration in milliseconds
+    modelUri: "models/items/sword-diamond.gltf",
+    modelScale: 0.3,
+    projectileRadius: 1.5,   // Barrier thickness
+    knockback: 0,
+    lifeTime: 15.0,          // Barrier lifetime
+    icon: "crystal-barrier",
+    idleAnimation: "floating",
+};
+
+/**
+ * Elemental Mastery Power-Up (Magic Circle)
+ * Changes field physics and creates elemental effects
+ */
+export const elementalMasteryOptions: ItemAbilityOptions = {
+    name: "Elemental Mastery",
+    speed: 0.5,              // Gravity multiplier
+    damage: 12000,           // Duration in milliseconds
+    modelUri: "models/environment/Dungeon/magic-circle-purple.gltf",
+    modelScale: 1.0,
+    projectileRadius: 8.0,   // Effect area radius
+    knockback: 0.8,
+    lifeTime: 12.0,          // Effect duration
+    icon: "elemental-mastery",
+    idleAnimation: "floating",
+};
+
+/**
+ * Aquatic Powers (Milk Bottle)
+ * Creates splash zones and tidal wave effects
+ */
+export const tidalWaveOptions: ItemAbilityOptions = {
+    name: "Tidal Wave",
+    speed: 12,               // Wave force
+    damage: 6000,            // Splash zone duration in milliseconds
+    modelUri: "models/items/milk.gltf",
+    modelScale: 0.4,
+    projectileRadius: 6.0,   // Splash zone radius
+    knockback: 1.5,          // Wave knockback
+    lifeTime: 6.0,           // Splash zone duration
+    icon: "tidal-wave",
+    idleAnimation: "floating",
+};
+
+/**
+ * Reality Warping Power-Up (Map/Scroll)
+ * Creates portals and field manipulation effects
+ */
+export const realityWarpOptions: ItemAbilityOptions = {
+    name: "Reality Warp",
+    speed: 20,               // Portal teleport range
+    damage: 15000,           // Portal duration in milliseconds
+    modelUri: "models/items/map.gltf",
+    modelScale: 0.5,
+    projectileRadius: 2.0,   // Portal radius
+    knockback: 0,
+    lifeTime: 15.0,          // Portal lifetime
+    icon: "reality-warp",
+    idleAnimation: "floating",
+};
+
+/**
+ * Sticky Situations Power-Up (Golden Carrot)
+ * Creates honey traps and attraction fields
+ */
+export const honeyTrapOptions: ItemAbilityOptions = {
+    name: "Honey Trap",
+    speed: 0.3,              // Movement slow factor
+    damage: 10000,           // Trap duration in milliseconds
+    modelUri: "models/items/carrot-golden.gltf",
+    modelScale: 0.4,
+    projectileRadius: 4.0,   // Trap radius
+    knockback: 0,
+    lifeTime: 10.0,          // Trap lifetime
+    icon: "honey-trap",
+    idleAnimation: "floating",
+};
+
 // Array of all available power-up options for easy access
 export const ALL_POWERUP_OPTIONS: ItemAbilityOptions[] = [
+    // Original power-ups (keeping for compatibility)
     speedBoostOptions,
     shurikenThrowOptions,
     freezeBlastOptions,
@@ -159,5 +298,27 @@ export const ALL_POWERUP_OPTIONS: ItemAbilityOptions[] = [
     precisionOptions,
     staminaOptions,
     shieldOptions,
-    staminaBoostOptions
+    staminaBoostOptions,
+    
+    // Enhanced power-ups
+    timeSlowOptions,
+    ballMagnetOptions,
+    starRainOptions,
+    crystalBarrierOptions,
+    elementalMasteryOptions,
+    tidalWaveOptions,
+    realityWarpOptions,
+    honeyTrapOptions
+];
+
+// Enhanced power-ups only (for premium arcade mode)
+export const ENHANCED_POWERUP_OPTIONS: ItemAbilityOptions[] = [
+    timeSlowOptions,
+    ballMagnetOptions,
+    starRainOptions,
+    crystalBarrierOptions,
+    elementalMasteryOptions,
+    tidalWaveOptions,
+    realityWarpOptions,
+    honeyTrapOptions
 ];

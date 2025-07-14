@@ -6,6 +6,11 @@ import SoccerPlayerEntity from '../entities/SoccerPlayerEntity';
 import { ABILITY_PICKUP_POSITIONS, ABILITY_RESPAWN_TIME } from '../state/gameConfig';
 import { SpeedBoostAbility } from './SpeedBoostAbility';
 import { PowerBoostAbility } from './PowerBoostAbility';
+import { TimeSlowAbility } from './TimeSlowAbility';
+import { BallMagnetAbility } from './BallMagnetAbility';
+import { StarRainAbility } from './StarRainAbility';
+import { CrystalBarrierAbility } from './CrystalBarrierAbility';
+import { EnhancedPowerAbility } from './EnhancedPowerAbility';
 import type { Ability } from './Ability';
 
 // Timer type for Node.js compatibility
@@ -134,24 +139,66 @@ export class AbilityConsumable {
     private giveAbilityToPlayer(player: SoccerPlayerEntity) {
         let ability: Ability;
         
+        console.log(`🔧 DEBUG: Creating ability for ${this.abilityOptions.name}`);
+        
         // Determine ability type based on name
-        switch (this.abilityOptions.name) {
-            case "Speed Boost":
-                ability = new SpeedBoostAbility(this.abilityOptions);
-                break;
-            case "Mega Kick":
-            case "Power Boost":
-            case "Precision":
-            case "Stamina":
-            case "Shield":
-                ability = new PowerBoostAbility(this.abilityOptions);
-                break;
-            case "Shuriken":
-            case "Freeze Blast":
-            case "Fireball":
-            default:
-                ability = new ItemThrowAbility(this.abilityOptions);
-                break;
+        try {
+            switch (this.abilityOptions.name) {
+                // Original abilities
+                case "Speed Boost":
+                    console.log(`🔧 Creating SpeedBoostAbility`);
+                    ability = new SpeedBoostAbility(this.abilityOptions);
+                    break;
+                case "Mega Kick":
+                case "Power Boost":
+                case "Precision":
+                case "Stamina":
+                case "Shield":
+                    console.log(`🔧 Creating PowerBoostAbility for ${this.abilityOptions.name}`);
+                    ability = new PowerBoostAbility(this.abilityOptions);
+                    break;
+                
+                // Enhanced abilities
+                case "Time Slow":
+                    console.log(`🔧 Creating TimeSlowAbility`);
+                    ability = new TimeSlowAbility(this.abilityOptions);
+                    break;
+                case "Ball Magnet":
+                    console.log(`🔧 Creating BallMagnetAbility`);
+                    ability = new BallMagnetAbility(this.abilityOptions);
+                    break;
+                case "Star Rain":
+                    console.log(`🔧 Creating StarRainAbility`);
+                    ability = new StarRainAbility(this.abilityOptions);
+                    break;
+                case "Crystal Barrier":
+                    console.log(`🔧 Creating CrystalBarrierAbility`);
+                    ability = new CrystalBarrierAbility(this.abilityOptions);
+                    break;
+                case "Elemental Mastery":
+                case "Tidal Wave":
+                case "Reality Warp":
+                case "Honey Trap":
+                    console.log(`🔧 Creating EnhancedPowerAbility for ${this.abilityOptions.name}`);
+                    ability = new EnhancedPowerAbility(this.abilityOptions);
+                    break;
+                
+                // Projectile abilities (default)
+                case "Shuriken":
+                case "Freeze Blast":
+                case "Fireball":
+                default:
+                    console.log(`🔧 Creating ItemThrowAbility for ${this.abilityOptions.name} (default)`);
+                    ability = new ItemThrowAbility(this.abilityOptions);
+                    break;
+            }
+            
+            console.log(`✅ Successfully created ability: ${ability.constructor.name} with icon: ${ability.getIcon()}`);
+        } catch (error) {
+            console.error(`❌ ERROR creating ability for ${this.abilityOptions.name}:`, error);
+            // Fallback to basic ability
+            ability = new ItemThrowAbility(this.abilityOptions);
+            console.log(`🔄 Fallback: Created ItemThrowAbility instead`);
         }
         
         player.abilityHolder.setAbility(ability);
