@@ -558,57 +558,39 @@ export default class CustomSoccerPlayer extends BaseEntityController {
         return; // Exit early to prevent other systems from activating
       }
 
-      // Handle F key when no ability is available (arcade random power-up or pass request)
+      // Handle F key when no ability is available (pass request only)
       if (input["f"]) {
         // Debug information about F key press
         console.log(`🎯 F key pressed by ${entity.player?.username || 'unknown'} - has ball: ${hasBall}, has ability: ${entity.abilityHolder.hasAbility()}`);
         
         if (!entity.abilityHolder.hasAbility()) {
-          // In arcade mode, activate random power-up
-          if (isArcadeMode()) {
-            console.log(`🎮 Activating random power-up in arcade mode`);
-            
+          console.log(`ℹ️ No ability to use - would send pass request if not holding ball`);
+          
+          // Only send pass request if not holding ball
+          if (!hasBall) {
             // Check cooldown to prevent spam
             const currentTime = Date.now();
             if (currentTime - this._lastPowerUpTime >= CustomSoccerPlayer.POWER_UP_COOLDOWN_MS) {
               this._lastPowerUpTime = currentTime;
-              this._activateRandomPowerUp(entity);
+              
+              // Send request-pass message to server
+              entity.player.ui.sendData({
+                type: "request-pass"
+              });
+              
+              console.log(`✅ Pass request sent by ${entity.player?.username || 'unknown'}`);
+              
+              // Cancel the input to prevent multiple activations
               input["f"] = false;
             } else {
               // Still on cooldown, cancel the input
               input["f"] = false;
               const remainingCooldown = Math.ceil((CustomSoccerPlayer.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
-              console.log(`🎯 Power-up on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
+              console.log(`🎯 Pass request on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
             }
           } else {
-            console.log(`ℹ️ No ability to use - would send pass request if not holding ball`);
-            
-            // Only send pass request if not holding ball
-            if (!hasBall) {
-              // Check cooldown to prevent spam
-              const currentTime = Date.now();
-              if (currentTime - this._lastPowerUpTime >= CustomSoccerPlayer.POWER_UP_COOLDOWN_MS) {
-                this._lastPowerUpTime = currentTime;
-                
-                // Send request-pass message to server
-                entity.player.ui.sendData({
-                  type: "request-pass"
-                });
-                
-                console.log(`✅ Pass request sent by ${entity.player?.username || 'unknown'}`);
-                
-                // Cancel the input to prevent multiple activations
-                input["f"] = false;
-              } else {
-                // Still on cooldown, cancel the input
-                input["f"] = false;
-                const remainingCooldown = Math.ceil((CustomSoccerPlayer.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
-                console.log(`🎯 Pass request on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
-              }
-            } else {
-              input["f"] = false;
-              console.log(`ℹ️ Not sending pass request - player has ball`);
-            }
+            input["f"] = false;
+            console.log(`ℹ️ Not sending pass request - player has ball`);
           }
         } else {
           input["f"] = false;
@@ -1541,83 +1523,6 @@ export default class CustomSoccerPlayer extends BaseEntityController {
     }
   }
 
-  /**
-   * Activate a random power-up for the player (only in arcade mode)
-   * @param entity - The player entity
-   */
-  private _activateRandomPowerUp(entity: PlayerEntity): void {
-    console.log(`🎮 _activateRandomPowerUp called for ${entity.player?.username || 'unknown'}`);
-    
-    // Only work in arcade mode
-    if (!isArcadeMode()) {
-      console.log("🎮 Power-ups only available in Arcade Mode!");
-      // Send feedback to player
-      if (entity.player?.ui) {
-        entity.player.ui.sendData({
-          type: "powerup-feedback",
-          success: false,
-          message: "Power-ups only available in Arcade Mode!"
-        });
-      }
-      return;
-    }
-
-    if (!(entity instanceof SoccerPlayerEntity)) {
-      console.log("🎮 Entity is not a SoccerPlayerEntity");
-      return;
-    }
-
-    // Try to get arcade enhancement manager directly from world
-    const arcadeManager = (entity.world as any)._arcadeManager;
-    
-    if (arcadeManager) {
-      console.log("🎮 Found arcade manager, activating powerup directly");
-      
-      // Get available power-ups (including enhanced abilities)
-      const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield', 'stamina', 
-                       'time_slow', 'ball_magnet', 'star_rain', 'crystal_barrier', 'elemental_mastery', 'tidal_wave', 'reality_warp', 'honey_trap'];
-      const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
-      
-      // Try direct activation first
-      const success = arcadeManager.activatePowerUp(entity.player.username, randomPowerUp);
-      
-      if (success) {
-        console.log(`🎮 ARCADE POWER-UP ACTIVATED: ${entity.player.username} activated ${randomPowerUp}!`);
-        
-        // Send success feedback to UI
-        entity.player.ui.sendData({
-          type: "powerup-feedback",
-          success: true,
-          powerUpType: randomPowerUp,
-          message: `${randomPowerUp.replace('_', ' ').toUpperCase()} activated!`
-        });
-        
-        return;
-      } else {
-        console.log(`🎮 Direct activation failed, falling back to UI messaging`);
-      }
-    } else {
-      console.log("🎮 No arcade manager found, using UI messaging fallback");
-    }
-
-    // Fallback: Use UI messaging system to trigger server-side power-up activation
-    // This will be handled in the main server loop where the arcade manager is available
-    
-    // Get available power-ups (including enhanced abilities)
-    const powerUps = ['speed', 'power', 'precision', 'freeze_blast', 'fireball', 'mega_kick', 'shield', 'stamina',
-                     'time_slow', 'ball_magnet', 'star_rain', 'crystal_barrier', 'elemental_mastery', 'tidal_wave', 'reality_warp', 'honey_trap'];
-    const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
-    
-    // Send power-up activation request to the server through UI messaging
-    entity.player.ui.sendData({
-      type: "activate-powerup",
-      powerUpType: randomPowerUp,
-      playerId: entity.player.username,
-      timestamp: Date.now()
-    });
-    
-    console.log(`🎮 ARCADE POWER-UP REQUEST: ${entity.player.username} requesting ${randomPowerUp}!`);
-  }
   
   /**
    * Performs a goalkeeper header to deflect or catch high shots
