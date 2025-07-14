@@ -1,8 +1,8 @@
 // Large Stadium Configuration (Now the only configuration)
 export const GAME_CONFIG = {
   // Mathematical center: X = (-37 + 52) / 2 = 7.5, Z = (-33 + 26) / 2 = -3.5
-  // Using X = 7, Y = 5, Z = -3 for positioning (elevated well above ground to prevent surface collision)
-  BALL_SPAWN_POSITION: { x: 7, y: 5, z: -3 },
+  // Using X = 7, Y = 6, Z = -3 for positioning (elevated well above ground to prevent surface collision)
+  BALL_SPAWN_POSITION: { x: 7, y: 6, z: -3 },
   
   // Safe Y coordinate for all entity spawning to prevent surface collision
   SAFE_SPAWN_Y: 2,
