@@ -242,8 +242,8 @@ export default function createSoccerBall(world: World) {
     
     const attachedPlayer = sharedState.getAttachedPlayer();
 
-    // If the ball falls significantly below the field (should be rare now), reset it
-    if (entity.position.y < FIELD_MIN_Y - 3 && !isRespawning && !inGoal && !isInitializing) {
+    // If the ball falls significantly below the field, reset it immediately
+    if (entity.position.y < FIELD_MIN_Y + 1 && !isRespawning && !inGoal && !isInitializing) {
       console.log(`Ball unexpectedly below field at Y=${entity.position.y}, resetting to spawn position`);
       isRespawning = true;
       
@@ -251,7 +251,7 @@ export default function createSoccerBall(world: World) {
       entity.despawn();
       sharedState.setAttachedPlayer(null);
       
-      // Spawn at the proper ground position
+      // Spawn at the proper ground position (higher Y to ensure it's above ground)
       entity.spawn(world, BALL_SPAWN_POSITION);
       entity.setLinearVelocity({ x: 0, y: 0, z: 0 });
       entity.setAngularVelocity({ x: 0, y: 0, z: 0 });
