@@ -4213,21 +4213,23 @@
   /* Action Buttons */
   .mobile-actions {
     position: fixed;
-    bottom: 30px;
-    right: 30px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    bottom: 20px;
+    right: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr auto;
+    gap: 8px;
+    max-width: 140px;
   }
   
   .mobile-action-btn {
-    width: 60px;
-    height: 60px;
-    background: rgba(0, 0, 0, 0.6);
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.7);
     border: 2px solid rgba(255, 255, 255, 0.8);
     border-radius: 50%;
     color: white;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: bold;
     display: flex;
     align-items: center;
@@ -4235,21 +4237,88 @@
     cursor: pointer;
     transition: all 0.2s ease;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    opacity: 0.85;
+    backdrop-filter: blur(5px);
   }
   
   .mobile-action-btn:active {
     background: rgba(255, 255, 255, 0.3);
     transform: scale(0.95);
+    opacity: 1;
+  }
+  
+  /* Auto-fade during gameplay for better visibility */
+  .mobile-actions.gameplay-fade {
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+  }
+  
+  .mobile-actions.gameplay-fade:hover {
+    opacity: 1;
+  }
+  
+  /* Compact mode for smaller screens */
+  .mobile-actions.compact {
+    gap: 5px;
+    max-width: 120px;
+  }
+  
+  .mobile-actions.compact .mobile-action-btn {
+    width: 45px;
+    height: 45px;
+    font-size: 8px;
+  }
+  
+  .mobile-actions.compact .mobile-action-btn.power-up {
+    height: 35px;
+    font-size: 10px;
   }
   
   .mobile-action-btn.primary {
-    background: rgba(0, 123, 255, 0.8);
-    border-color: rgba(0, 123, 255, 1);
+    background: linear-gradient(135deg, rgba(255, 69, 58, 0.9), rgba(255, 45, 85, 0.9));
+    border-color: rgba(255, 69, 58, 1);
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 4px 15px rgba(255, 69, 58, 0.4);
+  }
+  
+  .mobile-action-btn.primary:active {
+    background: linear-gradient(135deg, rgba(255, 45, 85, 0.9), rgba(255, 69, 58, 0.9));
+    box-shadow: 0 6px 20px rgba(255, 69, 58, 0.6);
   }
   
   .mobile-action-btn.secondary {
-    background: rgba(40, 167, 69, 0.8);
-    border-color: rgba(40, 167, 69, 1);
+    background: linear-gradient(135deg, rgba(52, 199, 89, 0.9), rgba(48, 209, 88, 0.9));
+    border-color: rgba(52, 199, 89, 1);
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 4px 15px rgba(52, 199, 89, 0.4);
+  }
+  
+  .mobile-action-btn.secondary:active {
+    background: linear-gradient(135deg, rgba(48, 209, 88, 0.9), rgba(52, 199, 89, 0.9));
+    box-shadow: 0 6px 20px rgba(52, 199, 89, 0.6);
+  }
+  
+  .mobile-action-btn.power-up {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.8), rgba(255, 165, 0, 0.8));
+    border-color: rgba(255, 215, 0, 1);
+    color: #000;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+    grid-column: 1 / -1;
+    width: auto;
+    border-radius: 25px;
+    height: 40px;
+    font-size: 11px;
+  }
+  
+  .mobile-action-btn.power-up:active {
+    background: linear-gradient(135deg, rgba(255, 165, 0, 0.9), rgba(255, 215, 0, 0.9));
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
   }
   
 
@@ -4265,6 +4334,15 @@
     border-radius: 15px;
     font-size: 11px;
     font-family: 'Inter', sans-serif;
+  }
+  
+  /* Hytopia SDK .mobile class support */
+  body.mobile .mobile-controls {
+    display: block !important;
+  }
+  
+  body.mobile .desktop-only {
+    display: none !important;
   }
   
   /* Improved mobile detection - more reliable than pointer: coarse */
@@ -4532,20 +4610,22 @@
     
     /* Enhanced Action Buttons for Phase 2 */
     .mobile-actions {
-      bottom: 40px !important;
-      right: 40px !important;
-      display: grid !important;
-      grid-template-columns: 1fr 1fr !important;
-      grid-gap: 15px !important;
-      flex-direction: unset !important;
+      bottom: 30px !important;
+      right: 30px !important;
+      gap: 10px !important;
     }
     
     .mobile-action-btn {
-      width: 70px !important;
-      height: 70px !important;
-      font-size: 12px !important;
-      border: 3px solid rgba(255, 255, 255, 0.6) !important;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+      width: 50px !important;
+      height: 50px !important;
+      font-size: 9px !important;
+      border: 2px solid rgba(255, 255, 255, 0.6) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    .mobile-action-btn.power-up {
+      height: 40px !important;
+      font-size: 10px !important;
     }
     
     .mobile-action-btn.primary {
@@ -9313,7 +9393,11 @@
   
   // Initialize mobile controls
   function initializeMobileControls() {
-    if (mobileControlsInitialized || !detectMobileDevice()) {
+    // Check for mobile via Hytopia SDK .mobile class or custom detection
+    const isMobileViaClass = document.body.classList.contains('mobile');
+    const isMobileViaDetection = detectMobileDevice();
+    
+    if (mobileControlsInitialized || (!isMobileViaClass && !isMobileViaDetection)) {
       return;
     }
     
@@ -9343,6 +9427,11 @@
     const mobileActions = document.createElement('div');
     mobileActions.className = 'mobile-actions';
     
+    // Apply compact mode for smaller screens
+    if (window.innerWidth <= 480 || window.innerHeight <= 640) {
+      mobileActions.classList.add('compact');
+    }
+    
     // Shoot button (Hytopia-compliant - onclick only)
     const shootButton = document.createElement('button');
     shootButton.className = 'mobile-action-btn primary';
@@ -9371,11 +9460,20 @@
     dodgeButton.textContent = 'DODGE';
     dodgeButton.setAttribute('onclick', 'handleMobileQuickAction("dodge")');
     
+    // Power-up button for arcade mode (F key equivalent)
+    const powerupButton = document.createElement('button');
+    powerupButton.className = 'mobile-action-btn power-up';
+    powerupButton.id = 'mobile-powerup-btn';
+    powerupButton.textContent = '⚡ F';
+    powerupButton.setAttribute('onclick', 'handleMobileQuickAction("powerup")');
+    powerupButton.title = 'Activate Power-up (F key)';
+    
     // Add buttons to actions container
     mobileActions.appendChild(shootButton);
     mobileActions.appendChild(passButton);
     mobileActions.appendChild(tackleButton);
     mobileActions.appendChild(dodgeButton);
+    mobileActions.appendChild(powerupButton);
     
     // Create mobile performance indicator
     const performanceIndicator = document.createElement('div');
@@ -9390,6 +9488,32 @@
     
     // Add container to document
     document.body.appendChild(mobileControlsContainer);
+    
+    // Auto-fade buttons during gameplay for better visibility
+    let gameplayFadeTimer;
+    
+    // Add fade-out during active input periods
+    const enableGameplayFade = () => {
+      clearTimeout(gameplayFadeTimer);
+      mobileActions.classList.add('gameplay-fade');
+      
+      gameplayFadeTimer = setTimeout(() => {
+        mobileActions.classList.remove('gameplay-fade');
+      }, 4000); // 4 seconds of reduced opacity
+    };
+    
+    // Listen for joystick movement to trigger fade
+    document.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.virtual-joystick')) {
+        enableGameplayFade();
+      }
+    });
+    
+    document.addEventListener('touchmove', (e) => {
+      if (e.target.closest('.virtual-joystick')) {
+        enableGameplayFade();
+      }
+    });
     
     // Initialize camera control events
     initializeMobileCameraControls();
@@ -9564,10 +9688,11 @@
       
       // Map mobile actions to player input keys
       const inputKeyMap = {
-        'shoot': 'ml',    // Left mouse click
-        'pass': 'mr',     // Right mouse click  
-        'tackle': 'e',    // Interaction key
-        'dodge': 'space'  // Space/jump key
+        'shoot': 'ml',     // Left mouse click
+        'pass': 'mr',      // Right mouse click  
+        'tackle': 'e',     // Interaction key
+        'dodge': 'space',  // Space/jump key
+        'powerup': 'f'     // F key for power-ups
       };
       
       const inputKey = inputKeyMap[action];
@@ -9751,8 +9876,15 @@
     };
   }
   
-  // Enhanced device detection function
+  // Enhanced device detection function with Hytopia SDK support
   function detectMobileDevice() {
+    // First check Hytopia SDK's mobile detection if available
+    if (typeof hytopia !== 'undefined' && typeof hytopia.isMobile !== 'undefined') {
+      console.log('📱 Using Hytopia SDK mobile detection:', hytopia.isMobile);
+      return hytopia.isMobile;
+    }
+    
+    // Fallback to custom detection for development/testing
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
     const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
