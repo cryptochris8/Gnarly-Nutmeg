@@ -558,39 +558,57 @@ export default class CustomSoccerPlayer extends BaseEntityController {
         return; // Exit early to prevent other systems from activating
       }
 
-      // Handle F key when no ability is available (debug or pass request)
+      // Handle F key when no ability is available (arcade random power-up or pass request)
       if (input["f"]) {
         // Debug information about F key press
         console.log(`🎯 F key pressed by ${entity.player?.username || 'unknown'} - has ball: ${hasBall}, has ability: ${entity.abilityHolder.hasAbility()}`);
         
         if (!entity.abilityHolder.hasAbility()) {
-          console.log(`ℹ️ No ability to use - would send pass request if not holding ball`);
-          
-          // Only send pass request if not holding ball
-          if (!hasBall) {
+          // In arcade mode, activate random power-up
+          if (isArcadeMode()) {
+            console.log(`🎮 Activating random power-up in arcade mode`);
+            
             // Check cooldown to prevent spam
             const currentTime = Date.now();
             if (currentTime - this._lastPowerUpTime >= CustomSoccerPlayer.POWER_UP_COOLDOWN_MS) {
               this._lastPowerUpTime = currentTime;
-              
-              // Send request-pass message to server
-              entity.player.ui.sendData({
-                type: "request-pass"
-              });
-              
-              console.log(`✅ Pass request sent by ${entity.player?.username || 'unknown'}`);
-              
-              // Cancel the input to prevent multiple activations
+              this._activateRandomPowerUp(entity);
               input["f"] = false;
             } else {
               // Still on cooldown, cancel the input
               input["f"] = false;
               const remainingCooldown = Math.ceil((CustomSoccerPlayer.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
-              console.log(`🎯 Pass request on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
+              console.log(`🎯 Power-up on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
             }
           } else {
-            input["f"] = false;
-            console.log(`ℹ️ Not sending pass request - player has ball`);
+            console.log(`ℹ️ No ability to use - would send pass request if not holding ball`);
+            
+            // Only send pass request if not holding ball
+            if (!hasBall) {
+              // Check cooldown to prevent spam
+              const currentTime = Date.now();
+              if (currentTime - this._lastPowerUpTime >= CustomSoccerPlayer.POWER_UP_COOLDOWN_MS) {
+                this._lastPowerUpTime = currentTime;
+                
+                // Send request-pass message to server
+                entity.player.ui.sendData({
+                  type: "request-pass"
+                });
+                
+                console.log(`✅ Pass request sent by ${entity.player?.username || 'unknown'}`);
+                
+                // Cancel the input to prevent multiple activations
+                input["f"] = false;
+              } else {
+                // Still on cooldown, cancel the input
+                input["f"] = false;
+                const remainingCooldown = Math.ceil((CustomSoccerPlayer.POWER_UP_COOLDOWN_MS - (currentTime - this._lastPowerUpTime)) / 1000);
+                console.log(`🎯 Pass request on cooldown for ${entity.player?.username || 'unknown'} - ${remainingCooldown}s remaining`);
+              }
+            } else {
+              input["f"] = false;
+              console.log(`ℹ️ Not sending pass request - player has ball`);
+            }
           }
         } else {
           input["f"] = false;

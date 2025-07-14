@@ -508,7 +508,7 @@
   .control-buttons {
     position: fixed;
     top: 20px;
-    right: 20px;
+    right: 140px;
     display: flex;
     gap: 10px;
     z-index: 1001;
@@ -1101,15 +1101,204 @@
     font-weight: bold;
   }
 
-  #ability-icon {
-    width: 40px;
-    height: 40px;
+  /* ===== ENHANCED POWERUP INDICATOR ===== */
+  .powerup-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    transform: translateX(120px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 0;
-    transition: opacity 0.3s ease;
+    pointer-events: none;
   }
 
-  #ability-icon.visible {
+  .powerup-indicator.visible {
+    transform: translateX(0);
     opacity: 1;
+  }
+
+  .powerup-indicator-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 30, 0.95));
+    border-radius: 16px;
+    padding: 12px 16px;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+    min-width: 180px;
+  }
+
+  .powerup-icon-container {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .powerup-indicator-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    z-index: 2;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  }
+
+  .powerup-glow-effect {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background: linear-gradient(45deg, #00f5ff, #ff00f5, #f5ff00, #00f5ff);
+    border-radius: 16px;
+    opacity: 0.6;
+    filter: blur(8px);
+    animation: powerup-glow 2s ease-in-out infinite;
+    z-index: 1;
+  }
+
+  @keyframes powerup-glow {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+  }
+
+  .powerup-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .powerup-name-display {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .powerup-action-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .key-hint {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 11px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    animation: key-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes key-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(79, 70, 229, 0.4); }
+    50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(79, 70, 229, 0.6); }
+  }
+
+  .action-text {
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .powerup-indicator-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 16px;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    pointer-events: none;
+    opacity: 0;
+    animation: border-shine 3s ease-in-out infinite;
+  }
+
+  @keyframes border-shine {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+
+  /* Activation animation */
+  .powerup-indicator.activating {
+    animation: powerup-activate 0.6s ease-out;
+  }
+
+  @keyframes powerup-activate {
+    0% { transform: translateX(0) scale(1); }
+    50% { transform: translateX(-10px) scale(1.1); }
+    100% { transform: translateX(120px) scale(0.8); opacity: 0; }
+  }
+
+  /* ===== EMPTY POWERUP SLOT INDICATOR ===== */
+  .empty-powerup-slot {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 999;
+    opacity: 0;
+    transform: translateX(50px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+
+  .empty-powerup-slot.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .empty-slot-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(40, 40, 40, 0.7));
+    border-radius: 12px;
+    padding: 8px 12px;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .empty-slot-icon {
+    font-size: 18px;
+    animation: empty-slot-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes empty-slot-pulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  .empty-slot-text {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* Legacy ability icon styles (hidden) */
+  #ability-icon {
+    display: none;
   }
 
   .goals-display {
@@ -1890,18 +2079,34 @@
   text-align: center;
 ">3</div>
 
-<!-- ABILITY ICON -->
-<img id="ability-icon" src="{{CDN_ASSETS_URL}}/ui/icons/shuriken-icon.png" alt="Ability" style="
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 1000;
-  pointer-events: none;
-" />
+<!-- ENHANCED POWERUP INDICATOR -->
+<div id="powerup-indicator" class="powerup-indicator" style="display: none;">
+  <div class="powerup-indicator-content">
+    <div class="powerup-icon-container">
+      <img id="powerup-indicator-icon" class="powerup-indicator-icon" src="" alt="Powerup">
+      <div class="powerup-glow-effect"></div>
+    </div>
+    <div class="powerup-info">
+      <div class="powerup-name-display" id="powerup-name-display">No Powerup</div>
+      <div class="powerup-action-hint">
+        <span class="key-hint">F</span>
+        <span class="action-text">to use</span>
+      </div>
+    </div>
+  </div>
+  <div class="powerup-indicator-border"></div>
+</div>
+
+<!-- EMPTY POWERUP SLOT INDICATOR (for arcade mode) -->
+<div id="empty-powerup-slot" class="empty-powerup-slot" style="display: none;">
+  <div class="empty-slot-content">
+    <div class="empty-slot-icon">⚡</div>
+    <div class="empty-slot-text">Collect Powerups!</div>
+  </div>
+</div>
+
+<!-- LEGACY ABILITY ICON (for compatibility) -->
+<img id="ability-icon" src="{{CDN_ASSETS_URL}}/ui/icons/shuriken-icon.png" alt="Ability" style="display: none;" />
 
 <!-- GOAL CELEBRATION ELEMENTS -->
 <div class="game-text" style="
@@ -7281,17 +7486,20 @@
 
     // Handle ability icon display
     if (data.type === "ability-icon") {
-      console.log("Ability icon received:", data);
-      showAbility(data.icon);
+      console.log("Enhanced ability data received:", data);
+      showAbility(data.icon, data.name || "Unknown Ability");
     }
 
     // Handle ability icon hiding
     if (data.type === "hide-ability-icon") {
       console.log("Hide ability icon received:", data);
-      const abilityIcon = document.getElementById("ability-icon");
-      if (abilityIcon) {
-        abilityIcon.classList.remove("visible");
-      }
+      hidePowerupIndicator();
+    }
+
+    // Handle powerup activation animation
+    if (data.type === "powerup-activated") {
+      console.log("Powerup activation received:", data);
+      activatePowerupIndicator();
     }
   });
 
@@ -7437,14 +7645,133 @@
     }, duration);
   }
 
-  function showAbility(iconUrl) {
-    const abilityIcon = document.getElementById("ability-icon");
-    abilityIcon.src = iconUrl;
-    abilityIcon.classList.add("visible");
+  // ===== ENHANCED POWERUP INDICATOR FUNCTIONS =====
+  function showAbility(iconUrl, abilityName = "Unknown Ability") {
+    const powerupIndicator = document.getElementById("powerup-indicator");
+    const powerupIcon = document.getElementById("powerup-indicator-icon");
+    const powerupName = document.getElementById("powerup-name-display");
     
-    setTimeout(() => {
-      abilityIcon.classList.remove("visible");
-    }, 3000);
+    if (powerupIndicator && powerupIcon && powerupName) {
+      // Construct proper icon URL if needed
+      let finalIconUrl = iconUrl;
+      if (iconUrl && !iconUrl.startsWith('http') && !iconUrl.includes('{{CDN_ASSETS_URL}}')) {
+        finalIconUrl = `{{CDN_ASSETS_URL}}/ui/icons/${iconUrl}.png`;
+      }
+      
+      // Set the powerup details
+      powerupIcon.src = finalIconUrl || "{{CDN_ASSETS_URL}}/ui/icons/default-ability.png";
+      powerupName.textContent = formatPowerupName(abilityName);
+      
+      // Hide empty slot indicator first
+      hideEmptyPowerupSlot();
+      
+      // Show the indicator with smooth animation
+      powerupIndicator.style.display = "block";
+      setTimeout(() => {
+        powerupIndicator.classList.add("visible");
+      }, 50);
+      
+      console.log(`✨ Enhanced powerup indicator shown: ${abilityName} with icon: ${finalIconUrl}`);
+    }
+    
+    // Legacy support (hidden but functional)
+    const legacyIcon = document.getElementById("ability-icon");
+    if (legacyIcon) {
+      legacyIcon.src = iconUrl;
+      legacyIcon.classList.add("visible");
+    }
+  }
+
+  function hidePowerupIndicator() {
+    const powerupIndicator = document.getElementById("powerup-indicator");
+    if (powerupIndicator) {
+      powerupIndicator.classList.remove("visible");
+      setTimeout(() => {
+        powerupIndicator.style.display = "none";
+      }, 400);
+    }
+    
+    // Legacy support
+    const legacyIcon = document.getElementById("ability-icon");
+    if (legacyIcon) {
+      legacyIcon.classList.remove("visible");
+    }
+    
+    // Show empty slot indicator in arcade mode
+    showEmptyPowerupSlot();
+    
+    console.log("🚫 Powerup indicator hidden - ready for new pickup");
+  }
+
+  function showEmptyPowerupSlot() {
+    // Only show in arcade mode
+    if (window.currentGameMode !== 'arcade') return;
+    
+    const emptySlot = document.getElementById("empty-powerup-slot");
+    if (emptySlot) {
+      emptySlot.style.display = "block";
+      setTimeout(() => {
+        emptySlot.classList.add("visible");
+      }, 200);
+      
+      console.log("⚡ Empty powerup slot shown - indicating pickup availability");
+    }
+  }
+
+  function hideEmptyPowerupSlot() {
+    const emptySlot = document.getElementById("empty-powerup-slot");
+    if (emptySlot) {
+      emptySlot.classList.remove("visible");
+      setTimeout(() => {
+        emptySlot.style.display = "none";
+      }, 300);
+    }
+  }
+
+  function activatePowerupIndicator() {
+    const powerupIndicator = document.getElementById("powerup-indicator");
+    if (powerupIndicator) {
+      powerupIndicator.classList.add("activating");
+      
+      setTimeout(() => {
+        powerupIndicator.classList.remove("activating", "visible");
+        powerupIndicator.style.display = "none";
+      }, 600);
+      
+      console.log("🎯 Powerup activated - indicator dismissed with animation");
+    }
+  }
+
+  function formatPowerupName(abilityName) {
+    // Convert ability name from icon format to display format
+    const nameMap = {
+      'shuriken-icon': 'Shuriken',
+      'speed-boost': 'Speed Boost',
+      'freeze-blast': 'Freeze Blast',
+      'fireball': 'Fireball',
+      'mega-kick': 'Mega Kick',
+      'power-boost': 'Power Boost',
+      'precision': 'Precision',
+      'stamina': 'Stamina',
+      'shield': 'Shield',
+      'time-slow': 'Time Slow',
+      'ball-magnet': 'Ball Magnet',
+      'star-rain': 'Star Rain',
+      'crystal-barrier': 'Crystal Barrier',
+      'elemental-mastery': 'Elemental Mastery',
+      'tidal-wave': 'Tidal Wave',
+      'reality-warp': 'Reality Warp',
+      'honey-trap': 'Honey Trap'
+    };
+    
+    // Clean up the ability name if it contains icon suffix
+    let cleanName = abilityName.replace('-icon', '').replace(/[_-]/g, ' ');
+    
+    return nameMap[abilityName] || 
+           nameMap[cleanName] || 
+           cleanName.split(' ').map(word => 
+             word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+           ).join(' ');
   }
 
   // ===== POWERUP FEEDBACK =====
