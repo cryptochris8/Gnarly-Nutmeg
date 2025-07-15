@@ -322,7 +322,7 @@ export class StarRainAbility implements Ability {
             // Main explosion effect
             const explosionEffect = new Entity({
                 name: 'star-explosion',
-                modelUri: 'models/misc/firework.gltf', // Firework for star explosion
+                modelUri: 'misc/firework.gltf', // Correct path for firework model
                 modelScale: 4.0, // Large explosion
                 rigidBodyOptions: {
                     type: RigidBodyType.KINEMATIC_POSITION,
@@ -473,7 +473,7 @@ export class StarRainAbility implements Ability {
         try {
             const teleportEffect = new Entity({
                 name: `teleport-${type}`,
-                modelUri: 'models/misc/firework.gltf',
+                modelUri: 'misc/firework.gltf',
                 modelScale: type === 'departure' ? 3.0 : 2.5,
                 rigidBodyOptions: {
                     type: RigidBodyType.KINEMATIC_POSITION,

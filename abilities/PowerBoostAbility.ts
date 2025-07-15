@@ -1,7 +1,8 @@
 import type { Ability } from './Ability';
 import type { ItemAbilityOptions } from './itemTypes';
-import { type Vector3Like, type Entity } from 'hytopia';
+import { type Vector3Like, type Entity, Audio } from 'hytopia';
 import SoccerPlayerEntity from '../entities/SoccerPlayerEntity';
+import { isArcadeMode } from '../state/gameModes';
 
 export class PowerBoostAbility implements Ability {
     private effectDuration: number = 8000; // 8 seconds default
@@ -29,28 +30,73 @@ export class PowerBoostAbility implements Ability {
     }
 
     private applyBoostEffect(player: SoccerPlayerEntity): void {
+        // SAFETY CHECK: Only work in arcade mode
+        if (!isArcadeMode()) {
+            console.log("🎮 POWER BOOST: Blocked - not in arcade mode");
+            return;
+        }
+
+        // Get the arcade enhancement manager from the world
+        const arcadeManager = (player.world as any)._arcadeManager;
+        if (!arcadeManager) {
+            console.error("❌ POWER BOOST: Arcade manager not found!");
+            return;
+        }
+
         // Apply different effects based on boost type
+        let success = false;
         switch (this.boostType) {
             case 'mega_kick':
-                // TODO: Implement mega kick boost
-                console.log(`🏈 ${player.player.username} gained mega kick power!`);
+                console.log(`⚽ Activating Mega Kick for ${player.player.username}`);
+                success = arcadeManager.activatePowerUp(player.player.username, 'mega_kick');
                 break;
             case 'power_boost':
-                // TODO: Implement power boost
-                console.log(`💪 ${player.player.username} gained power boost!`);
+                console.log(`💪 Activating Power Boost for ${player.player.username}`);
+                success = arcadeManager.activatePowerUp(player.player.username, 'power');
                 break;
             case 'precision':
-                // TODO: Implement precision boost
-                console.log(`🎯 ${player.player.username} gained precision boost!`);
+                console.log(`🎯 Activating Precision Boost for ${player.player.username}`);
+                success = arcadeManager.activatePowerUp(player.player.username, 'precision');
                 break;
             case 'stamina':
-                // TODO: Implement stamina boost
-                console.log(`🧪 ${player.player.username} gained stamina boost!`);
+                console.log(`💊 Activating regular Stamina boost for ${player.player.username}`);
+                success = arcadeManager.activatePowerUp(player.player.username, 'stamina');
                 break;
             case 'shield':
-                // TODO: Implement shield boost
-                console.log(`🛡️ ${player.player.username} gained shield protection!`);
+                console.log(`🛡️ Activating Shield for ${player.player.username}`);
+                success = arcadeManager.activatePowerUp(player.player.username, 'shield');
                 break;
+            default:
+                console.error(`❌ Unknown boost type: ${this.boostType}`);
+        }
+
+        if (success) {
+            // Play power-up activation sound
+            try {
+                const activationAudio = new Audio({
+                    uri: 'audio/sfx/ui/inventory-grab-item.mp3',
+                    loop: false,
+                    volume: 0.8,
+                    attachedToEntity: player,
+                });
+                activationAudio.play(player.world);
+            } catch (e) {
+                console.log("Could not play activation sound:", e);
+            }
+
+            // Send UI feedback
+            try {
+                player.player.ui.sendData({
+                    type: "power-up-activated",
+                    powerUpType: this.boostType,
+                    message: `${this.options.name} Activated!`,
+                    duration: this.effectDuration
+                });
+            } catch (e) {
+                console.log("Could not send UI feedback:", e);
+            }
+        } else {
+            console.error(`❌ Failed to activate ${this.options.name} for ${player.player.username}`);
         }
     }
 

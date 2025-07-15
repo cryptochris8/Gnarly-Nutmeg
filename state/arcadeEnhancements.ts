@@ -192,10 +192,10 @@ export class ArcadeEnhancementManager {
   // Create floating stamina effect above player
   private createStaminaFloatingEffect(player: SoccerPlayerEntity): void {
     try {
-      // Create floating potion effect
+      // Create floating energy orb effect
       const effectEntity = new Entity({
         name: 'stamina-floating-effect',
-        modelUri: 'models/items/potion-water.gltf',
+        modelUri: 'projectiles/energy-orb-projectile.gltf',
         modelScale: 0.8,
         rigidBodyOptions: {
           type: RigidBodyType.KINEMATIC_POSITION,
@@ -759,7 +759,7 @@ export class ArcadeEnhancementManager {
     // Create massive explosion visual effect
     const explosionEffect = new Entity({
       name: 'fireball-explosion',
-      modelUri: 'models/misc/firework.gltf', // Using firework as explosion base
+      modelUri: 'misc/firework.gltf', // Correct path for firework explosion
       modelScale: 8.0, // Huge explosion effect
       rigidBodyOptions: {
         type: RigidBodyType.KINEMATIC_POSITION,
@@ -931,7 +931,7 @@ export class ArcadeEnhancementManager {
       
       const firePatch = new Entity({
         name: 'fire-patch',
-        modelUri: 'models/misc/firework.gltf',
+        modelUri: 'misc/firework.gltf',
         modelScale: 2.0 + Math.random() * 1.0, // Varied sizes
         rigidBodyOptions: {
           type: RigidBodyType.KINEMATIC_POSITION,

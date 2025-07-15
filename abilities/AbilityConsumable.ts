@@ -6,6 +6,9 @@ import SoccerPlayerEntity from '../entities/SoccerPlayerEntity';
 import { ABILITY_PICKUP_POSITIONS, ABILITY_RESPAWN_TIME } from '../state/gameConfig';
 import { SpeedBoostAbility } from './SpeedBoostAbility';
 import { PowerBoostAbility } from './PowerBoostAbility';
+import { StaminaAbility } from './StaminaAbility';
+import { FreezeBlastAbility } from './FreezeBlastAbility';
+import { FireballAbility } from './FireballAbility';
 import { TimeSlowAbility } from './TimeSlowAbility';
 import { BallMagnetAbility } from './BallMagnetAbility';
 import { StarRainAbility } from './StarRainAbility';
@@ -149,6 +152,10 @@ export class AbilityConsumable {
                     console.log(`🔧 Creating SpeedBoostAbility`);
                     ability = new SpeedBoostAbility(this.abilityOptions);
                     break;
+                case "Stamina Potion":
+                    console.log(`🔧 Creating StaminaAbility`);
+                    ability = new StaminaAbility(this.abilityOptions);
+                    break;
                 case "Mega Kick":
                 case "Power Boost":
                 case "Precision":
@@ -183,10 +190,18 @@ export class AbilityConsumable {
                     ability = new EnhancedPowerAbility(this.abilityOptions);
                     break;
                 
+                // Specific projectile abilities
+                case "Freeze Blast":
+                    console.log(`🔧 Creating FreezeBlastAbility`);
+                    ability = new FreezeBlastAbility(this.abilityOptions);
+                    break;
+                case "Fireball":
+                    console.log(`🔧 Creating FireballAbility`);
+                    ability = new FireballAbility(this.abilityOptions);
+                    break;
+                
                 // Projectile abilities (default)
                 case "Shuriken":
-                case "Freeze Blast":
-                case "Fireball":
                 default:
                     console.log(`🔧 Creating ItemThrowAbility for ${this.abilityOptions.name} (default)`);
                     ability = new ItemThrowAbility(this.abilityOptions);
@@ -224,11 +239,14 @@ export class AbilityConsumable {
 
     private createPickupParticles(position: Vector3Like) {
         try {
-            // Create pickup effect using firework model as visual feedback
+            // Create pickup effect using firework as visual feedback
             const effectEntity = new Entity({
                 name: 'pickup-effect',
                 modelUri: 'misc/firework.gltf',
                 modelScale: 0.5,
+                rigidBodyOptions: {
+                    type: RigidBodyType.KINEMATIC_POSITION,
+                }
             });
 
             // Spawn briefly at pickup location

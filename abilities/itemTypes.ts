@@ -81,7 +81,7 @@ export const powerBoostOptions: ItemAbilityOptions = {
     name: "Power Boost",
     speed: 0,
     damage: 30,
-    modelUri: "models/misc/firework.gltf",
+    modelUri: "misc/firework.gltf",
     modelScale: 0.3,
     projectileRadius: 0,
     knockback: 0,
@@ -139,13 +139,13 @@ export const staminaBoostOptions: ItemAbilityOptions = {
     name: "Stamina Potion",
     speed: 1.5,              // 50% stamina enhancement multiplier (using speed field)
     damage: 0,               // No damage - this is a consumable
-    modelUri: "models/items/potion-water.gltf", // Perfect model for stamina potion
+    modelUri: "projectiles/energy-orb-projectile.gltf", // Use energy orb as potion substitute
     modelScale: 0.5,         // Medium size for visibility
     projectileRadius: 0,     // Not a projectile
     knockback: 0,            // No knockback
     lifeTime: 2.0,           // 2 second visual effect duration
     icon: "stamina-potion",  // UI icon identifier
-    idleAnimation: "idle",   // Default idle animation (if available)
+    idleAnimation: "floating",   // Default idle animation
 };
 
 // ====== ENHANCED POWER-UPS ======
@@ -158,7 +158,7 @@ export const timeSlowOptions: ItemAbilityOptions = {
     name: "Time Slow",
     speed: 0.3,              // Time scale factor for other players
     damage: 8000,            // Duration in milliseconds
-    modelUri: "models/items/clock.gltf",
+    modelUri: "misc/selection-indicator.gltf", // Use selection indicator as clock substitute
     modelScale: 0.6,
     projectileRadius: 0,
     knockback: 0,
@@ -175,7 +175,7 @@ export const ballMagnetOptions: ItemAbilityOptions = {
     name: "Ball Magnet",
     speed: 10,               // Magnetic pull force
     damage: 10000,           // Duration in milliseconds
-    modelUri: "models/items/compass.gltf",
+    modelUri: "misc/range-indicator-dot-green.gltf", // Use green dot as compass substitute
     modelScale: 0.5,
     projectileRadius: 5.0,   // Magnetic field radius
     knockback: 0,
@@ -192,7 +192,7 @@ export const starRainOptions: ItemAbilityOptions = {
     name: "Star Rain",
     speed: 15,               // Teleport range
     damage: 20,              // Star projectile damage
-    modelUri: "models/items/golden-apple.gltf",
+    modelUri: "projectiles/energy-orb-projectile.gltf", // Use energy orb as golden apple substitute
     modelScale: 0.4,
     projectileRadius: 2.0,   // Star explosion radius
     knockback: 1.2,          // Star knockback force
@@ -209,7 +209,7 @@ export const crystalBarrierOptions: ItemAbilityOptions = {
     name: "Crystal Barrier",
     speed: 5,                // Phase duration in seconds
     damage: 15000,           // Barrier duration in milliseconds
-    modelUri: "models/items/sword-diamond.gltf",
+    modelUri: "misc/sword.gltf", // Use existing sword as diamond sword substitute
     modelScale: 0.3,
     projectileRadius: 1.5,   // Barrier thickness
     knockback: 0,
@@ -226,7 +226,7 @@ export const elementalMasteryOptions: ItemAbilityOptions = {
     name: "Elemental Mastery",
     speed: 0.5,              // Gravity multiplier
     damage: 12000,           // Duration in milliseconds
-    modelUri: "models/environment/Dungeon/magic-circle-purple.gltf",
+    modelUri: "misc/selection-indicator.gltf", // Use selection indicator as magic circle substitute
     modelScale: 1.0,
     projectileRadius: 8.0,   // Effect area radius
     knockback: 0.8,
@@ -243,7 +243,7 @@ export const tidalWaveOptions: ItemAbilityOptions = {
     name: "Tidal Wave",
     speed: 12,               // Wave force
     damage: 6000,            // Splash zone duration in milliseconds
-    modelUri: "models/items/milk.gltf",
+    modelUri: "projectiles/energy-orb-projectile.gltf", // Use energy orb as milk bottle substitute
     modelScale: 0.4,
     projectileRadius: 6.0,   // Splash zone radius
     knockback: 1.5,          // Wave knockback
@@ -260,7 +260,7 @@ export const realityWarpOptions: ItemAbilityOptions = {
     name: "Reality Warp",
     speed: 20,               // Portal teleport range
     damage: 15000,           // Portal duration in milliseconds
-    modelUri: "models/items/map.gltf",
+    modelUri: "misc/selection-indicator.gltf", // Use selection indicator as map/scroll substitute
     modelScale: 0.5,
     projectileRadius: 2.0,   // Portal radius
     knockback: 0,
@@ -277,7 +277,7 @@ export const honeyTrapOptions: ItemAbilityOptions = {
     name: "Honey Trap",
     speed: 0.3,              // Movement slow factor
     damage: 10000,           // Trap duration in milliseconds
-    modelUri: "models/items/carrot-golden.gltf",
+    modelUri: "misc/range-indicator-dot-green.gltf", // Use green dot as golden carrot substitute
     modelScale: 0.4,
     projectileRadius: 4.0,   // Trap radius
     knockback: 0,

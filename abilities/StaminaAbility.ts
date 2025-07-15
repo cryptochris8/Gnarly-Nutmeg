@@ -218,10 +218,10 @@ export class StaminaAbility implements Ability {
                 return;
             }
 
-            // Create a temporary visual effect entity using the potion model
+            // Create a temporary visual effect entity using the energy orb model
             const effectEntity = new Entity({
                 name: 'stamina-effect',
-                modelUri: this.options.modelUri, // "models/items/potion-water.gltf"
+                modelUri: this.options.modelUri, // "projectiles/energy-orb-projectile.gltf"
                 modelScale: this.options.modelScale * 1.5, // Slightly larger for effect
                 modelLoopedAnimations: [this.options.idleAnimation],
                 rigidBodyOptions: {
