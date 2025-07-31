@@ -16,7 +16,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/ws": "^8.18.1",
-    "tsx": "^4.19.2"
+    "tsx": "^4.20.3"
   },
   "peerDependencies": {
     "typescript": "^5.7.3"
@@ -25,7 +25,7 @@
     "@gltf-transform/cli": "^4.2.0",
     "@hytopia.com/assets": "^0.3.13",
     "hytopia": "^0.6.34",
-    "mediasoup": "^3.16.5"
+    "mediasoup": "^3.16.6"
   },
   "trustedDependencies": [
     "mediasoup"

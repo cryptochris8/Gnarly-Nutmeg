@@ -759,7 +759,7 @@ export class ArcadeEnhancementManager {
     // Create massive explosion visual effect
     const explosionEffect = new Entity({
       name: 'fireball-explosion',
-      modelUri: 'misc/firework.gltf', // Correct path for firework explosion
+      modelUri: 'models/misc/firework.gltf', // Correct path for firework explosion
       modelScale: 8.0, // Huge explosion effect
       rigidBodyOptions: {
         type: RigidBodyType.KINEMATIC_POSITION,
@@ -931,7 +931,7 @@ export class ArcadeEnhancementManager {
       
       const firePatch = new Entity({
         name: 'fire-patch',
-        modelUri: 'misc/firework.gltf',
+        modelUri: 'models/misc/firework.gltf',
         modelScale: 2.0 + Math.random() * 1.0, // Varied sizes
         rigidBodyOptions: {
           type: RigidBodyType.KINEMATIC_POSITION,

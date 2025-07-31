@@ -4,7 +4,16 @@
       "Bash(npm view:*)",
       "WebFetch(domain:dev.hytopia.com)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(where npx)",
+      "Bash(npx gltf-transform:*)",
+      "Bash(npm run dev:windows:*)",
+      "Bash(mkdir:*)",
+      "Bash(certutil:*)",
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(git add:*)",
+      "Bash(npm run start:windows:*)"
     ],
     "deny": []
   }

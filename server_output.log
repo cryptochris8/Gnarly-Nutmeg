@@ -1,0 +1,150 @@
+
+> dev:windows
+> npx tsx --watch index.ts
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 HYTOPIA PLATFORM GATEWAY IS NOT INITIALIZED 🚨
+
+🔧 Local development is still possible, but these features will be disabled:
+  • 👤 Player Accounts
+  • 🎭 Player Cosmetics
+  • 🐛 Crash Analytics & Debug Logs
+
+💡 These features will be enabled but modified:
+  • 💾 Player & Global Persisted Data - Data will be persisted
+       locally in the ./dev/persistence directory of your project.
+       Player ids for data persistence will begin at 1 for the first 
+       player to join your local server, and increments for each
+       additional player. This means that if you restart your
+       server, the first player id will be 1 again. This is to ensure
+       that data persistence across server restarts can be easily
+       tested and debugged in local development.
+
+To enable the HYTOPIA Platform Gateway locally:
+  1. Set these environment variables:
+     HYTOPIA_API_KEY, HYTOPIA_GAME_ID, HYTOPIA_LOBBY_ID
+  2. You can find these values at: https://create.hytopia.com
+
+Note: In production, these environment variables will be auto-populated 
+& the HYTOPIA Platform Gateway will automatically be initialized 🚀
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 Bun + Windows: Set MEDIASOUP_WORKER_BIN to: C:\Users\chris\new-soccer\Hysports-Soccer-master\node_modules\mediasoup\worker\out\Release\mediasoup-worker.exe
+using deprecated parameters for the initialization function; pass a single object instead
+Socket._initWrtc(): WebRTC enabled and ready!
+ModelRegistry.preloadModels(): Preloading 20 models...
+ModelRegistry: Optimizing model strunned_stars/scene.gltf...
+
+[31m[1m==========[ RUNTIME ERROR #1 | 2025-07-14T18:26:19.181Z ]==========[0m
+The server encountered an unrecoverable error and has crashed!
+
+[31m[1m⚠️  FATAL ERROR:[0m [1mFailed to initialize the game engine, exiting. Error: hU: Command failed with exit code 127: npx gltf-transform optimize "C:\Users\chris\new-soccer\Hysports-Soccer-master\assets\strunned_stars\scene.gltf" "C:\Users\chris\new-soccer\Hysports-Soccer-master\assets\strunned_stars\.optimized\scene\scene.gltf" --compress false --instance false --simplify false
+
+/usr/bin/bash: Files\Git\bin\bash.exe: No such file or directory[0m
+[36m🔍 STACK TRACE:[0m
+   
+   /usr/bin/bash: Files\Git\bin\bash.exe: No such file or directory
+   at [32mFunction.fatalError[0m (C:\Users\chris\new-soccer\Hysports-Soccer-master\node_modules\hytopia\node-server.mjs:365:8266)
+   at [32m<anonymous>[0m (C:\Users\chris\new-soccer\Hysports-Soccer-master\node_modules\hytopia\node-server.mjs:491:91440)
+[31m[1m=================================================[0m
+
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Error: Failed to initialize the game engine, exiting. Error: hU: Command failed with exit code 127: npx gltf-transform optimize "C:\Users\chris\new-soccer\Hysports-Soccer-master\assets\strunned_stars\scene.gltf" "C:\Users\chris\new-soccer\Hysports-Soccer-master\assets\strunned_stars\.optimized\scene\scene.gltf" --compress false --instance false --simplify false
+
+/usr/bin/bash: Files\Git\bin\bash.exe: No such file or directory
+    at Function.fatalError (C:\Users\chris\new-soccer\Hysports-Soccer-master\node_modules\hytopia\node-server.mjs:365:8266)
+    at <anonymous> (C:\Users\chris\new-soccer\Hysports-Soccer-master\node_modules\hytopia\node-server.mjs:491:91440)
+
+Node.js v22.14.0
+Failed running 'index.ts'
+Restarting 'index.ts'
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 HYTOPIA PLATFORM GATEWAY IS NOT INITIALIZED 🚨
+
+🔧 Local development is still possible, but these features will be disabled:
+  • 👤 Player Accounts
+  • 🎭 Player Cosmetics
+  • 🐛 Crash Analytics & Debug Logs
+
+💡 These features will be enabled but modified:
+  • 💾 Player & Global Persisted Data - Data will be persisted
+       locally in the ./dev/persistence directory of your project.
+       Player ids for data persistence will begin at 1 for the first 
+       player to join your local server, and increments for each
+       additional player. This means that if you restart your
+       server, the first player id will be 1 again. This is to ensure
+       that data persistence across server restarts can be easily
+       tested and debugged in local development.
+
+To enable the HYTOPIA Platform Gateway locally:
+  1. Set these environment variables:
+     HYTOPIA_API_KEY, HYTOPIA_GAME_ID, HYTOPIA_LOBBY_ID
+  2. You can find these values at: https://create.hytopia.com
+
+Note: In production, these environment variables will be auto-populated 
+& the HYTOPIA Platform Gateway will automatically be initialized 🚀
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 Bun + Windows: Set MEDIASOUP_WORKER_BIN to: C:\Users\chris\new-soccer\Hysports-Soccer-master\node_modules\mediasoup\worker\out\Release\mediasoup-worker.exe
+using deprecated parameters for the initialization function; pass a single object instead
+Socket._initWrtc(): WebRTC enabled and ready!
+ModelRegistry.preloadModels(): Preloading 20 models...
+ModelRegistry.preloadModels(): Preloaded 20 models!
+🎮 Starting simplified soccer server...
+🏟️ Loading soccer stadium...
+✅ Soccer map loaded
+✅ Enhanced stadium lighting configured
+⚽ Creating soccer ball...
+Creating soccer ball with config: {"SCALE":0.2,"RADIUS":0.2,"FRICTION":0.4,"LINEAR_DAMPING":0.7,"ANGULAR_DAMPING":3,"HORIZONTAL_FORCE":0.4,"VERTICAL_FORCE":0.6,"UPWARD_BIAS":0.2}
+Ball spawn position: {"x":7,"y":3,"z":-3}
+⚽ Goal sensors created and added to simulation
+Ball entity created, spawning at proper ground position
+Ball spawned successfully at: {"x":7,"y":3,"z":-3}
+Ball spawn status: SUCCESS
+✅ Soccer ball created and spawned
+ArcadeEnhancementManager initialized - pickup-based abilities only in Arcade Mode
+Arcade manager set for SoccerGame
+PickupGameManager initialized - active in Arcade Mode only
+Pickup manager set for SoccerGame
+🏆 Tournament manager set for SoccerGame
+FIFA Crowd Manager initialized
+FIFA crowd manager set for SoccerGame
+🔍 Performance Profiler initialized for Hytopia Soccer
+🚀 Starting performance profiling...
+📊 Sample interval: 2000ms
+📈 Max samples: 30
+📝 Log interval: 60000ms
+🎯 Performance Optimizer initialized at HIGH_PERFORMANCE level
+🚀 Performance optimizer initialized in HIGH_PERFORMANCE mode for GPU memory conservation
+🛡️ Server memory management enabled
+✅ Game initialized successfully with GPU memory optimizations!
+🎵 Loading audio system...
+🎵 Main music started
+🎵 Music system initialized - gameplay music ready
+WebServer.start(): Server running on port 8080.
+
+[31m[1m==========[ RUNTIME ERROR #1 | 2025-07-14T18:55:14.234Z ]==========[0m
+The server encountered a recoverable error and did not crash.
+You should fix this to prevent undefined-like return values and unexpected behavior.
+
+[31m[1m⚠️  ERROR:[0m [1mWebServer._onError(): listen EADDRINUSE: address already in use :::8080[0m
+[36m🔍 STACK TRACE:[0m
+   at [32mFunction.error[0m (C:\Users\chris\new-soccer\Hysports-Soccer-master\node_modules\hytopia\node-server.mjs:365:8152)
+   at [32mServer._onError[0m (C:\Users\chris\new-soccer\Hysports-Soccer-master\node_modules\hytopia\node-server.mjs:465:140)
+   at [32mServer.emit[0m (node:events:518:28)
+   at [32memitErrorNT[0m (node:net:1973:8)
+   at [32mprocess.processTicksAndRejections[0m (node:internal/process/task_queues:90:21)
+[31m[1m=================================================[0m
+
+Ball initialization complete, enabling boundary checks
+Current ball position: x=7, y=2.9801602363586426, z=-3
+Ball has moved from spawn for the first time.
+❌ Goal detection REJECTED: Ball below ground level at Y=-0.16
+❌ Goal detection REJECTED: Ball below ground level at Y=-0.37
+❌ Goal detection REJECTED: Ball below ground level at Y=-0.60
+❌ Goal detection REJECTED: Ball below ground level at Y=-0.83
+Ball unexpectedly below field at Y=-3.1550331115722656, resetting to spawn position
+⚠️  Ball detected as stationary for 5007ms at position (7.0, -3.0) - AI should retrieve it
