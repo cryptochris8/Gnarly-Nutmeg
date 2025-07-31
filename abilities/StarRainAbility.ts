@@ -368,7 +368,7 @@ export class StarRainAbility implements Ability {
             
             const fragment = new Entity({
                 name: `star-fragment-${i}`,
-                modelUri: 'models/misc/selection-indicator.gltf',
+                modelUri: 'misc/selection-indicator.gltf',
                 modelScale: 0.6,
                 rigidBodyOptions: {
                     type: RigidBodyType.KINEMATIC_POSITION,
@@ -467,14 +467,15 @@ export class StarRainAbility implements Ability {
     }
 
     /**
-     * Creates teleport effect at specified location
+     * Creates enhanced teleport effect at specified location
      */
     private createTeleportEffect(position: Vector3Like, world: any, type: 'departure' | 'arrival'): void {
         try {
+            // Create main portal effect
             const teleportEffect = new Entity({
                 name: `teleport-${type}`,
                 modelUri: 'misc/firework.gltf',
-                modelScale: type === 'departure' ? 3.0 : 2.5,
+                modelScale: type === 'departure' ? 4.0 : 3.5,
                 rigidBodyOptions: {
                     type: RigidBodyType.KINEMATIC_POSITION,
                 }
@@ -482,22 +483,113 @@ export class StarRainAbility implements Ability {
 
             teleportEffect.spawn(world, position);
 
-            // Play teleport sound
+            // Create portal ring effect
+            const portalRing = new Entity({
+                name: `portal-ring-${type}`,
+                modelUri: 'misc/selection-indicator.gltf',
+                modelScale: type === 'departure' ? 2.0 : 1.8,
+                rigidBodyOptions: {
+                    type: RigidBodyType.KINEMATIC_POSITION,
+                }
+            });
+
+            portalRing.spawn(world, {
+                x: position.x,
+                y: position.y + 0.1,
+                z: position.z
+            });
+
+            // Create swirling particles around portal
+            for (let i = 0; i < 6; i++) {
+                const particle = new Entity({
+                    name: `portal-particle-${type}-${i}`,
+                    modelUri: 'misc/selection-indicator.gltf',
+                    modelScale: 0.3,
+                    rigidBodyOptions: {
+                        type: RigidBodyType.KINEMATIC_POSITION,
+                    }
+                });
+
+                const angle = (i / 6) * Math.PI * 2;
+                const radius = 1.2;
+
+                particle.spawn(world, {
+                    x: position.x + Math.cos(angle) * radius,
+                    y: position.y + 0.5,
+                    z: position.z + Math.sin(angle) * radius
+                });
+
+                // Animate swirling motion
+                let rotationAngle = angle;
+                const swirlingInterval = setInterval(() => {
+                    if (!particle.isSpawned) {
+                        clearInterval(swirlingInterval);
+                        return;
+                    }
+
+                    rotationAngle += 0.2;
+                    const currentRadius = radius * (1 - (rotationAngle - angle) * 0.1);
+
+                    particle.setPosition({
+                        x: position.x + Math.cos(rotationAngle) * currentRadius,
+                        y: position.y + 0.5 + Math.sin(rotationAngle * 2) * 0.2,
+                        z: position.z + Math.sin(rotationAngle) * currentRadius
+                    });
+
+                    if (currentRadius < 0.2) {
+                        clearInterval(swirlingInterval);
+                        if (particle.isSpawned) {
+                            particle.despawn();
+                        }
+                    }
+                }, 50);
+            }
+
+            // Play enhanced teleport sounds
             const teleportAudio = new Audio({
-                uri: "audio/sfx/ui/inventory-grab-item.mp3",
+                uri: "audio/sfx/ui/portal-teleporting-long.mp3",
                 loop: false,
-                volume: 0.7,
+                volume: 0.8,
                 position: position,
-                referenceDistance: 12
+                referenceDistance: 15
             });
             teleportAudio.play(world);
 
-            // Remove effect after brief display
+            // Add mystical whoosh
+            setTimeout(() => {
+                const whooshAudio = new Audio({
+                    uri: "audio/sfx/ui/portal-travel-woosh.mp3",
+                    loop: false,
+                    volume: 0.6,
+                    position: position,
+                    referenceDistance: 12
+                });
+                whooshAudio.play(world);
+            }, 200);
+
+            // Add sparkle sound for arrival
+            if (type === 'arrival') {
+                setTimeout(() => {
+                    const sparkleAudio = new Audio({
+                        uri: "audio/sfx/ui/inventory-grab-item.mp3",
+                        loop: false,
+                        volume: 0.5,
+                        position: position,
+                        referenceDistance: 10
+                    });
+                    sparkleAudio.play(world);
+                }, 400);
+            }
+
+            // Remove main effects after animation
             setTimeout(() => {
                 if (teleportEffect.isSpawned) {
                     teleportEffect.despawn();
                 }
-            }, 1000);
+                if (portalRing.isSpawned) {
+                    portalRing.despawn();
+                }
+            }, type === 'departure' ? 1200 : 1500);
 
         } catch (error) {
             console.error("❌ TELEPORT EFFECT ERROR:", error);
@@ -554,7 +646,7 @@ export class StarRainAbility implements Ability {
         try {
             const impactEffect = new Entity({
                 name: 'star-impact-player',
-                modelUri: 'models/misc/selection-indicator.gltf',
+                modelUri: 'misc/selection-indicator.gltf',
                 modelScale: 1.5,
                 rigidBodyOptions: {
                     type: RigidBodyType.KINEMATIC_POSITION,

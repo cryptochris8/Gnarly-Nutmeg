@@ -8,10 +8,24 @@ import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 export class ArcadeEnhancementManager {
   private world: World;
   private playerEnhancements: Map<string, PlayerEnhancement> = new Map();
+  private freezeSafetyInterval: any;
 
   constructor(world: World) {
     this.world = world;
     console.log("ArcadeEnhancementManager initialized - pickup-based abilities only in Arcade Mode");
+    
+    // Start freeze safety check - runs every 5 seconds to unfreeze stuck players
+    this.freezeSafetyInterval = setInterval(() => {
+      this.checkAndUnfreezeStuckPlayers();
+    }, 5000);
+  }
+
+  // Cleanup method to stop intervals
+  destroy(): void {
+    if (this.freezeSafetyInterval) {
+      clearInterval(this.freezeSafetyInterval);
+      this.freezeSafetyInterval = null;
+    }
   }
 
   // Main update loop - only runs in arcade mode
@@ -331,6 +345,18 @@ export class ArcadeEnhancementManager {
 
       console.log(`🎮 ARCADE: In arcade mode, executing power-up ${powerUpType}`);
 
+      // Find player entity for charging effect
+      const playerEntity = this.findPlayerEntity(playerId);
+      if (playerEntity) {
+        // Create charging effect before activation
+        this.createChargingEffect(playerEntity, powerUpType);
+        
+        // Create environmental effects for major power-ups after a delay
+        setTimeout(() => {
+          this.createEnvironmentalEffect(powerUpType, playerEntity.position);
+        }, 1000);
+      }
+
       // Execute power-up effect based on type
       switch (powerUpType) {
         case 'freeze_blast':
@@ -356,6 +382,10 @@ export class ArcadeEnhancementManager {
         case 'shuriken':
           console.log(`🎮 ARCADE: Executing shuriken throw for ${playerId}`);
           this.executeShuriken(playerId);
+          break;
+        case 'speed_boost':
+          console.log(`🎮 ARCADE: Executing speed boost for ${playerId}`);
+          this.executeSpeedBoost(playerId);
           break;
         
         // Enhanced power-ups
@@ -428,7 +458,7 @@ export class ArcadeEnhancementManager {
       return;
     }
 
-    // Play freeze blast activation sound
+    // Play freeze blast activation sound with multiple layers
     const freezeActivationAudio = new Audio({
       uri: "audio/sfx/liquid/large-splash.mp3", // Using splash as ice crackling sound
       loop: false,
@@ -438,13 +468,35 @@ export class ArcadeEnhancementManager {
     });
     freezeActivationAudio.play(this.world);
 
+    // Add ice crystallization sound
+    setTimeout(() => {
+      const crystalAudio = new Audio({
+        uri: "audio/sfx/damage/glass-break-3.mp3",
+        loop: false,
+        volume: 0.4,
+        position: playerEntity.position,
+        referenceDistance: 12
+      });
+      crystalAudio.play(this.world);
+    }, 150);
+
+    // Add whoosh sound for cold wind
+    const windAudio = new Audio({
+      uri: "audio/sfx/ui/portal-travel-woosh.mp3",
+      loop: false,
+      volume: 0.3,
+      position: playerEntity.position,
+      referenceDistance: 18
+    });
+    windAudio.play(this.world);
+
     // Create spectacular visual effect for freeze blast activation
     this.createPowerUpEffect(playerEntity.position, 'freeze_blast');
 
     // Create visual freeze effect entity
     const freezeEffect = new Entity({
       name: 'freeze-effect',
-      modelUri: 'models/misc/selection-indicator.gltf', // Using existing model as freeze indicator
+      modelUri: 'misc/selection-indicator.gltf', // Using existing model as freeze indicator
       modelScale: 5.0, // Large scale for area effect
       rigidBodyOptions: {
         type: RigidBodyType.KINEMATIC_POSITION,
@@ -517,16 +569,49 @@ export class ArcadeEnhancementManager {
     console.log(`🧊 FREEZE BLAST COMPLETE: Affected ${frozenPlayers.length} players`);
   }
 
+  // Safety check to unfreeze players that have been frozen too long
+  private checkAndUnfreezeStuckPlayers(): void {
+    if (!isArcadeMode()) return;
+
+    const MAX_FREEZE_DURATION = 10000; // 10 seconds max freeze time
+    const currentTime = Date.now();
+
+    this.world.entityManager.getAllPlayerEntities().forEach((entity) => {
+      if (entity instanceof SoccerPlayerEntity) {
+        const frozenState = (entity as any)._frozenState;
+        
+        if (frozenState?.wasFrozen && frozenState.freezeTime) {
+          const freezeDuration = currentTime - frozenState.freezeTime;
+          
+          if (freezeDuration > MAX_FREEZE_DURATION) {
+            console.warn(`⚠️ FREEZE SAFETY: Player ${entity.player.username} has been frozen for ${freezeDuration}ms (>${MAX_FREEZE_DURATION}ms), force unfreezing!`);
+            this.unfreezePlayer(entity);
+          }
+        }
+      }
+    });
+  }
+
   // Freeze a player by disabling movement and adding visual indicator
   private freezePlayer(player: SoccerPlayerEntity): void {
+    // Check if player is already frozen to prevent stacking
+    if ((player as any)._frozenState?.wasFrozen) {
+      console.log(`🧊 Player ${player.player.username} is already frozen, skipping`);
+      return;
+    }
+
+    // Use the built-in freeze method first
+    player.freeze();
+    
     // Disable player movement by setting velocity to zero and adding mass
     player.setLinearVelocity({ x: 0, y: 0, z: 0 });
     player.setAngularVelocity({ x: 0, y: 0, z: 0 });
     
-    // Store original state
+    // Store original state with timestamp
     (player as any)._frozenState = {
       originalMass: player.mass,
-      wasFrozen: true
+      wasFrozen: true,
+      freezeTime: Date.now()
     };
 
     // Make player much heavier to prevent movement
@@ -535,7 +620,7 @@ export class ArcadeEnhancementManager {
     // Create ice effect indicator above player
     const iceEffect = new Entity({
       name: 'ice-indicator',
-      modelUri: 'models/misc/selection-indicator.gltf',
+      modelUri: 'misc/selection-indicator.gltf',
       modelScale: 1.5,
       rigidBodyOptions: {
         type: RigidBodyType.KINEMATIC_POSITION,
@@ -556,6 +641,13 @@ export class ArcadeEnhancementManager {
     if (!frozenState || !frozenState.wasFrozen) {
       return; // Player wasn't frozen
     }
+
+    // Log freeze duration for debugging
+    const freezeDuration = Date.now() - (frozenState.freezeTime || 0);
+    console.log(`🧊 Unfreezing ${player.player.username} after ${freezeDuration}ms`);
+
+    // Use the built-in unfreeze method
+    player.unfreeze();
 
     // Restore original mass
     player.setAdditionalMass(0);
@@ -660,10 +752,50 @@ export class ArcadeEnhancementManager {
     });
     burnAudio.play(this.world);
 
+    // Create particle trail effect for the fireball
+    this.createFireballTrail(fireball);
+
     // Track fireball for explosion detection
     this.trackFireballProjectile(fireball, playerId, burnAudio);
 
     console.log(`🔥 FIREBALL LAUNCHED: Direction [${direction.x.toFixed(2)}, ${direction.z.toFixed(2)}], Force: ${launchForce}`);
+  }
+
+  // Create particle trail effect for fireball projectile
+  private createFireballTrail(fireball: Entity): void {
+    const trailInterval = setInterval(() => {
+      if (!fireball.isSpawned) {
+        clearInterval(trailInterval);
+        return;
+      }
+
+      // Create small fire particle at current position
+      const trailParticle = new Entity({
+        name: 'fireball-trail',
+        modelUri: 'misc/firework.gltf',
+        modelScale: 0.3 + Math.random() * 0.2, // Varied sizes
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        }
+      });
+
+      // Spawn at fireball position with slight offset
+      trailParticle.spawn(this.world, {
+        x: fireball.position.x + (Math.random() - 0.5) * 0.3,
+        y: fireball.position.y + (Math.random() - 0.5) * 0.3,
+        z: fireball.position.z + (Math.random() - 0.5) * 0.3
+      });
+
+      // Fade out and remove after short time
+      setTimeout(() => {
+        if (trailParticle.isSpawned) {
+          trailParticle.despawn();
+        }
+      }, 800);
+    }, 50); // Create trail particle every 50ms
+
+    // Store interval reference on fireball for cleanup
+    (fireball as any)._trailInterval = trailInterval;
   }
 
   // Track fireball projectile for collision detection and explosion
@@ -679,6 +811,9 @@ export class ArcadeEnhancementManager {
       // Check if projectile still exists
       if (!fireball.isSpawned || hasExploded) {
         clearInterval(trackingInterval);
+        if ((fireball as any)._trailInterval) {
+          clearInterval((fireball as any)._trailInterval);
+        }
         burnAudio.pause();
         return;
       }
@@ -714,6 +849,9 @@ export class ArcadeEnhancementManager {
         
         // Stop tracking and clean up
         clearInterval(trackingInterval);
+        if ((fireball as any)._trailInterval) {
+          clearInterval((fireball as any)._trailInterval);
+        }
         burnAudio.pause();
         
         // Remove fireball (explosion will handle visual effects)
@@ -733,6 +871,9 @@ export class ArcadeEnhancementManager {
         this.triggerFireballExplosion(fireballPos, playerId);
         
         clearInterval(trackingInterval);
+        if ((fireball as any)._trailInterval) {
+          clearInterval((fireball as any)._trailInterval);
+        }
         burnAudio.pause();
         
         if (fireball.isSpawned) {
@@ -746,7 +887,7 @@ export class ArcadeEnhancementManager {
   private triggerFireballExplosion(explosionPos: { x: number, y: number, z: number }, playerId: string): void {
     console.log(`💥 FIREBALL EXPLOSION at [${explosionPos.x.toFixed(2)}, ${explosionPos.y.toFixed(2)}, ${explosionPos.z.toFixed(2)}]!`);
 
-    // Play massive explosion sound
+    // Play massive explosion sound with layered effects
     const explosionAudio = new Audio({
       uri: "audio/sfx/damage/explode.mp3", // Main explosion sound
       loop: false,
@@ -756,10 +897,34 @@ export class ArcadeEnhancementManager {
     });
     explosionAudio.play(this.world);
 
+    // Add thunder effect for extra drama
+    setTimeout(() => {
+      const thunderAudio = new Audio({
+        uri: "audio/sfx/weather/thunder-strike-1.mp3",
+        loop: false,
+        volume: 0.7,
+        position: explosionPos,
+        referenceDistance: 30
+      });
+      thunderAudio.play(this.world);
+    }, 200);
+
+    // Add glass breaking sound for debris effect
+    setTimeout(() => {
+      const debrisAudio = new Audio({
+        uri: "audio/sfx/damage/glass-break-2.mp3",
+        loop: false,
+        volume: 0.5,
+        position: explosionPos,
+        referenceDistance: 15
+      });
+      debrisAudio.play(this.world);
+    }, 400);
+
     // Create massive explosion visual effect
     const explosionEffect = new Entity({
       name: 'fireball-explosion',
-      modelUri: 'models/misc/firework.gltf', // Correct path for firework explosion
+      modelUri: 'misc/firework.gltf', // Correct path for firework explosion
       modelScale: 8.0, // Huge explosion effect
       rigidBodyOptions: {
         type: RigidBodyType.KINEMATIC_POSITION,
@@ -855,7 +1020,7 @@ export class ArcadeEnhancementManager {
     // Create fire effect above player
     const fireEffect = new Entity({
       name: 'burn-indicator',
-      modelUri: 'models/misc/selection-indicator.gltf', // Visual indicator of burn
+      modelUri: 'misc/selection-indicator.gltf', // Visual indicator of burn
       modelScale: 1.2,
       rigidBodyOptions: {
         type: RigidBodyType.KINEMATIC_POSITION,
@@ -931,7 +1096,7 @@ export class ArcadeEnhancementManager {
       
       const firePatch = new Entity({
         name: 'fire-patch',
-        modelUri: 'models/misc/firework.gltf',
+        modelUri: 'misc/firework.gltf',
         modelScale: 2.0 + Math.random() * 1.0, // Varied sizes
         rigidBodyOptions: {
           type: RigidBodyType.KINEMATIC_POSITION,
@@ -962,27 +1127,269 @@ export class ArcadeEnhancementManager {
     if (playerEntity) {
       // Create spectacular visual effect for mega kick activation
       this.createPowerUpEffect(playerEntity.position, 'mega_kick');
+      
+      // Create power charge effect around player's foot
+      const chargeEffect = new Entity({
+        name: 'mega-kick-charge',
+        modelUri: 'misc/firework.gltf',
+        modelScale: 1.5,
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        }
+      });
+      
+      chargeEffect.spawn(this.world, {
+        x: playerEntity.position.x,
+        y: playerEntity.position.y + 0.2,
+        z: playerEntity.position.z
+      });
+      
+      // Remove charge effect after 2 seconds
+      setTimeout(() => {
+        if (chargeEffect.isSpawned) {
+          chargeEffect.despawn();
+        }
+      }, 2000);
     }
     
     // Apply mega kick enhancement for 10 seconds
     this.addEnhancement(playerId, 'mega_kick', 10000);
     
-    // Play power-up sound
+    // Play power charging sound sequence
     new Audio({
-      uri: "audio/sfx/ui/inventory-grab-item.mp3",
+      uri: "audio/sfx/soccer/ball-kick-02.mp3",
       loop: false,
       volume: 0.8,
+      position: playerEntity?.position
     }).play(this.world);
     
+    // Add power surge sound
+    setTimeout(() => {
+      new Audio({
+        uri: "audio/sfx/weather/thunder-strike-2.mp3",
+        loop: false,
+        volume: 0.5,
+        position: playerEntity?.position
+      }).play(this.world);
+    }, 300);
+    
     console.log(`⚽ ${playerId} has mega kick power for 10 seconds!`);
+  }
+
+  // Execute speed boost power-up with trail effects
+  private executeSpeedBoost(playerId: string): void {
+    console.log(`💨 Speed Boost activated by ${playerId}!`);
+    
+    const playerEntity = this.findPlayerEntity(playerId);
+    if (playerEntity) {
+      // Create speed boost visual effect
+      this.createPowerUpEffect(playerEntity.position, 'speed_boost');
+      
+      // Create initial speed burst effect
+      for (let i = 0; i < 8; i++) {
+        const speedBurst = new Entity({
+          name: 'speed-burst',
+          modelUri: 'misc/selection-indicator.gltf',
+          modelScale: 0.3,
+          rigidBodyOptions: {
+            type: RigidBodyType.KINEMATIC_POSITION,
+          }
+        });
+        
+        const angle = (i / 8) * Math.PI * 2;
+        const radius = 1.2;
+        
+        speedBurst.spawn(this.world, {
+          x: playerEntity.position.x + Math.cos(angle) * radius,
+          y: playerEntity.position.y + 0.3,
+          z: playerEntity.position.z + Math.sin(angle) * radius
+        });
+        
+        // Animate outward expansion
+        let expansionRadius = radius;
+        const expandInterval = setInterval(() => {
+          expansionRadius += 0.2;
+          speedBurst.setPosition({
+            x: playerEntity.position.x + Math.cos(angle) * expansionRadius,
+            y: playerEntity.position.y + 0.3,
+            z: playerEntity.position.z + Math.sin(angle) * expansionRadius
+          });
+          
+          if (expansionRadius > 4.0) {
+            clearInterval(expandInterval);
+            if (speedBurst.isSpawned) {
+              speedBurst.despawn();
+            }
+          }
+        }, 50);
+      }
+      
+      // Start speed trail effect for the player
+      this.startSpeedTrail(playerEntity);
+    }
+    
+    // Apply speed boost enhancement for 15 seconds
+    this.addEnhancement(playerId, 'speed_boost', 15000);
+    
+    // Play whoosh activation sound
+    new Audio({
+      uri: "audio/sfx/ui/portal-travel-woosh.mp3",
+      loop: false,
+      volume: 0.8,
+      position: playerEntity?.position
+    }).play(this.world);
+    
+    // Add wind rush sound
+    setTimeout(() => {
+      new Audio({
+        uri: "audio/sfx/weather/wind-gust.mp3",
+        loop: false,
+        volume: 0.4,
+        position: playerEntity?.position
+      }).play(this.world);
+    }, 200);
+    
+    console.log(`💨 ${playerId} has speed boost for 15 seconds!`);
+  }
+
+  // Create speed trail effect for a player
+  private startSpeedTrail(player: SoccerPlayerEntity): void {
+    let lastPosition = { ...player.position };
+    let trailParticles: Entity[] = [];
+    const maxTrailLength = 10;
+    
+    const trailInterval = setInterval(() => {
+      if (!player.isSpawned) {
+        clearInterval(trailInterval);
+        // Clean up trail particles
+        trailParticles.forEach(particle => {
+          if (particle.isSpawned) {
+            particle.despawn();
+          }
+        });
+        return;
+      }
+      
+      // Check if player moved significantly
+      const currentPos = player.position;
+      const distance = Math.sqrt(
+        Math.pow(currentPos.x - lastPosition.x, 2) +
+        Math.pow(currentPos.z - lastPosition.z, 2)
+      );
+      
+      if (distance > 0.5) {
+        // Create trail particle at last position
+        const trailParticle = new Entity({
+          name: 'speed-trail',
+          modelUri: 'misc/selection-indicator.gltf',
+          modelScale: 0.2,
+          rigidBodyOptions: {
+            type: RigidBodyType.KINEMATIC_POSITION,
+          }
+        });
+        
+        trailParticle.spawn(this.world, {
+          x: lastPosition.x + (Math.random() - 0.5) * 0.3,
+          y: lastPosition.y + 0.1,
+          z: lastPosition.z + (Math.random() - 0.5) * 0.3
+        });
+        
+        trailParticles.push(trailParticle);
+        
+        // Remove oldest trail particles if too many
+        if (trailParticles.length > maxTrailLength) {
+          const oldParticle = trailParticles.shift();
+          if (oldParticle && oldParticle.isSpawned) {
+            oldParticle.despawn();
+          }
+        }
+        
+        // Fade out this particle after 1 second
+        setTimeout(() => {
+          if (trailParticle.isSpawned) {
+            trailParticle.despawn();
+          }
+          // Remove from array
+          const index = trailParticles.indexOf(trailParticle);
+          if (index > -1) {
+            trailParticles.splice(index, 1);
+          }
+        }, 1000);
+        
+        lastPosition = { ...currentPos };
+      }
+    }, 100); // Check every 100ms
+    
+    // Store interval reference for cleanup
+    (player as any)._speedTrailInterval = trailInterval;
+    
+    // Stop trail after 15 seconds (duration of speed boost)
+    setTimeout(() => {
+      if ((player as any)._speedTrailInterval) {
+        clearInterval((player as any)._speedTrailInterval);
+        delete (player as any)._speedTrailInterval;
+      }
+      
+      // Clean up remaining trail particles
+      trailParticles.forEach(particle => {
+        if (particle.isSpawned) {
+          particle.despawn();
+        }
+      });
+    }, 15000);
   }
 
   // Execute shield power-up
   private executeShield(playerId: string): void {
     console.log(`🛡️ Shield activated by ${playerId}!`);
     
+    const playerEntity = this.findPlayerEntity(playerId);
+    if (playerEntity) {
+      // Create shield visual effect
+      const shieldEffect = new Entity({
+        name: 'shield-bubble',
+        modelUri: 'misc/selection-indicator.gltf',
+        modelScale: 2.5,
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        },
+        parent: playerEntity
+      });
+      
+      shieldEffect.spawn(this.world, { x: 0, y: 1, z: 0 });
+      
+      // Store shield effect for later removal
+      (playerEntity as any)._shieldEffect = shieldEffect;
+      
+      // Remove shield effect after duration
+      setTimeout(() => {
+        if (shieldEffect.isSpawned) {
+          shieldEffect.despawn();
+        }
+        delete (playerEntity as any)._shieldEffect;
+      }, 30000);
+    }
+    
     // Apply shield enhancement for 30 seconds
     this.addEnhancement(playerId, 'shield', 30000);
+    
+    // Play metallic shield activation sound
+    new Audio({
+      uri: "audio/sfx/damage/hit-metal-3.mp3",
+      loop: false,
+      volume: 0.7,
+      position: playerEntity?.position
+    }).play(this.world);
+    
+    // Add energy hum
+    setTimeout(() => {
+      new Audio({
+        uri: "audio/sfx/ui/portal-teleporting-long.mp3",
+        loop: false,
+        volume: 0.3,
+        position: playerEntity?.position
+      }).play(this.world);
+    }, 200);
     
     // Play shield sound
     new Audio({
@@ -1133,7 +1540,7 @@ export class ArcadeEnhancementManager {
       return;
     }
 
-    // Play shuriken activation sound
+    // Play shuriken activation sound with wind effect
     const shurikenAudio = new Audio({
       uri: "audio/sfx/player/bow-01.mp3", // Using existing projectile sound
       loop: false,
@@ -1142,6 +1549,18 @@ export class ArcadeEnhancementManager {
       referenceDistance: 15
     });
     shurikenAudio.play(this.world);
+
+    // Add whoosh sound for throwing effect
+    setTimeout(() => {
+      const whooshAudio = new Audio({
+        uri: "audio/sfx/ui/portal-travel-woosh.mp3",
+        loop: false,
+        volume: 0.4,
+        position: playerEntity.position,
+        referenceDistance: 12
+      });
+      whooshAudio.play(this.world);
+    }, 100);
 
     // Create visual effect for shuriken activation
     this.createPowerUpEffect(playerEntity.position, 'shuriken');
@@ -1158,6 +1577,48 @@ export class ArcadeEnhancementManager {
     this.createShurikenProjectile(playerEntity, throwDirection);
     
     console.log(`🥷 SHURIKEN THROWN: ${playerId} launched shuriken projectile!`);
+  }
+
+  // Create spinning trail effect for shuriken
+  private createShurikenTrail(shuriken: Entity): void {
+    let trailCount = 0;
+    const maxTrails = 15; // Limit trail particles
+    
+    const trailInterval = setInterval(() => {
+      if (!shuriken.isSpawned || trailCount >= maxTrails) {
+        clearInterval(trailInterval);
+        return;
+      }
+
+      // Create metallic trail particle
+      const trailParticle = new Entity({
+        name: 'shuriken-trail',
+        modelUri: 'misc/selection-indicator.gltf',
+        modelScale: 0.2, // Small metallic glint
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        }
+      });
+
+      // Spawn at shuriken position
+      trailParticle.spawn(this.world, {
+        x: shuriken.position.x,
+        y: shuriken.position.y,
+        z: shuriken.position.z
+      });
+
+      // Quick fade and remove
+      setTimeout(() => {
+        if (trailParticle.isSpawned) {
+          trailParticle.despawn();
+        }
+      }, 400);
+
+      trailCount++;
+    }, 80); // Create trail particle every 80ms
+
+    // Store interval reference for cleanup
+    (shuriken as any)._trailInterval = trailInterval;
   }
 
   // Create shuriken projectile with stunning effect
@@ -1191,6 +1652,16 @@ export class ArcadeEnhancementManager {
       z: direction.z * 12
     };
     shuriken.setLinearVelocity(velocity);
+
+    // Add spinning motion
+    shuriken.setAngularVelocity({
+      x: 0,
+      y: 20, // Fast spin on Y axis
+      z: 0
+    });
+
+    // Create spinning trail effect
+    this.createShurikenTrail(shuriken);
 
     // Add collision detection for stunning effect
     shuriken.createAndAddChildCollider({
@@ -1226,6 +1697,9 @@ export class ArcadeEnhancementManager {
 
         // Despawn shuriken after hit
         if (shuriken.isSpawned) {
+          if ((shuriken as any)._trailInterval) {
+            clearInterval((shuriken as any)._trailInterval);
+          }
           shuriken.despawn();
         }
       }
@@ -1241,6 +1715,9 @@ export class ArcadeEnhancementManager {
       // Despawn if exceeded lifetime
       if (shurikenAge >= lifetime) {
         if (shuriken.isSpawned) {
+          if ((shuriken as any)._trailInterval) {
+            clearInterval((shuriken as any)._trailInterval);
+          }
           shuriken.despawn();
         }
       }
@@ -1251,6 +1728,316 @@ export class ArcadeEnhancementManager {
   public hasMegaKick(playerId: string): boolean {
     const enhancement = this.playerEnhancements.get(playerId);
     return enhancement?.type === 'mega_kick';
+  }
+
+  // Create ball trail effect when mega kick is used
+  public createBallTrailEffect(ballEntity: any): void {
+    if (!ballEntity || !ballEntity.isSpawned) {
+      return;
+    }
+
+    let trailParticles: Entity[] = [];
+    const maxTrailLength = 15;
+    let lastBallPosition = { ...ballEntity.position };
+    
+    const trailInterval = setInterval(() => {
+      if (!ballEntity.isSpawned) {
+        clearInterval(trailInterval);
+        // Clean up trail particles
+        trailParticles.forEach(particle => {
+          if (particle.isSpawned) {
+            particle.despawn();
+          }
+        });
+        return;
+      }
+      
+      // Check if ball is moving fast enough to create trail
+      const currentPos = ballEntity.position;
+      const velocity = ballEntity.linearVelocity;
+      const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+      
+      if (speed > 3.0) { // Only create trail for fast-moving balls
+        // Create trail particle at current position
+        const trailParticle = new Entity({
+          name: 'ball-trail',
+          modelUri: 'misc/firework.gltf',
+          modelScale: 0.4 + Math.random() * 0.2,
+          rigidBodyOptions: {
+            type: RigidBodyType.KINEMATIC_POSITION,
+          }
+        });
+        
+        trailParticle.spawn(this.world, {
+          x: currentPos.x + (Math.random() - 0.5) * 0.4,
+          y: currentPos.y + (Math.random() - 0.5) * 0.2,
+          z: currentPos.z + (Math.random() - 0.5) * 0.4
+        });
+        
+        trailParticles.push(trailParticle);
+        
+        // Remove oldest trail particles if too many
+        if (trailParticles.length > maxTrailLength) {
+          const oldParticle = trailParticles.shift();
+          if (oldParticle && oldParticle.isSpawned) {
+            oldParticle.despawn();
+          }
+        }
+        
+        // Fade out this particle after a short time
+        setTimeout(() => {
+          if (trailParticle.isSpawned) {
+            trailParticle.despawn();
+          }
+          // Remove from array
+          const index = trailParticles.indexOf(trailParticle);
+          if (index > -1) {
+            trailParticles.splice(index, 1);
+          }
+        }, 600);
+        
+        lastBallPosition = { ...currentPos };
+      }
+    }, 50); // Check every 50ms
+    
+    // Stop trail after 3 seconds (typical ball flight time)
+    setTimeout(() => {
+      clearInterval(trailInterval);
+      
+      // Clean up remaining trail particles
+      trailParticles.forEach(particle => {
+        if (particle.isSpawned) {
+          particle.despawn();
+        }
+      });
+    }, 3000);
+  }
+
+  // Create environmental atmosphere effects for major power-ups
+  public createEnvironmentalEffect(powerUpType: string, position: Vector3Like): void {
+    try {
+      switch (powerUpType) {
+        case 'freeze_blast':
+          this.createIceStormEffect(position);
+          break;
+        case 'fireball':
+          this.createHeatWaveEffect(position);
+          break;
+        case 'star_rain':
+          this.createCelestialAmbience(position);
+          break;
+        case 'time_slow':
+          this.createTimeDistortionEffect(position);
+          break;
+        default:
+          // No environmental effect for this power-up
+          break;
+      }
+    } catch (error) {
+      console.error("❌ ENVIRONMENTAL EFFECT ERROR:", error);
+    }
+  }
+
+  // Create ice storm environmental effect
+  private createIceStormEffect(position: Vector3Like): void {
+    // Create floating ice crystals around the area
+    for (let i = 0; i < 12; i++) {
+      const crystal = new Entity({
+        name: 'ice-crystal',
+        modelUri: 'misc/selection-indicator.gltf',
+        modelScale: 0.15 + Math.random() * 0.1,
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        }
+      });
+
+      const angle = (i / 12) * Math.PI * 2;
+      const radius = 8 + Math.random() * 4;
+      const height = 2 + Math.random() * 3;
+
+      crystal.spawn(this.world, {
+        x: position.x + Math.cos(angle) * radius,
+        y: position.y + height,
+        z: position.z + Math.sin(angle) * radius
+      });
+
+      // Animate floating motion
+      let floatTime = 0;
+      const floatInterval = setInterval(() => {
+        if (!crystal.isSpawned || floatTime > 8000) {
+          clearInterval(floatInterval);
+          if (crystal.isSpawned) {
+            crystal.despawn();
+          }
+          return;
+        }
+
+        floatTime += 100;
+        const bobHeight = Math.sin(floatTime * 0.003) * 0.2;
+        const driftX = Math.cos(floatTime * 0.001) * 0.1;
+        
+        crystal.setPosition({
+          x: crystal.position.x + driftX,
+          y: crystal.position.y + bobHeight,
+          z: crystal.position.z
+        });
+      }, 100);
+    }
+
+    // Play ambient ice wind sound
+    new Audio({
+      uri: "audio/sfx/weather/wind-gust.mp3",
+      loop: false,
+      volume: 0.3,
+      position: position,
+      referenceDistance: 25
+    }).play(this.world);
+  }
+
+  // Create heat wave effect
+  private createHeatWaveEffect(position: Vector3Like): void {
+    // Create rising heat particles
+    for (let i = 0; i < 8; i++) {
+      setTimeout(() => {
+        const heatParticle = new Entity({
+          name: 'heat-wave',
+          modelUri: 'misc/firework.gltf',
+          modelScale: 0.2,
+          rigidBodyOptions: {
+            type: RigidBodyType.KINEMATIC_POSITION,
+          }
+        });
+
+        const offsetX = (Math.random() - 0.5) * 10;
+        const offsetZ = (Math.random() - 0.5) * 10;
+
+        heatParticle.spawn(this.world, {
+          x: position.x + offsetX,
+          y: position.y,
+          z: position.z + offsetZ
+        });
+
+        // Animate upward rising motion
+        let riseHeight = 0;
+        const riseInterval = setInterval(() => {
+          if (!heatParticle.isSpawned || riseHeight > 8) {
+            clearInterval(riseInterval);
+            if (heatParticle.isSpawned) {
+              heatParticle.despawn();
+            }
+            return;
+          }
+
+          riseHeight += 0.1;
+          heatParticle.setPosition({
+            x: heatParticle.position.x + (Math.random() - 0.5) * 0.1,
+            y: heatParticle.position.y + 0.1,
+            z: heatParticle.position.z + (Math.random() - 0.5) * 0.1
+          });
+        }, 80);
+      }, i * 200);
+    }
+  }
+
+  // Create celestial ambience
+  private createCelestialAmbience(position: Vector3Like): void {
+    // Create twinkling stars around the area
+    for (let i = 0; i < 20; i++) {
+      const star = new Entity({
+        name: 'twinkle-star',
+        modelUri: 'misc/selection-indicator.gltf',
+        modelScale: 0.1,
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        }
+      });
+
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 5 + Math.random() * 10;
+      const height = 4 + Math.random() * 6;
+
+      star.spawn(this.world, {
+        x: position.x + Math.cos(angle) * radius,
+        y: position.y + height,
+        z: position.z + Math.sin(angle) * radius
+      });
+
+      // Animate twinkling
+      let twinkleTime = 0;
+      const twinkleInterval = setInterval(() => {
+        if (!star.isSpawned || twinkleTime > 10000) {
+          clearInterval(twinkleInterval);
+          if (star.isSpawned) {
+            star.despawn();
+          }
+          return;
+        }
+
+        twinkleTime += 200;
+        // Stars twinkle by briefly appearing/disappearing
+        if (Math.random() < 0.3) {
+          // Brief disappear effect (simulate by moving out of sight briefly)
+          const originalPos = { ...star.position };
+          star.setPosition({
+            x: originalPos.x,
+            y: originalPos.y - 100, // Move way down
+            z: originalPos.z
+          });
+
+          setTimeout(() => {
+            if (star.isSpawned) {
+              star.setPosition(originalPos);
+            }
+          }, 100);
+        }
+      }, 200);
+    }
+
+    // Play mystical ambient sound
+    setTimeout(() => {
+      new Audio({
+        uri: "audio/sfx/ui/portal-teleporting-long.mp3",
+        loop: false,
+        volume: 0.2,
+        position: position,
+        referenceDistance: 20
+      }).play(this.world);
+    }, 1000);
+  }
+
+  // Create time distortion effect
+  private createTimeDistortionEffect(position: Vector3Like): void {
+    // Create ripple effect
+    for (let ring = 0; ring < 5; ring++) {
+      setTimeout(() => {
+        const ripple = new Entity({
+          name: 'time-ripple',
+          modelUri: 'misc/selection-indicator.gltf',
+          modelScale: 1 + ring * 0.5,
+          rigidBodyOptions: {
+            type: RigidBodyType.KINEMATIC_POSITION,
+          }
+        });
+
+        ripple.spawn(this.world, {
+          x: position.x,
+          y: position.y + 0.1,
+          z: position.z
+        });
+
+        // Expand ripple outward
+        let expansionScale = ripple.modelScale;
+        const expandInterval = setInterval(() => {
+          expansionScale += 0.3;
+          if (expansionScale > 8) {
+            clearInterval(expandInterval);
+            if (ripple.isSpawned) {
+              ripple.despawn();
+            }
+          }
+        }, 100);
+      }, ring * 400);
+    }
   }
 
   // Check if player has shield active
@@ -1275,12 +2062,56 @@ export class ArcadeEnhancementManager {
     if (enhancement?.type === 'shield') {
       this.removeEnhancement(playerId);
       
-      // Play shield block sound
+      const playerEntity = this.findPlayerEntity(playerId);
+      if (playerEntity) {
+        // Create shield break effect
+        const breakEffect = new Entity({
+          name: 'shield-break',
+          modelUri: 'misc/firework.gltf',
+          modelScale: 3.0,
+          rigidBodyOptions: {
+            type: RigidBodyType.KINEMATIC_POSITION,
+          }
+        });
+        
+        breakEffect.spawn(this.world, {
+          x: playerEntity.position.x,
+          y: playerEntity.position.y + 1,
+          z: playerEntity.position.z
+        });
+        
+        // Remove break effect after 1 second
+        setTimeout(() => {
+          if (breakEffect.isSpawned) {
+            breakEffect.despawn();
+          }
+        }, 1000);
+        
+        // Remove shield visual if it exists
+        const shieldEffect = (playerEntity as any)._shieldEffect;
+        if (shieldEffect && shieldEffect.isSpawned) {
+          shieldEffect.despawn();
+        }
+        delete (playerEntity as any)._shieldEffect;
+      }
+      
+      // Play shield shatter sound
       new Audio({
-        uri: "audio/sfx/ui/inventory-place-item.mp3",
+        uri: "audio/sfx/damage/glass-break-1.mp3",
         loop: false,
-        volume: 0.7,
+        volume: 0.8,
+        position: playerEntity?.position
       }).play(this.world);
+      
+      // Add metal impact sound
+      setTimeout(() => {
+        new Audio({
+          uri: "audio/sfx/damage/hit-metal-2.mp3",
+          loop: false,
+          volume: 0.5,
+          position: playerEntity?.position
+        }).play(this.world);
+      }, 100);
       
       return true;
     }
@@ -1318,6 +2149,112 @@ export class ArcadeEnhancementManager {
   public cleanup(): void {
     this.playerEnhancements.clear();
     console.log("ArcadeEnhancementManager cleaned up - pickup-based system only");
+  }
+
+  /**
+   * Create charging effect before power-up activation
+   */
+  private createChargingEffect(player: SoccerPlayerEntity, powerUpType: string): void {
+    // Play charging sound based on power-up type
+    const chargeSounds: Record<string, string> = {
+      'freeze_blast': 'audio/sfx/liquid/large-splash-2.mp3',
+      'fireball': 'audio/sfx/fire/fire-ignite-2.mp3',
+      'shuriken': 'audio/sfx/ui/menu-button-click.mp3',
+      'mega_kick': 'audio/sfx/soccer/ball-kick-03.mp3',
+      'shield': 'audio/sfx/damage/glass-break-1.mp3',
+      'speed_boost': 'audio/sfx/ui/portal-travel-woosh.mp3',
+      'default': 'audio/sfx/ui/inventory-place-item.mp3'
+    };
+
+    const soundUri = chargeSounds[powerUpType] || chargeSounds['default'];
+    
+    // Play charging sound
+    const chargeAudio = new Audio({
+      uri: soundUri,
+      loop: false,
+      volume: 0.6,
+      position: player.position,
+      referenceDistance: 10
+    });
+    chargeAudio.play(this.world);
+
+    // Create expanding ring effect
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        const ring = new Entity({
+          name: 'charge-ring',
+          modelUri: 'misc/selection-indicator.gltf',
+          modelScale: 0.5 + (i * 0.5),
+          rigidBodyOptions: {
+            type: RigidBodyType.KINEMATIC_POSITION,
+          }
+        });
+
+        ring.spawn(this.world, {
+          x: player.position.x,
+          y: player.position.y + 0.1,
+          z: player.position.z
+        });
+
+        // Animate ring expansion and fade
+        let scale = ring.modelScale;
+        const expandInterval = setInterval(() => {
+          scale += 0.1;
+          if (scale > 3.0) {
+            clearInterval(expandInterval);
+            if (ring.isSpawned) {
+              ring.despawn();
+            }
+          }
+        }, 50);
+
+        // Clean up after 1 second
+        setTimeout(() => {
+          if (ring.isSpawned) {
+            ring.despawn();
+          }
+        }, 1000);
+      }, i * 200);
+    }
+
+    // Create upward particle burst
+    for (let i = 0; i < 5; i++) {
+      const particle = new Entity({
+        name: 'charge-particle',
+        modelUri: 'misc/firework.gltf',
+        modelScale: 0.2,
+        rigidBodyOptions: {
+          type: RigidBodyType.KINEMATIC_POSITION,
+        }
+      });
+
+      const angle = (i / 5) * Math.PI * 2;
+      const radius = 0.5;
+      
+      particle.spawn(this.world, {
+        x: player.position.x + Math.cos(angle) * radius,
+        y: player.position.y,
+        z: player.position.z + Math.sin(angle) * radius
+      });
+
+      // Animate upward
+      let height = 0;
+      const riseInterval = setInterval(() => {
+        height += 0.1;
+        particle.setPosition({
+          x: particle.position.x,
+          y: player.position.y + height,
+          z: particle.position.z
+        });
+
+        if (height > 2.0) {
+          clearInterval(riseInterval);
+          if (particle.isSpawned) {
+            particle.despawn();
+          }
+        }
+      }, 50);
+    }
   }
 
   /**
@@ -1406,7 +2343,7 @@ export class ArcadeEnhancementManager {
 
       const particle = new Entity({
         name: `particle-${effectType}-${i}`,
-        modelUri: 'models/misc/selection-indicator.gltf',
+        modelUri: 'misc/selection-indicator.gltf',
         modelScale: 0.5,
         rigidBodyOptions: {
           type: RigidBodyType.KINEMATIC_POSITION,
@@ -1475,7 +2412,7 @@ export class ArcadeEnhancementManager {
     try {
       const lightEffect = new Entity({
         name: `${effectType}-light`,
-        modelUri: 'models/misc/selection-indicator.gltf',
+        modelUri: 'misc/selection-indicator.gltf',
         modelScale: 0.1,
         rigidBodyOptions: {
           type: RigidBodyType.KINEMATIC_POSITION,
