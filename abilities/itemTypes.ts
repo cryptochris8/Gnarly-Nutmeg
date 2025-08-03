@@ -184,22 +184,6 @@ export const ballMagnetOptions: ItemAbilityOptions = {
     idleAnimation: "floating",
 };
 
-/**
- * Celestial Star Power (Golden Apple)
- * Creates star rain and allows stellar dash teleportation
- */
-export const starRainOptions: ItemAbilityOptions = {
-    name: "Star Rain",
-    speed: 15,               // Teleport range
-    damage: 20,              // Star projectile damage
-    modelUri: "projectiles/energy-orb-projectile.gltf", // Use energy orb as golden apple substitute
-    modelScale: 0.4,
-    projectileRadius: 2.0,   // Star explosion radius
-    knockback: 1.2,          // Star knockback force
-    lifeTime: 3.0,           // Star rain duration
-    icon: "star-rain",
-    idleAnimation: "floating",
-};
 
 /**
  * Crystal Resonance Power-Up (Diamond Sword)
@@ -303,7 +287,6 @@ export const ALL_POWERUP_OPTIONS: ItemAbilityOptions[] = [
     // Enhanced power-ups
     timeSlowOptions,
     ballMagnetOptions,
-    starRainOptions,
     crystalBarrierOptions,
     elementalMasteryOptions,
     tidalWaveOptions,
@@ -315,7 +298,6 @@ export const ALL_POWERUP_OPTIONS: ItemAbilityOptions[] = [
 export const ENHANCED_POWERUP_OPTIONS: ItemAbilityOptions[] = [
     timeSlowOptions,
     ballMagnetOptions,
-    starRainOptions,
     crystalBarrierOptions,
     elementalMasteryOptions,
     tidalWaveOptions,

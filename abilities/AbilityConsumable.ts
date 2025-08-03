@@ -11,7 +11,6 @@ import { FreezeBlastAbility } from './FreezeBlastAbility';
 import { FireballAbility } from './FireballAbility';
 import { TimeSlowAbility } from './TimeSlowAbility';
 import { BallMagnetAbility } from './BallMagnetAbility';
-import { StarRainAbility } from './StarRainAbility';
 import { CrystalBarrierAbility } from './CrystalBarrierAbility';
 import { EnhancedPowerAbility } from './EnhancedPowerAbility';
 import type { Ability } from './Ability';
@@ -173,10 +172,6 @@ export class AbilityConsumable {
                 case "Ball Magnet":
                     console.log(`🔧 Creating BallMagnetAbility`);
                     ability = new BallMagnetAbility(this.abilityOptions);
-                    break;
-                case "Star Rain":
-                    console.log(`🔧 Creating StarRainAbility`);
-                    ability = new StarRainAbility(this.abilityOptions);
                     break;
                 case "Crystal Barrier":
                     console.log(`🔧 Creating CrystalBarrierAbility`);

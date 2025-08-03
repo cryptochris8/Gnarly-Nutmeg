@@ -128,7 +128,6 @@ export class AbilityHolder {
             'shield': 'Shield',
             'time-slow': 'Time Slow',
             'ball-magnet': 'Ball Magnet',
-            'star-rain': 'Star Rain',
             'crystal-barrier': 'Crystal Barrier',
             'elemental-mastery': 'Elemental Mastery',
             'tidal-wave': 'Tidal Wave',

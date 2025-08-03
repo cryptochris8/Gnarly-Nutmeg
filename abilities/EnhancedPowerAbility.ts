@@ -185,8 +185,36 @@ export class EnhancedPowerAbility implements Ability {
     }
 
     private applyAreaElementalEffects(centerPos: Vector3Like, radius: number): void {
-        // This would affect physics in the area - implementation depends on Hytopia SDK capabilities
-        console.log(`🔮 Applied elemental effects in ${radius} unit radius around [${centerPos.x.toFixed(1)}, ${centerPos.z.toFixed(1)}]`);
+        try {
+            // Find ball and apply elemental physics changes
+            const soccerGame = (globalThis as any).soccerGame;
+            if (soccerGame && soccerGame.ball) {
+                const ball = soccerGame.ball;
+                const distance = Math.sqrt(
+                    Math.pow(ball.position.x - centerPos.x, 2) + 
+                    Math.pow(ball.position.z - centerPos.z, 2)
+                );
+                
+                if (distance <= radius) {
+                    // Apply modified gravity to ball
+                    const gravityScale = this.options.speed; // 0.5 for low gravity
+                    ball.setGravityScale(gravityScale);
+                    
+                    // Set timer to restore normal gravity
+                    setTimeout(() => {
+                        if (ball.isSpawned) {
+                            ball.setGravityScale(1.0); // Restore normal gravity
+                        }
+                    }, this.options.damage); // duration
+                    
+                    console.log(`🔮 Applied ${gravityScale}x gravity to ball for ${this.options.damage/1000}s`);
+                }
+            }
+            
+            console.log(`🔮 Applied elemental effects in ${radius} unit radius around [${centerPos.x.toFixed(1)}, ${centerPos.z.toFixed(1)}]`);
+        } catch (error) {
+            console.error("❌ AREA ELEMENTAL EFFECTS ERROR:", error);
+        }
     }
 
     private removeElementalEffects(player: SoccerPlayerEntity): void {
@@ -448,6 +476,25 @@ export class EnhancedPowerAbility implements Ability {
 
             portal.spawn(world, position);
 
+            // Add collision detection for teleportation
+            portal.createAndAddChildCollider({
+                shape: ColliderShape.BALL,
+                radius: this.options.projectileRadius, // 2.0
+                isSensor: true,
+                collisionGroups: {
+                    belongsTo: [CollisionGroup.ENTITY],
+                    collidesWith: [CollisionGroup.PLAYER, CollisionGroup.ENTITY],
+                },
+                onCollision: (otherEntity: any, started: boolean) => {
+                    if (!started || type !== 'entrance') return;
+                    
+                    // Only teleport players and ball
+                    if (otherEntity instanceof SoccerPlayerEntity || otherEntity === sharedState.getSoccerBall()) {
+                        this.teleportThroughPortal(otherEntity, position, world);
+                    }
+                }
+            });
+
             // Animate portal
             this.animatePortal(portal, type);
 
@@ -459,6 +506,39 @@ export class EnhancedPowerAbility implements Ability {
             }, duration);
         } catch (error) {
             console.error("❌ PORTAL ERROR:", error);
+        }
+    }
+
+    private teleportThroughPortal(entity: Entity, entrancePos: Vector3Like, world: any): void {
+        try {
+            // Calculate exit position (opposite direction from entrance)
+            const centerPos = { x: 7, y: 6, z: -3 }; // Field center
+            const exitPos = {
+                x: centerPos.x + (centerPos.x - entrancePos.x),
+                y: entrancePos.y,
+                z: centerPos.z + (centerPos.z - entrancePos.z)
+            };
+
+            // Clamp to field boundaries
+            exitPos.x = Math.max(-45, Math.min(65, exitPos.x));
+            exitPos.z = Math.max(-30, Math.min(30, exitPos.z));
+
+            // Teleport the entity
+            entity.setPosition(exitPos);
+
+            // Play teleport sound
+            const teleportAudio = new Audio({
+                uri: "audio/sfx/ui/portal-teleporting-long.mp3",
+                loop: false,
+                volume: 0.8,
+                position: exitPos,
+                referenceDistance: 15
+            });
+            teleportAudio.play(world);
+
+            console.log(`🌀 REALITY WARP: Teleported entity to [${exitPos.x.toFixed(1)}, ${exitPos.y.toFixed(1)}, ${exitPos.z.toFixed(1)}]`);
+        } catch (error) {
+            console.error("❌ PORTAL TELEPORT ERROR:", error);
         }
     }
 
@@ -555,6 +635,27 @@ export class EnhancedPowerAbility implements Ability {
 
             honeyTrap.spawn(sharedState.getSoccerBall()?.world || null, position);
 
+            // Add collision detection for sticky effects
+            honeyTrap.createAndAddChildCollider({
+                shape: ColliderShape.BALL,
+                radius: this.options.projectileRadius, // 4.0
+                isSensor: true,
+                collisionGroups: {
+                    belongsTo: [CollisionGroup.ENTITY],
+                    collidesWith: [CollisionGroup.PLAYER, CollisionGroup.ENTITY],
+                },
+                onCollision: (otherEntity: any, started: boolean) => {
+                    if (!started) return;
+                    
+                    // Apply sticky effect to players and ball
+                    if (otherEntity instanceof SoccerPlayerEntity) {
+                        this.applyStickiness(otherEntity, position);
+                    } else if (otherEntity === sharedState.getSoccerBall()) {
+                        this.applyStickyBallEffect(otherEntity, position);
+                    }
+                }
+            });
+
             // Auto-despawn after duration
             setTimeout(() => {
                 if (honeyTrap.isSpawned) {
@@ -563,6 +664,68 @@ export class EnhancedPowerAbility implements Ability {
             }, duration);
         } catch (error) {
             console.error("❌ HONEY TRAP ERROR:", error);
+        }
+    }
+
+    private applyStickiness(player: SoccerPlayerEntity, trapPos: Vector3Like): void {
+        try {
+            const slowFactor = this.options.speed; // 0.3 (70% speed reduction)
+            const stickyDuration = 3000; // 3 seconds of stickiness
+
+            // Apply speed reduction
+            const customProps = (player as any).customProperties || new Map();
+            (player as any).customProperties = customProps;
+            
+            customProps.set('isSticky', true);
+            customProps.set('stickySpeedMultiplier', slowFactor);
+            customProps.set('stickyEndTime', Date.now() + stickyDuration);
+
+            // Visual effect
+            const stickyEffect = new Entity({
+                name: 'sticky-effect',
+                modelUri: 'misc/selection-indicator.gltf',
+                modelScale: 1.5,
+                rigidBodyOptions: {
+                    type: RigidBodyType.KINEMATIC_POSITION,
+                }
+            });
+
+            stickyEffect.spawn(player.world, {
+                x: player.position.x,
+                y: player.position.y + 0.1,
+                z: player.position.z
+            });
+
+            // Remove effect after duration
+            setTimeout(() => {
+                customProps.set('isSticky', false);
+                customProps.delete('stickySpeedMultiplier');
+                customProps.delete('stickyEndTime');
+                
+                if (stickyEffect.isSpawned) {
+                    stickyEffect.despawn();
+                }
+            }, stickyDuration);
+
+            console.log(`🍯 HONEY TRAP: Applied stickiness to ${player.player.username} for ${stickyDuration/1000}s`);
+        } catch (error) {
+            console.error("❌ STICKINESS APPLICATION ERROR:", error);
+        }
+    }
+
+    private applyStickyBallEffect(ball: Entity, trapPos: Vector3Like): void {
+        try {
+            // Slow down the ball significantly
+            const currentVelocity = ball.getLinearVelocity();
+            ball.setLinearVelocity({
+                x: currentVelocity.x * 0.2,
+                y: currentVelocity.y * 0.2,
+                z: currentVelocity.z * 0.2
+            });
+
+            console.log(`🍯 HONEY TRAP: Ball caught in honey trap, velocity reduced`);
+        } catch (error) {
+            console.error("❌ STICKY BALL EFFECT ERROR:", error);
         }
     }
 

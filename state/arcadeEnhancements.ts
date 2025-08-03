@@ -1470,9 +1470,8 @@ export class ArcadeEnhancementManager {
       // Dynamic import to avoid circular dependencies
       import('../abilities/TimeSlowAbility').then(({ TimeSlowAbility }) => {
         import('../abilities/BallMagnetAbility').then(({ BallMagnetAbility }) => {
-          import('../abilities/StarRainAbility').then(({ StarRainAbility }) => {
-            import('../abilities/CrystalBarrierAbility').then(({ CrystalBarrierAbility }) => {
-              import('../abilities/EnhancedPowerAbility').then(({ EnhancedPowerAbility }) => {
+          import('../abilities/CrystalBarrierAbility').then(({ CrystalBarrierAbility }) => {
+            import('../abilities/EnhancedPowerAbility').then(({ EnhancedPowerAbility }) => {
                 
                 let ability: any;
                 
@@ -1482,9 +1481,6 @@ export class ArcadeEnhancementManager {
                     break;
                   case "Ball Magnet":
                     ability = new BallMagnetAbility(options);
-                    break;
-                  case "Star Rain":
-                    ability = new StarRainAbility(options);
                     break;
                   case "Crystal Barrier":
                     ability = new CrystalBarrierAbility(options);
@@ -1520,7 +1516,6 @@ export class ArcadeEnhancementManager {
                 
                 console.log(`🌟 ENHANCED: ${player.player.username} received ${options.name} ability!`);
                 
-              });
             });
           });
         });
