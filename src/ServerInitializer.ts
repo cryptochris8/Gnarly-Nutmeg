@@ -10,7 +10,7 @@ import worldMap from "../assets/maps/soccer.json";
 import { SoccerGame } from "../state/gameState";
 import createSoccerBall from "../utils/ball";
 import { BALL_SPAWN_POSITION } from "../state/gameConfig";
-import { ModelRegistry } from "../utils/model";
+import { ModelRegistry } from "hytopia";
 import sharedState from "../state/sharedState";
 import { ArcadeEnhancementManager } from "../state/arcadeEnhancements";
 import { PickupGameManager } from "../state/pickupGameManager";
