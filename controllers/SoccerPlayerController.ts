@@ -23,6 +23,7 @@ import { PASS_FORCE, BALL_SPAWN_POSITION as GLOBAL_BALL_SPAWN_POSITION, FIELD_MI
 import SoccerPlayerEntity from "../entities/SoccerPlayerEntity";
 import { isArcadeMode, getCurrentModeConfig } from "../state/gameModes";
 import { getArcadePlayerSpeed } from "../state/arcadeEnhancements";
+import { SafeAbilityWrapper } from "../abilities/SafeAbilityWrapper";
 
 /** Options for creating a CustomSoccerPlayer instance. @public */
 export interface PlayerEntityControllerOptions {
@@ -547,17 +548,19 @@ export default class CustomSoccerPlayer extends BaseEntityController {
         }
         
         const direction = {x: entity.player.camera.facingDirection.x, y: entity.player.camera.facingDirection.y + 0.1, z: entity.player.camera.facingDirection.z};
-        try {
-          console.log(`🚀 About to call ability.use() with origin=${JSON.stringify(entity.position)}, direction=${JSON.stringify(direction)}`);
-          ability?.use(
-            entity.position,
-            direction,
-            entity 
-          );
+        
+        // Use the SafeAbilityWrapper for crash protection
+        const success = SafeAbilityWrapper.safeExecute(
+          ability,
+          entity.position,
+          direction,
+          entity
+        );
+        
+        if (success) {
           console.log(`✅ Ability used successfully by ${entity.player?.username || 'unknown'}`);
-        } catch (e) {
-          console.error(`❌ Error using ability for ${entity.player?.username || 'unknown'}:`, e);
-          console.error(`❌ Error stack:`, e.stack);
+        } else {
+          console.error(`❌ Ability execution failed for ${entity.player?.username || 'unknown'}`);
         }
         
         // Cancel the input to prevent any conflicts
