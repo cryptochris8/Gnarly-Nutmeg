@@ -683,82 +683,145 @@ export class ArcadeEnhancementManager {
       return;
     }
 
-    // Play fireball launch sound
-    const launchAudio = new Audio({
-      uri: "audio/sfx/fire/fire-ignite.mp3", // Fire ignition sound for launch
-      loop: false,
-      volume: 0.8,
-      position: playerEntity.position,
-      referenceDistance: 15
-    });
-    launchAudio.play(this.world);
+    // Debug logging
+    console.log(`🔥 FIREBALL DEBUG: Player entity found - ${playerEntity.player?.username || 'unknown'}`);
+    console.log(`🔥 FIREBALL DEBUG: Player position - ${JSON.stringify(playerEntity.position)}`);
+    console.log(`🔥 FIREBALL DEBUG: Player rotation - ${JSON.stringify(playerEntity.rotation)}`);
 
-    // Create spectacular visual effect for fireball activation
-    this.createPowerUpEffect(playerEntity.position, 'fireball');
+    try {
+      // Play fireball launch sound
+      const launchAudio = new Audio({
+        uri: "audio/sfx/fire/fire-ignite.mp3", // Fire ignition sound for launch
+        loop: false,
+        volume: 0.8,
+        position: playerEntity.position,
+        referenceDistance: 15
+      });
+      launchAudio.play(this.world);
+    } catch (audioError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to play launch audio:`, audioError);
+    }
+
+    try {
+      // Create spectacular visual effect for fireball activation
+      this.createPowerUpEffect(playerEntity.position, 'fireball');
+    } catch (effectError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to create power-up effect:`, effectError);
+    }
 
     // Calculate launch direction from player's facing direction
-    const rotation = playerEntity.rotation;
-    const direction = this.calculateDirectionFromRotation(rotation);
+    let direction;
+    try {
+      const rotation = playerEntity.rotation;
+      if (!rotation) {
+        console.error(`🔥 FIREBALL ERROR: Player rotation is null or undefined`);
+        return;
+      }
+      direction = this.calculateDirectionFromRotation(rotation);
+      console.log(`🔥 FIREBALL DEBUG: Calculated direction - ${JSON.stringify(direction)}`);
+    } catch (directionError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to calculate direction:`, directionError);
+      return;
+    }
     
     // Create fireball projectile entity with fire model
-    const fireball = new Entity({
-      name: 'fireball-projectile',
-      modelUri: 'models/projectiles/fireball.gltf', // Using dedicated fireball model
-      modelScale: 1.2,
-      rigidBodyOptions: {
-        type: RigidBodyType.DYNAMIC,
-        ccdEnabled: true, // High-speed projectile needs CCD
-        linearDamping: 0.05, // Minimal air resistance for fireballs
-        angularDamping: 0.1,
-        gravityScale: 0.4, // Slight downward arc
-        enabledRotations: { x: true, y: true, z: true },
-      },
-    });
+    let fireball: Entity;
+    try {
+      fireball = new Entity({
+        name: 'fireball-projectile',
+        modelUri: 'models/projectiles/fireball.gltf', // Using dedicated fireball model
+        modelScale: 1.2,
+        rigidBodyOptions: {
+          type: RigidBodyType.DYNAMIC,
+          ccdEnabled: true, // High-speed projectile needs CCD
+          linearDamping: 0.05, // Minimal air resistance for fireballs
+          angularDamping: 0.1,
+          gravityScale: 0.4, // Slight downward arc
+          enabledRotations: { x: true, y: true, z: true },
+        },
+      });
+    } catch (entityError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to create fireball entity:`, entityError);
+      return;
+    }
 
     // Spawn fireball in front of player at chest height
-    const spawnOffset = 2.0;
-    const fireballPosition = {
-      x: playerEntity.position.x + direction.x * spawnOffset,
-      y: playerEntity.position.y + 1.2, // Chest level
-      z: playerEntity.position.z + direction.z * spawnOffset
-    };
+    try {
+      const spawnOffset = 2.0;
+      const fireballPosition = {
+        x: playerEntity.position.x + direction.x * spawnOffset,
+        y: playerEntity.position.y + 1.2, // Chest level
+        z: playerEntity.position.z + direction.z * spawnOffset
+      };
 
-    fireball.spawn(this.world, fireballPosition);
+      console.log(`🔥 FIREBALL DEBUG: Spawning at position - ${JSON.stringify(fireballPosition)}`);
+      fireball.spawn(this.world, fireballPosition);
+    } catch (spawnError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to spawn fireball:`, spawnError);
+      return;
+    }
 
     // Apply powerful launch velocity
-    const launchForce = 18.0;
-    const launchVelocity = {
-      x: direction.x * launchForce,
-      y: 3.0, // Higher arc for dramatic effect
-      z: direction.z * launchForce
-    };
-    
-    fireball.setLinearVelocity(launchVelocity);
-    
-    // Add tumbling motion for realistic fireball flight
-    fireball.setAngularVelocity({
-      x: 5,
-      y: 10,
-      z: 3
-    });
+    try {
+      const launchForce = 18.0;
+      const launchVelocity = {
+        x: direction.x * launchForce,
+        y: 3.0, // Higher arc for dramatic effect
+        z: direction.z * launchForce
+      };
+      
+      fireball.setLinearVelocity(launchVelocity);
+      
+      // Add tumbling motion for realistic fireball flight
+      fireball.setAngularVelocity({
+        x: 5,
+        y: 10,
+        z: 3
+      });
+
+      console.log(`🔥 FIREBALL DEBUG: Velocity set - ${JSON.stringify(launchVelocity)}`);
+    } catch (velocityError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to set fireball velocity:`, velocityError);
+      // Try to despawn if velocity fails
+      try {
+        fireball.despawn();
+      } catch (e) {}
+      return;
+    }
 
     // Play continuous burning sound that follows the fireball
-    const burnAudio = new Audio({
-      uri: "audio/sfx/fire/fire-burning.mp3", // Continuous burning sound
-      loop: true,
-      volume: 0.5,
-      attachedToEntity: fireball,
-      referenceDistance: 12
-    });
-    burnAudio.play(this.world);
+    let burnAudio: Audio;
+    try {
+      burnAudio = new Audio({
+        uri: "audio/sfx/fire/fire-burning.mp3", // Continuous burning sound
+        loop: true,
+        volume: 0.5,
+        attachedToEntity: fireball,
+        referenceDistance: 12
+      });
+      burnAudio.play(this.world);
+    } catch (audioError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to play burning audio:`, audioError);
+      // Continue without audio
+    }
 
     // Create particle trail effect for the fireball
-    this.createFireballTrail(fireball);
+    try {
+      this.createFireballTrail(fireball);
+    } catch (trailError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to create fireball trail:`, trailError);
+      // Continue without trail
+    }
 
     // Track fireball for explosion detection
-    this.trackFireballProjectile(fireball, playerId, burnAudio);
+    try {
+      this.trackFireballProjectile(fireball, playerId, burnAudio);
+    } catch (trackError) {
+      console.error(`🔥 FIREBALL ERROR: Failed to track fireball:`, trackError);
+      // Continue without tracking
+    }
 
-    console.log(`🔥 FIREBALL LAUNCHED: Direction [${direction.x.toFixed(2)}, ${direction.z.toFixed(2)}], Force: ${launchForce}`);
+    console.log(`🔥 FIREBALL LAUNCHED: Direction [${direction.x.toFixed(2)}, ${direction.z.toFixed(2)}], Force: 18.0`);
   }
 
   // Create particle trail effect for fireball projectile

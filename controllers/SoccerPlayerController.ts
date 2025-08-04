@@ -536,9 +536,16 @@ export default class CustomSoccerPlayer extends BaseEntityController {
         console.log(`🔍 Current game mode check: isArcadeMode()=${isArcadeMode()}`);
         console.log(`🔍 Player has ball: ${hasBall} (ability activation now allowed regardless)`);
         console.log(`🔍 Player position: ${JSON.stringify(entity.position)}`);
-        console.log(`🔍 Camera direction: ${JSON.stringify(entity.player.camera.facingDirection)}`);
+        console.log(`🔍 Camera direction: ${entity.player?.camera?.facingDirection ? JSON.stringify(entity.player.camera.facingDirection) : 'null'}`);
         
         // Use the collected ability (from pickup system)
+        // SAFETY CHECK: Ensure camera and facingDirection exist
+        if (!entity.player?.camera?.facingDirection) {
+          console.error(`❌ Camera facing direction not available for ${entity.player?.username || 'unknown'}`);
+          input["f"] = false;
+          return;
+        }
+        
         const direction = {x: entity.player.camera.facingDirection.x, y: entity.player.camera.facingDirection.y + 0.1, z: entity.player.camera.facingDirection.z};
         try {
           console.log(`🚀 About to call ability.use() with origin=${JSON.stringify(entity.position)}, direction=${JSON.stringify(direction)}`);
