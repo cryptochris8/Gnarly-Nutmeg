@@ -32,13 +32,14 @@ function createGoalSensors(world: World) {
   worldRef = world;
   
   // Red goal sensor (Blue team scores when ball enters)
+  // FIXED: Position sensor INSIDE the goal, not on the goal line
   redGoalSensor = new Collider({
     shape: ColliderShape.BLOCK,
-    halfExtents: { x: 2, y: 4, z: 5 }, // 4x8x10 goal area
+    halfExtents: { x: 1.5, y: 4, z: 5 }, // 3x8x10 goal area (smaller to fit inside goal)
     isSensor: true,
     tag: 'red-goal-sensor',
     relativePosition: { 
-      x: GAME_CONFIG.AI_GOAL_LINE_X_RED, 
+      x: GAME_CONFIG.AI_GOAL_LINE_X_RED - 1.5, // Position 1.5 units INSIDE the goal
       y: 2, 
       z: GAME_CONFIG.AI_FIELD_CENTER_Z 
     },
@@ -51,13 +52,14 @@ function createGoalSensors(world: World) {
   });
 
   // Blue goal sensor (Red team scores when ball enters)
+  // FIXED: Position sensor INSIDE the goal, not on the goal line
   blueGoalSensor = new Collider({
     shape: ColliderShape.BLOCK,
-    halfExtents: { x: 2, y: 4, z: 5 }, // 4x8x10 goal area
+    halfExtents: { x: 1.5, y: 4, z: 5 }, // 3x8x10 goal area (smaller to fit inside goal)
     isSensor: true,
     tag: 'blue-goal-sensor',
     relativePosition: { 
-      x: GAME_CONFIG.AI_GOAL_LINE_X_BLUE, 
+      x: GAME_CONFIG.AI_GOAL_LINE_X_BLUE + 1.5, // Position 1.5 units INSIDE the goal
       y: 2, 
       z: GAME_CONFIG.AI_FIELD_CENTER_Z 
     },
@@ -74,6 +76,8 @@ function createGoalSensors(world: World) {
   blueGoalSensor.addToSimulation(world.simulation);
   
   console.log('⚽ Goal sensors created and added to simulation');
+  console.log(`   Red goal sensor: X=${GAME_CONFIG.AI_GOAL_LINE_X_RED - 1.5}, Z=${GAME_CONFIG.AI_FIELD_CENTER_Z} (inside Red goal)`);
+  console.log(`   Blue goal sensor: X=${GAME_CONFIG.AI_GOAL_LINE_X_BLUE + 1.5}, Z=${GAME_CONFIG.AI_FIELD_CENTER_Z} (inside Blue goal)`);
 }
 
 /**
@@ -100,11 +104,49 @@ function handleGoalSensorTrigger(scoringTeam: 'red' | 'blue', ballEntity: Entity
     return;
   }
   
+  // ADDITIONAL VALIDATION: Verify ball is actually inside the goal boundaries
+  const ballPos = ballEntity.position;
+  const GOAL_WIDTH = 10;
+  const GOAL_MIN_Z = GAME_CONFIG.AI_FIELD_CENTER_Z - GOAL_WIDTH/2; // -8
+  const GOAL_MAX_Z = GAME_CONFIG.AI_FIELD_CENTER_Z + GOAL_WIDTH/2; // 2
+  
+  // Check if ball is within the goal's Z boundaries
+  if (ballPos.z < GOAL_MIN_Z || ballPos.z > GOAL_MAX_Z) {
+    console.log(`🚫 Goal sensor triggered but ball outside goal Z boundaries: ${ballPos.z.toFixed(2)} (must be between ${GOAL_MIN_Z} and ${GOAL_MAX_Z})`);
+    return;
+  }
+  
+  // Check if ball is within the goal's Y boundaries (above ground, below crossbar)
+  if (ballPos.y < 0 || ballPos.y > 4) {
+    console.log(`🚫 Goal sensor triggered but ball outside goal Y boundaries: ${ballPos.y.toFixed(2)} (must be between 0 and 4)`);
+    return;
+  }
+  
+  // Check team-specific X boundaries
+  if (scoringTeam === 'blue') {
+    // Blue scores in Red goal: X should be between -40 and -36
+    const RED_GOAL_MIN_X = GAME_CONFIG.AI_GOAL_LINE_X_RED - 3; // -40
+    const RED_GOAL_MAX_X = GAME_CONFIG.AI_GOAL_LINE_X_RED + 1; // -36
+    if (ballPos.x < RED_GOAL_MIN_X || ballPos.x > RED_GOAL_MAX_X) {
+      console.log(`🚫 Blue goal attempt rejected: Ball X position ${ballPos.x.toFixed(2)} outside Red goal boundaries [${RED_GOAL_MIN_X} to ${RED_GOAL_MAX_X}]`);
+      return;
+    }
+  } else {
+    // Red scores in Blue goal: X should be between 51 and 55
+    const BLUE_GOAL_MIN_X = GAME_CONFIG.AI_GOAL_LINE_X_BLUE - 1; // 51
+    const BLUE_GOAL_MAX_X = GAME_CONFIG.AI_GOAL_LINE_X_BLUE + 3; // 55
+    if (ballPos.x < BLUE_GOAL_MIN_X || ballPos.x > BLUE_GOAL_MAX_X) {
+      console.log(`🚫 Red goal attempt rejected: Ball X position ${ballPos.x.toFixed(2)} outside Blue goal boundaries [${BLUE_GOAL_MIN_X} to ${BLUE_GOAL_MAX_X}]`);
+      return;
+    }
+  }
+  
   goalSensorDebounce = currentTime;
   ballHasEnteredGoal = true;
   
-  console.log(`✅ GOAL CONFIRMED via sensor! ${scoringTeam.toUpperCase()} TEAM SCORES!`);
+  console.log(`✅ GOAL CONFIRMED! ${scoringTeam.toUpperCase()} TEAM SCORES!`);
   console.log(`   Ball position: X=${ballEntity.position.x.toFixed(2)}, Y=${ballEntity.position.y.toFixed(2)}, Z=${ballEntity.position.z.toFixed(2)}`);
+  console.log(`   ✅ Verified ball is inside goal boundaries`);
   
   // Emit goal event immediately - no confirmation delay needed
   if (worldRef) {
