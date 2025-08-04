@@ -13,7 +13,11 @@
       "Bash(npm run dev:*)",
       "WebFetch(domain:api.github.com)",
       "Bash(git add:*)",
-      "Bash(npm run start:windows:*)"
+      "Bash(npm run start:windows:*)",
+      "Bash(git commit:*)",
+      "Bash(rm:*)",
+      "Bash(bun run:*)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }
